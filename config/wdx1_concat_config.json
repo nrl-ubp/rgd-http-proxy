@@ -1,0 +1,25 @@
+{
+  "right-context": {
+    "Location": "Onshore"
+  },
+  "processing-context": {
+    "Location": "Onshore"
+  },
+  "wdx1-concat-rps-mappings": [
+    {
+      "rps-mapping-type": "name",
+      "rps-class-name": "poc.Person",
+      "rps-property-name": "Name"
+    },
+    {
+      "rps-mapping-type": "date",
+      "rps-class-name": "poc.Person",
+      "rps-property-name": "BirthDate"
+    },
+    {
+      "rps-mapping-type": "default",
+      "rps-class-name": "poc.Person",
+      "rps-property-name": "Name"
+    }
+  ]
+}

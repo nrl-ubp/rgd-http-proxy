@@ -1,0 +1,101 @@
+[
+  {
+    "endpoint-path": "/api/v1/persons/\\d+",
+    "endpoint-methods": [
+      "POST",
+      "PUT"
+    ],
+    "endpoint-transform-when": "BEFORE",
+    "right-context": {
+      "Location": "Onshore"
+    },
+    "processing-context": {
+      "Action": "Unprotect",
+      "Location": "Onshore"
+    },
+    "header-transform-configs": [
+      {
+        "name": "X-transform-header",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      }
+    ],
+    "entity-transform-configs": [
+      {
+        "json-path": "$.[*]lastName",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      },
+      {
+        "json-path": "$.[*]firstName",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      },
+      {
+        "json-path": "$.[*]birthDate",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "BirthDate"
+      }
+    ],
+    "url-query-transform-configs": [
+      {
+        "name": "person-name",
+        "regexp": false,
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      },
+      {
+        "name": "email.*",
+        "regexp": true,
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Email"
+      }
+    ],
+    "url-path-transform-configs": [
+      {
+        "name-or-position": "person",
+        "regexp": false,
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      }
+    ]
+  },
+  {
+    "endpoint-path": "/api/v1/persons/\\d+",
+    "endpoint-methods": [
+      "GET"
+    ],
+    "endpoint-transform-when": "AFTER",
+    "right-context": {
+      "Location": "Onshore"
+    },
+    "processing-context": {
+      "Action": "Protect",
+      "Location": "Onshore"
+    },
+    "header-transform-configs": [
+      {
+        "name": "X-transform-header",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      }
+    ],
+    "entity-transform-configs": [
+      {
+        "json-path": "$.[*]lastName",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      },
+      {
+        "json-path": "$.[*]firstName",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      },
+      {
+        "json-path": "$.[*]birthDate",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "BirthDate"
+      }
+    ]
+  }
+]

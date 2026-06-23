@@ -1,0 +1,152 @@
+# -------------------------------------------------------------------------------------------------------
+
+# Link to Build templates repository
+resources:
+  repositories: 
+    - repository: templates
+      type: git
+      name: Build_Templates/Build_Templates
+      endpoint: "ALM-BuildTemplate-RoseGarden"
+      ref:  refs/tags/25.08
+      # See https://tfs-prd/ALM/_git/Build_Templates/tags
+
+  # Specify the version of build agent
+  containers:
+    - container: openjdk
+      image: almbinaryrepo.corp.ubp.ch/ubp-docker-prd/ubp/azure_devops/linux/ubi9/java/openjdk-21:latest
+
+# Trigger and Pull request configuration must be configured at this pipeline
+trigger:
+ branches:
+  include:
+    - devel
+pr:
+ branches:
+   include:
+     - master
+
+# Define Jobs variable
+variables:      # pipeline-level
+  AlmUniqueIdentifier:  'rosegarden'
+  AlmMainComponentName: 'rgd-http-proxy'
+  AlmFileMainVersion:   './pom.xml'
+  AlmDeploymentBranch:  'refs/heads/master'
+
+  # Service endpoints configuration
+  AlmEVZEndpointName:             'almevz'
+  AlmEVXEndpointName:             'almevx'
+  ArtifactoryServiceEndpointName: 'Artifactory-v2'
+  XrayServiceEndpointName:        'Xray'
+  SonarQubeEndpointName:          'SonarQube'
+
+  # Pipeline behavior
+  BuildName:            '$(Build.DefinitionName)'
+  RunUnitTests:         true
+  UseSonar:             true
+  XrayValidation:       true
+  XrayValidationWaitSec: 60
+  DiscardOldBuilds:     true
+  MaxBuildsToKeep:      '5'
+  MaxDaysToKeep:        ''
+  BuildsNumberToKeep:   ''
+
+stages:
+- stage: Build
+  jobs:
+  - job: BuildApplication
+    displayName: Build and run tests
+    workspace:
+      clean: all
+
+    pool:
+      name: 'Pool-LX-Docker-Shenzo'
+    container: openjdk
+
+    steps:
+      - task: Bash@3
+        displayName: Maven dependencies resolve
+        inputs:
+          targetType: inline
+          script: |
+            mvn dependency:resolve
+      - task: Bash@3
+        displayName: Compile project 
+        inputs:
+          targetType: inline
+          script: |
+            mvn compile
+      - task: Bash@3
+        displayName: Setting up application.properties file from sample
+        inputs:
+          targetType: inline
+          script: |
+            cp ./config/sample.application.properties ./config/application.properties
+      - task: Bash@3
+        displayName: Generate temporary server SSL keystore and certs
+        inputs:
+          targetType: inline
+          script: |
+            mvn exec:java
+      - task: Bash@3
+        displayName: Build and test
+        inputs:
+          targetType: 'inline'
+          script: |
+            export proxy_transform_client_id="$(proxy.transform.client-id)"
+            export proxy_transform_client_secret="$(proxy.transform.client-secret)"
+            export proxy_transform_identity_url="$(proxy.transform.identity-url)"
+            export proxy_transform_engine_url="$(proxy.transform.engine-url)"
+            mvn install
+      - script: |
+          cp ./target/rgd-http-proxy-*-runner.jar $(Build.StagingDirectory)
+        displayName: 'Copy artifact to Build.StagingDirectory'
+      - task: PublishBuildArtifacts@1
+        inputs:
+          pathtoPublish: '$(Build.StagingDirectory)'
+          artifactName: 'rgd-http-proxy'
+          publishLocation: 'Container'
+        displayName: 'Publish artifact(s) in pipeline for later deploy.' 
+    
+  - job: Deploy
+    dependsOn: BuildApplication
+    #condition: eq(variables['Build.SourceBranchName'], 'master')
+    pool: 'Pool-MS'
+    steps:
+      - task: DownloadBuildArtifacts@0
+        inputs:
+          artifactName: "rgd-http-proxy"
+          downloadPath: "$(Build.StagingDirectory)"
+        displayName: 'Download artifact from Build Job'
+  
+      - script: |
+          mkdir -p "$(Build.StagingDirectory)/jfrog"
+        displayName: 'Creating jfrog cli dir'
+
+      - task: JFrogToolsInstaller@1
+        displayName: 'Install Jfrog client and its extractors'
+        inputs:
+          cliInstallationRepo:        'ubp-jfrogcli-prd'
+          installExtractors:          true
+          extractorsInstallationRepo: 'ubp-maven-prd'
+          artifactoryConnection:     '$(ArtifactoryServiceEndpointName)'
+      - task: JFrogGenericArtifacts@1
+        displayName: 'Upload to Artifactory upb_applications/ubp.rosegarden/rgd-http-proxy/'
+        inputs:
+          command: 'Upload'
+          connection: 'Artifactory-V2'
+          specSource: 'taskConfiguration'
+          fileSpec: |
+            {
+              "files": [
+                {
+                  "target": "ubp-applications-ev0/ubp.rosegarden/rgd-http-proxy/",
+                  "pattern": "$(Build.StagingDirectory)/rgd-http-proxy/rgd-http-proxy-*-runner.jar"
+                }
+              ]
+            }
+          collectBuildInfo: true
+          buildName: '$(Build.DefinitionName)'
+          buildNumber: '$(Build.BuildNumber)'
+          includeEnvVars: true
+          failNoOp: true
+          insecureTls: true

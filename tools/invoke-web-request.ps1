@@ -1,0 +1,1 @@
+Invoke-WebRequest -uri "https://tokenization-secure-gvz-e01.corp.ubp.ch/proxy/me" -UseDefaultCredentials
