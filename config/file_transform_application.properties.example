@@ -1,0 +1,29 @@
+# ========================================
+# File Transformation Configuration
+# ========================================
+
+# Enable file transformation feature
+# Set to true to activate automatic file processing
+proxy.file-transform.enabled=false
+
+# Path to the file transformation configuration file
+# This file defines source/target directories and transformation rules
+proxy.file-transform.config-file=./config/file_transform_config.json
+
+# Scan interval in seconds
+# How often to check source directories for new files
+# Lower values = faster processing, higher values = less CPU usage
+# Recommended: 30-300 seconds depending on requirements
+proxy.file-transform.scan-interval-seconds=30
+
+# ========================================
+# Usage Instructions
+# ========================================
+# 1. Set proxy.file-transform.enabled=true
+# 2. Configure file_transform_config.json with your directories
+# 3. Ensure RPS engine is properly configured (see main config)
+# 4. Start the application
+# 5. Place JSON files in configured source directories
+# 6. Files will be automatically processed and moved to target directories
+# 7. Check error directories for any failed files
+# 8. Monitor logs for processing status

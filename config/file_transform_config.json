@@ -1,0 +1,98 @@
+[
+  {
+    "name": "Person Data Protection",
+    "source-directory": "./data/source",
+    "target-directory": "./data/target",
+    "error-directory": "./data/error",
+    "work-in-progress-suffix": ".processing",
+    "file-pattern": ".*\\.json$",
+    "preserve-directory-structure": true,
+    "right-context": {
+      "Location": "Onshore"
+    },
+    "processing-context": {
+      "Action": "Protect",
+      "Location": "Onshore"
+    },
+    "entity-transform-configs": [
+      {
+        "json-path": "$.[*].lastName",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      },
+      {
+        "json-path": "$.[*].firstName",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      },
+      {
+        "json-path": "$.[*].birthDate",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "BirthDate"
+      },
+      {
+        "json-path": "$.lastName",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      },
+      {
+        "json-path": "$.firstName",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      },
+      {
+        "json-path": "$.birthDate",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "BirthDate"
+      }
+    ]
+  },
+  {
+    "name": "Person Data Unprotection",
+    "source-directory": "./data/unprotect-source",
+    "target-directory": "./data/unprotect-target",
+    "error-directory": "./data/unprotect-error",
+    "work-in-progress-suffix": ".processing",
+    "file-pattern": ".*\\.json$",
+    "preserve-directory-structure": true,
+    "right-context": {
+      "Location": "Onshore"
+    },
+    "processing-context": {
+      "Action": "Unprotect",
+      "Location": "Onshore"
+    },
+    "entity-transform-configs": [
+      {
+        "json-path": "$.[*].lastName",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      },
+      {
+        "json-path": "$.[*].firstName",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      },
+      {
+        "json-path": "$.[*].birthDate",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "BirthDate"
+      },
+      {
+        "json-path": "$.lastName",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      },
+      {
+        "json-path": "$.firstName",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "Name"
+      },
+      {
+        "json-path": "$.birthDate",
+        "rps-class-name": "poc.Person",
+        "rps-property-name": "BirthDate"
+      }
+    ]
+  }
+]
