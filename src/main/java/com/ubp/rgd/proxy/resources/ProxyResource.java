@@ -1,4 +1,4 @@
-package com.ubp.rgd.proxy;
+package com.ubp.rgd.proxy.resources;
 
 import com.ubp.rgd.proxy.services.ProxyService;
 import io.micrometer.core.instrument.MeterRegistry;

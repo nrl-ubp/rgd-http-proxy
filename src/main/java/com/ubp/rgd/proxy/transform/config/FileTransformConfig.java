@@ -30,6 +30,9 @@ public class FileTransformConfig {
     @JsonProperty(value = "preserve-directory-structure")
     private boolean preserveDirectoryStructure = true;
 
+    @JsonProperty(value = "scan-interval-seconds")
+    private int scanIntervalSeconds = 0;
+
     @JsonProperty(value = "right-context")
     private HashMap<String, String> rightContextEvidences = new HashMap<>();
 
@@ -93,6 +96,14 @@ public class FileTransformConfig {
 
     public void setPreserveDirectoryStructure(boolean preserveDirectoryStructure) {
         this.preserveDirectoryStructure = preserveDirectoryStructure;
+    }
+
+    public int getScanIntervalSeconds() {
+        return scanIntervalSeconds;
+    }
+
+    public void setScanIntervalSeconds(int scanIntervalSeconds) {
+        this.scanIntervalSeconds = scanIntervalSeconds;
     }
 
     public HashMap<String, String> getRightContextEvidences() {

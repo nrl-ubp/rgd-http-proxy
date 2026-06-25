@@ -18,6 +18,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
+import org.jspecify.annotations.NonNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,11 +44,8 @@ public class FileTransformService {
     @ConfigProperty(name = "proxy.file-transform.enabled", defaultValue = "false")
     boolean fileTransformEnabled;
 
-    @ConfigProperty(name = "proxy.file-transform.scan-interval-seconds", defaultValue = "30")
-    int scanIntervalSeconds;
-
     private List<FileTransformConfig> fileTransformConfigs;
-    private ScheduledExecutorService scheduler;
+    private Map<String, ScheduledExecutorService> schedulers = new HashMap<>();
 
     @PostConstruct
     public void init() {
@@ -107,38 +105,64 @@ public class FileTransformService {
     }
 
     private void startScheduler() {
-        scheduler = Executors.newScheduledThreadPool(1);
-        scheduler.scheduleAtFixedRate(
-                this::processAllConfigurations,
-                0,
-                scanIntervalSeconds,
-                TimeUnit.SECONDS
-        );
-        LOG.infof("File transform scheduler started with interval: %d seconds", scanIntervalSeconds);
-    }
-
-    private void processAllConfigurations() {
-        if (fileTransformConfigs == null) {
-            return;
-        }
-
         for (FileTransformConfig config : fileTransformConfigs) {
-            try {
-                processConfiguration(config);
-            } catch (Exception e) {
-                LOG.errorf(e, "Error processing configuration: %s", config.getName());
+            if (config.getScanIntervalSeconds() > 0) {
+                ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+                scheduler.scheduleAtFixedRate(
+                        () -> processConfiguration(config),
+                        0,
+                        config.getScanIntervalSeconds(),
+                        TimeUnit.SECONDS
+                );
+                schedulers.put(config.getName(), scheduler);
+                LOG.infof("Started scheduler for '%s' with interval: %d seconds", 
+                    config.getName(), config.getScanIntervalSeconds());
+            } else {
+                LOG.infof("Configuration '%s' has scan interval %d - will only process on-demand", 
+                    config.getName(), config.getScanIntervalSeconds());
             }
         }
     }
 
-    private void processConfiguration(FileTransformConfig config) {
+    /**
+     * Process a specific configuration synchronously.
+     * This method can be called from external applications for on-demand processing.
+     * @param configName the name of the configuration to process
+     * @return number of files processed
+     * @throws IllegalArgumentException if configuration not found
+     */
+    public int processConfigurationByName(String configName) {
+        FileTransformConfig config = fileTransformConfigs.stream()
+                .filter(cfg -> cfg.getName().equals(configName))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Configuration not found: " + configName));
+        
+        LOG.infof("Processing configuration '%s' synchronously", configName);
+        return processConfiguration(config);
+    }
+
+    /**
+     * Get list of all configuration names
+     */
+    public List<String> getConfigurationNames() {
+        if (fileTransformConfigs == null) {
+            LOG.warn("No file transform configurations loaded, probably because proxy.file-transform.enabled property is false.");
+            return Collections.emptyList();
+        }
+        return fileTransformConfigs.stream()
+                .map(FileTransformConfig::getName)
+                .toList();
+    }
+
+    private int processConfiguration(FileTransformConfig config) {
         Path sourceDir = Paths.get(config.getSourceDirectory());
         Pattern filePattern = Pattern.compile(config.getFilePattern());
+        final int[] processedCount = {0};
 
         try {
             Files.walkFileTree(sourceDir, new SimpleFileVisitor<Path>() {
                 @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) {
                     String fileName = file.getFileName().toString();
                     
                     // Skip files that are being processed
@@ -149,13 +173,14 @@ public class FileTransformService {
                     // Check if file matches the pattern
                     if (filePattern.matcher(fileName).matches()) {
                         processFile(file, config);
+                        processedCount[0]++;
                     }
 
                     return FileVisitResult.CONTINUE;
                 }
 
                 @Override
-                public FileVisitResult visitFileFailed(Path file, IOException exc) {
+                public FileVisitResult visitFileFailed(@NonNull Path file, @NonNull IOException exc) {
                     LOG.warnf(exc, "Failed to visit file: %s", file);
                     return FileVisitResult.CONTINUE;
                 }
@@ -163,6 +188,8 @@ public class FileTransformService {
         } catch (IOException e) {
             LOG.errorf(e, "Error scanning directory: %s", sourceDir);
         }
+        
+        return processedCount[0];
     }
 
     private void processFile(Path file, FileTransformConfig config) {
@@ -358,17 +385,33 @@ public class FileTransformService {
     }
 
     public void shutdown() {
-        if (scheduler != null && !scheduler.isShutdown()) {
-            LOG.info("Shutting down file transform scheduler");
-            scheduler.shutdown();
-            try {
-                if (!scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
-                    scheduler.shutdownNow();
+        if (!schedulers.isEmpty()) {
+            LOG.info("Shutting down file transform schedulers");
+            schedulers.forEach((name, scheduler) -> {
+                if (scheduler != null && !scheduler.isShutdown()) {
+                    LOG.infof("Shutting down scheduler for: %s", name);
+                    scheduler.shutdown();
+                    try {
+                        if (!scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
+                            scheduler.shutdownNow();
+                        }
+                    } catch (InterruptedException e) {
+                        scheduler.shutdownNow();
+                        Thread.currentThread().interrupt();
+                    }
                 }
-            } catch (InterruptedException e) {
-                scheduler.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
+            });
+            schedulers.clear();
         }
+    }
+
+    /**
+     * Get the configuration by name (for external access)
+     */
+    public FileTransformConfig getConfigurationByName(String configName) {
+        return fileTransformConfigs.stream()
+                .filter(cfg -> cfg.getName().equals(configName))
+                .findFirst()
+                .orElse(null);
     }
 }
