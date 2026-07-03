@@ -20127,23 +20127,39 @@
           "titleText": {
             "type": "string",
             "description": "Title of a person",
-            "nullable": true
+            "nullable": true,
+            "x-sensitivity" : {
+              "className": "Person",
+              "propertyName": "shortString"
+            }
           },
           "birthDate": {
             "type": "string",
             "description": "Birth date of a person",
             "format": "date",
-            "nullable": true
+            "nullable": true,
+            "x-sensitivity" : {
+              "className": "Person",
+              "propertyName": "birthDate"
+            }
           },
           "firstName": {
             "type": "string",
             "description": "First name of a person",
-            "nullable": true
+            "nullable": true,
+            "x-sensitivity" : {
+              "className": "Person",
+              "propertyName": "shortString"
+            }
           },
           "lastName": {
             "type": "string",
             "description": "Last name of a person",
-            "nullable": true
+            "nullable": true,
+            "x-sensitivity" : {
+              "className": "Person",
+              "propertyName": "shortString"
+            }
           },
           "id": {
             "type": "string",
@@ -20153,27 +20169,47 @@
           "name": {
             "type": "string",
             "description": "Full name of a person",
-            "nullable": true
+            "nullable": true,
+            "x-sensitivity" : {
+              "className": "Person",
+              "propertyName": "longString"
+            }
           },
           "email": {
             "type": "string",
             "description": "Email of the person",
-            "nullable": true
+            "nullable": true,
+            "x-sensitivity" : {
+              "className": "Person",
+              "propertyName": "email"
+            }
           },
           "mobilePhone": {
             "type": "string",
             "description": "Mobile Phone number of the person",
-            "nullable": true
+            "nullable": true,
+            "x-sensitivity" : {
+              "className": "Person",
+              "propertyName": "phoneNumber"
+            }
           },
           "businessPhone": {
             "type": "string",
             "description": "Business Phone number of the person",
-            "nullable": true
+            "nullable": true,
+            "x-sensitivity" : {
+              "className": "Person",
+              "propertyName": "phoneNumber"
+            }
           },
           "homePhone": {
             "type": "string",
             "description": "Home Phone number of the person",
-            "nullable": true
+            "nullable": true,
+            "x-sensitivity" : {
+              "className": "Person",
+              "propertyName": "phoneNumber"
+            }
           },
           "countryOfResidence": {
             "$ref": "#/components/schemas/EntityReference"

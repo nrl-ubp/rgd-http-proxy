@@ -1,0 +1,93 @@
+[ {
+  "endpoint-path" : "/v1/persons",
+  "endpoint-methods" : [ "GET" ],
+  "endpoint-transform-when" : "AFTER",
+  "right-context" : { },
+  "processing-context" : { },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "shortString",
+    "json-path" : "$.items[*].titleText"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "birthDate",
+    "json-path" : "$.items[*].birthDate"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "shortString",
+    "json-path" : "$.items[*].firstName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "shortString",
+    "json-path" : "$.items[*].lastName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "longString",
+    "json-path" : "$.items[*].name"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "email",
+    "json-path" : "$.items[*].email"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "phoneNumber",
+    "json-path" : "$.items[*].mobilePhone"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "phoneNumber",
+    "json-path" : "$.items[*].businessPhone"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "phoneNumber",
+    "json-path" : "$.items[*].homePhone"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/v1/persons/[^/]+",
+  "endpoint-methods" : [ "GET" ],
+  "endpoint-transform-when" : "AFTER",
+  "right-context" : { },
+  "processing-context" : { },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "shortString",
+    "json-path" : "$.titleText"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "birthDate",
+    "json-path" : "$.birthDate"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "shortString",
+    "json-path" : "$.firstName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "shortString",
+    "json-path" : "$.lastName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "longString",
+    "json-path" : "$.name"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "email",
+    "json-path" : "$.email"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "phoneNumber",
+    "json-path" : "$.mobilePhone"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "phoneNumber",
+    "json-path" : "$.businessPhone"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "phoneNumber",
+    "json-path" : "$.homePhone"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+} ]
