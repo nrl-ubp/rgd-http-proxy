@@ -40,69 +40,69 @@ class SwaggerTransformConfigGeneratorTest {
         List<EndPointTransformConfig> configs =
                 new SwaggerTransformConfigGenerator(root, "/api").generate();
 
-        assertEquals(2, configs.size());
-        assertTrue(configs.stream().anyMatch(c -> c.getEndpointPath().equals("/api/v1/persons")));
-        assertTrue(configs.stream().anyMatch(c -> c.getEndpointPath().equals("/api/v1/persons/[^/]+")));
+        assertTrue(configs.stream()
+                .anyMatch(c -> c.getEndpointPath().equals("/api/v1/persons")
+                        && c.getEndpointMethods().equals(List.of("POST"))));
+        assertTrue(configs.stream()
+                .anyMatch(c -> c.getEndpointPath().equals("/api/v1/persons/[^/]+")
+                        && c.getEndpointMethods().equals(List.of("PATCH"))));
+    }
+
+    private EndPointTransformConfig personConfig(String path, String method) throws Exception {
+        return generate().stream()
+                .filter(c -> c.getEndpointPath().equals(path)
+                        && c.getEndpointMethods().equals(List.of(method)))
+                .findFirst()
+                .orElseThrow();
     }
 
     @Test
     void testGeneratesConfigForAnnotatedPersonEndpoints() throws Exception {
-        List<EndPointTransformConfig> configs = generate();
+        // Sensitive fields are annotated on the request payloads (PersonCreateRequest / PersonPatch),
+        // so the person endpoints are the non-GET operations, applied BEFORE.
+        EndPointTransformConfig post = personConfig("/v1/persons", "POST");
+        EndPointTransformConfig patch = personConfig("/v1/persons/[^/]+", "PATCH");
 
-        // Only the two GET endpoints referencing the annotated PersonResponse should be produced.
-        assertEquals(2, configs.size(), "Expected exactly two endpoint configurations");
-
-        // All discovered endpoints are GET -> AFTER.
-        configs.forEach(cfg -> {
-            assertEquals(List.of("GET"), cfg.getEndpointMethods());
-            assertEquals("AFTER", cfg.getEndpointTransformWhen());
+        for (EndPointTransformConfig cfg : List.of(post, patch)) {
+            assertEquals("BEFORE", cfg.getEndpointTransformWhen());
             assertTrue(cfg.getRightContextEvidences().isEmpty(), "right-context must be empty");
             assertTrue(cfg.getProcessingContextEvidences().isEmpty(), "processing-context must be empty");
-            assertEquals(9, cfg.getEntityTransformConfigs().size(),
-                    "PersonResponse exposes 9 sensitive fields");
-        });
+            assertEquals(3, cfg.getEntityTransformConfigs().size(),
+                    "PersonCreateRequest/PersonPatch expose 3 sensitive fields");
+        }
     }
 
     @Test
-    void testCollectionEndpointJsonPaths() throws Exception {
-        EndPointTransformConfig collectionCfg = generate().stream()
-                .filter(c -> c.getEndpointPath().equals("/v1/persons"))
-                .findFirst()
-                .orElseThrow();
-
-        Map<String, EntityTransformConfig> byPath = collectionCfg.getEntityTransformConfigs().stream()
+    void testCidAnnotationsMapToEntityConfig() throws Exception {
+        Map<String, EntityTransformConfig> byPath = personConfig("/v1/persons", "POST")
+                .getEntityTransformConfigs().stream()
                 .collect(Collectors.toMap(EntityTransformConfig::getJsonPath, e -> e));
 
-        // Collection responses are wrapped in items[*].
-        assertTrue(byPath.containsKey("$.items[*].firstName"));
-        assertTrue(byPath.containsKey("$.items[*].email"));
+        // x-cid-classname / x-cid-propertyname map to rps-class-name / rps-property-name.
+        EntityTransformConfig firstName = byPath.get("$.firstName");
+        assertNotNull(firstName);
+        assertEquals("Person", firstName.getRpsClassName());
+        assertEquals("ShortString", firstName.getRpsPropertyName());
+        // x-cid-extractregex is captured into the new extract-regex field.
+        assertEquals("(?:\\w(?<!_)|~)+", firstName.getExtractRegex());
 
-        EntityTransformConfig email = byPath.get("$.items[*].email");
-        assertEquals("Person", email.getRpsClassName());
-        assertEquals("email", email.getRpsPropertyName());
-
-        EntityTransformConfig phone = byPath.get("$.items[*].mobilePhone");
-        assertEquals("Person", phone.getRpsClassName());
-        assertEquals("phoneNumber", phone.getRpsPropertyName());
+        EntityTransformConfig lastName = byPath.get("$.lastName");
+        assertNotNull(lastName);
+        assertEquals("(?:\\w(?<!_)|~)+", lastName.getExtractRegex());
     }
 
     @Test
-    void testSingleObjectEndpointJsonPaths() throws Exception {
-        EndPointTransformConfig byIdCfg = generate().stream()
-                .filter(c -> c.getEndpointPath().equals("/v1/persons/[^/]+"))
-                .findFirst()
-                .orElseThrow();
-
-        Map<String, EntityTransformConfig> byPath = byIdCfg.getEntityTransformConfigs().stream()
+    void testNullExtractRegexIsOmitted() throws Exception {
+        Map<String, EntityTransformConfig> byPath = personConfig("/v1/persons", "POST")
+                .getEntityTransformConfigs().stream()
                 .collect(Collectors.toMap(EntityTransformConfig::getJsonPath, e -> e));
 
-        // Single object responses are addressed directly from the root.
-        assertTrue(byPath.containsKey("$.lastName"));
-        assertTrue(byPath.containsKey("$.birthDate"));
-
+        // birthDate has x-cid-extractregex: null -> the field stays null (and is not serialized).
         EntityTransformConfig birthDate = byPath.get("$.birthDate");
+        assertNotNull(birthDate);
         assertEquals("Person", birthDate.getRpsClassName());
-        assertEquals("birthDate", birthDate.getRpsPropertyName());
+        assertEquals("Date", birthDate.getRpsPropertyName());
+        assertNull(birthDate.getExtractRegex());
     }
 
     @Test

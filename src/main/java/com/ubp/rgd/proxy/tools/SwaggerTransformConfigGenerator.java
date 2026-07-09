@@ -35,9 +35,10 @@ import java.util.logging.SimpleFormatter;
  *     <li>Any other operation (POST, PUT, PATCH, DELETE ...) produces a config applied BEFORE
  *         (the request payload is transformed before being forwarded).</li>
  *     <li>{@code processing-context} and {@code right-context} are left empty for each endpoint.</li>
- *     <li>Sensitive fields are discovered through the {@code x-sensitivity} vendor extension
- *         ({@code className} / {@code propertyName}) found on schema properties. Each one produces
- *         an entry under {@code entity-transform-configs} with the matching JSON path.</li>
+ *     <li>Sensitive fields are discovered through the {@code x-cid-classname},
+ *         {@code x-cid-propertyname} and {@code x-cid-extractregex} vendor extensions found on
+ *         schema properties. Each one produces an entry under {@code entity-transform-configs}
+ *         with the matching JSON path (and the extract regex when present).</li>
  * </ul>
  * Only endpoints that expose at least one sensitive field generate a configuration entry.
  * <p>
@@ -63,7 +64,10 @@ public class SwaggerTransformConfigGenerator {
 
     private static final Logger LOG = quickConsoleLogger(SwaggerTransformConfigGenerator.class, Level.INFO);
 
-    private static final String SENSITIVITY_EXTENSION = "x-sensitivity";
+    // CID (sensitivity) vendor extensions describing a protected field.
+    private static final String CID_CLASSNAME = "x-cid-classname";
+    private static final String CID_PROPERTYNAME = "x-cid-propertyname";
+    private static final String CID_EXTRACT_REGEX = "x-cid-extractregex";
     private static final String SCHEMA_REF_PREFIX = "#/components/schemas/";
     private static final Set<String> HTTP_METHODS =
             Set.of("get", "put", "post", "delete", "patch", "options", "head", "trace");
@@ -412,12 +416,18 @@ public class SwaggerTransformConfigGenerator {
                 JsonNode propertySchema = entry.getValue();
                 String propertyPath = jsonPath + "." + propertyName;
 
-                JsonNode sensitivity = propertySchema.path(SENSITIVITY_EXTENSION);
-                if (sensitivity.isObject()) {
+                JsonNode className = propertySchema.path(CID_CLASSNAME);
+                if (className.isTextual()) {
                     EntityTransformConfig entity = new EntityTransformConfig();
                     entity.setJsonPath(propertyPath);
-                    entity.setRpsClassName(sensitivity.path("className").asText(""));
-                    entity.setRpsPropertyName(sensitivity.path("propertyName").asText(""));
+                    entity.setRpsClassName(className.asText(""));
+                    entity.setRpsPropertyName(propertySchema.path(CID_PROPERTYNAME).asText(""));
+
+                    JsonNode extractRegex = propertySchema.path(CID_EXTRACT_REGEX);
+                    if (extractRegex.isTextual()) {
+                        entity.setExtractRegex(extractRegex.asText());
+                    }
+
                     results.add(entity);
                 }
 
