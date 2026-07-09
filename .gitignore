@@ -50,4 +50,4 @@ build/
 
 ### Apache Commons Procrun binaries ###
 # Ignore the downloaded zip archive
-tools/procrun/*.zip
+tools/procrun/**/*
