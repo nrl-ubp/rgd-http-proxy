@@ -47,3 +47,7 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Apache Commons Procrun binaries ###
+# Ignore the downloaded zip archive
+tools/procrun/*.zip
