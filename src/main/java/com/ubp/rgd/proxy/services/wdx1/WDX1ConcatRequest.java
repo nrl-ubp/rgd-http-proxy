@@ -13,17 +13,14 @@ public class WDX1ConcatRequest {
     private String lastName;
     private String country;
     private String birthDate;
+    private String dateFormat = "yyyy-MM-dd";
 
     @JsonIgnore
-    public final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
-
-    @JsonIgnore
-    private final SimpleDateFormat tokenizationFormat = new SimpleDateFormat("yyyy-MM-dd");
-
-    @JsonIgnore
-    public String getTokenizationFormattedDate(String requestDate) {
+    public String getTokenizationFormattedDate(String requestDate, String tokenDateFormat) {
         try {
-            return tokenizationFormat.format(dateFormat.parse(requestDate));
+            SimpleDateFormat requestFormat = new SimpleDateFormat(dateFormat == null ? "yyyy-MM-dd" : dateFormat);
+            SimpleDateFormat tokenizationFormat = new SimpleDateFormat(tokenDateFormat);
+            return tokenizationFormat.format(requestFormat.parse(requestDate));
         } catch (ParseException e) {
             return "PARSE ERROR";
         }
@@ -38,7 +35,7 @@ public class WDX1ConcatRequest {
         }
     }
 
-    @JsonProperty("firstNameToken")
+    @JsonProperty(value = "firstNameToken", required = true)
     public String getFirstName() {
         return firstName;
     }
@@ -47,7 +44,7 @@ public class WDX1ConcatRequest {
         this.firstName = firstName;
     }
 
-    @JsonProperty("country")
+    @JsonProperty(value = "country", required = true)
     public String getCountry() {
         return country;
     }
@@ -56,7 +53,7 @@ public class WDX1ConcatRequest {
         this.country = country;
     }
 
-    @JsonProperty("lastNameToken")
+    @JsonProperty(value = "lastNameToken", required = true)
     public String getLastName() {
         return lastName;
     }
@@ -65,12 +62,19 @@ public class WDX1ConcatRequest {
         this.lastName = lastName;
     }
 
-    @JsonProperty("birthDateToken")
+    @JsonProperty(value = "birthDateToken", required = true)
     public String getBirthDate() {
         return birthDate;
     }
 
     public void setBirthDate(String birthDate) {
         this.birthDate = birthDate;
+    }
+
+    @JsonProperty(value = "dateFormat")
+    public String getDateFormat() { return dateFormat; }
+
+    public void setDateFormat(String dateFormat) {
+        this.dateFormat = dateFormat;
     }
 }

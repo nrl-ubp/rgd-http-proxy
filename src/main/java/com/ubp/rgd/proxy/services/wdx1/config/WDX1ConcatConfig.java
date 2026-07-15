@@ -20,6 +20,15 @@ public class WDX1ConcatConfig {
     @JsonProperty(value = "wdx1-concat-rps-mappings")
     private Set<WDX1ConcatRpsMapping> wdx1ConcatRpsMappings = new HashSet<>();
 
+    @JsonProperty(value = "concat-result-class-name")
+    private String concatResultClassName;
+
+    @JsonProperty(value = "concat-result-property-name")
+    private String concatResultPropertyName;
+
+    @JsonProperty(value = "date-format", defaultValue = "yyyy-MM-dd")
+    private String dateFormat;
+
     public HashMap<String, String> getRightContextEvidences() {
         return rightContextEvidences;
     }
@@ -42,5 +51,29 @@ public class WDX1ConcatConfig {
 
     public void setWdx1ConcatRpsMappings(Set<WDX1ConcatRpsMapping> wdx1ConcatRpsMappings) {
         this.wdx1ConcatRpsMappings = wdx1ConcatRpsMappings;
+    }
+
+    public String getConcatResultPropertyName() {
+        return concatResultPropertyName;
+    }
+
+    public void setConcatResultPropertyName(String concatResultPropertyName) {
+        this.concatResultPropertyName = concatResultPropertyName;
+    }
+
+    public String getConcatResultClassName() {
+        return concatResultClassName;
+    }
+
+    public void setConcatResultClassName(String concatResultClassName) {
+        this.concatResultClassName = concatResultClassName;
+    }
+
+    public String getDateFormat() {
+        return dateFormat;
+    }
+
+    public void setDateFormat(String dateFormat) {
+        this.dateFormat = dateFormat;
     }
 }

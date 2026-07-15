@@ -140,7 +140,7 @@ public class WDX1UtilsService {
 
     private String protect(String clear) throws RPSTransformException {
         RPSValue[] rpsValues = new RPSValue[1];
-        rpsValues[0] = new RPSValue(new RPSMapping("poc.Person", "Name"), clear);
+        rpsValues[0] = new RPSValue(new RPSMapping(concatConfig.getConcatResultClassName(), concatConfig.getConcatResultPropertyName()), clear);
 
         // now call transform API
         try {
@@ -268,7 +268,7 @@ public class WDX1UtilsService {
         values.put("firstName", getRPSValues(request.getFirstName(), getRPSMapping("name")));
         values.put("lastName", getRPSValues(request.getLastName(), getRPSMapping("name")));
         // no transform for country : values.put("country", getRPSValues(getFirstName(), getRPSMapping("country")));
-        values.put("birthDate", getRPSValues(request.getTokenizationFormattedDate(request.getBirthDate()), getRPSMapping("date")));
+        values.put("birthDate", getRPSValues(request.getTokenizationFormattedDate(request.getBirthDate(), concatConfig.getDateFormat()), getRPSMapping("date")));
 
         return values;
     }
@@ -290,7 +290,7 @@ public class WDX1UtilsService {
                 .toArray(String[]::new);
 
         if (words.length == 0) {
-            throw new RPSTransformException("First Names tokenization did not return anything.");
+            throw new RPSTransformException("First Names transformation did not return anything.");
         }
 
         request.setFirstName(String.join(" ", words));
@@ -302,7 +302,7 @@ public class WDX1UtilsService {
                 .toArray(String[]::new);
 
         if (words.length == 0) {
-            throw new RPSTransformException("Last Names tokenization did not return anything.");
+            throw new RPSTransformException("Last Names transformation did not return anything.");
         }
 
         request.setLastName(String.join(" ", words));
@@ -312,7 +312,7 @@ public class WDX1UtilsService {
         // Only one word for birthDate :-)
         String birthDate = values.get("birthDate")[0].getTransformed();
         if (birthDate == null) {
-            throw new RPSTransformException("birth date tokenization did not return anything.");
+            throw new RPSTransformException("birth date transformation did not return anything.");
         }
         request.setBirthDate(birthDate);
     }

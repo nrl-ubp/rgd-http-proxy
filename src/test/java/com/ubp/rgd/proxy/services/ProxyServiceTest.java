@@ -18,6 +18,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -161,7 +162,10 @@ class ProxyServiceTest {
         WDX1ConcatRequest concatReq = new WDX1ConcatRequest();
         concatReq.setFirstName(person.firstName);
         concatReq.setLastName(person.lastName);
-        concatReq.setBirthDate(concatReq.dateFormat.format(person.birthDate));
+
+        SimpleDateFormat df = new SimpleDateFormat(concatReq.getDateFormat());
+
+        concatReq.setBirthDate(df.format(person.birthDate));
         concatReq.setCountry("CH");
 
         LOG.infof("Concat request is:\n%s", concatReq.toJSONString());
