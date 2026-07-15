@@ -1,25 +1,31 @@
 {
   "right-context": {
-    "Location": "Onshore"
+    "Target" : "WDX1",
+    "Module": "WDX1Proxy",
+    "Right": "Transform"
   },
   "processing-context": {
-    "Location": "Onshore"
+    "Target" : "WDX1",
+    "Module": "WDX1Proxy"
   },
   "wdx1-concat-rps-mappings": [
     {
       "rps-mapping-type": "name",
-      "rps-class-name": "poc.Person",
-      "rps-property-name": "Name"
+      "rps-class-name": "Person",
+      "rps-property-name": "ShortString"
     },
     {
       "rps-mapping-type": "date",
-      "rps-class-name": "poc.Person",
+      "rps-class-name": "Person",
       "rps-property-name": "BirthDate"
     },
     {
       "rps-mapping-type": "default",
-      "rps-class-name": "poc.Person",
-      "rps-property-name": "Name"
+      "rps-class-name": "Person",
+      "rps-property-name": "ShortString"
     }
-  ]
+  ],
+  "concat-result-class-name": "Person",
+  "concat-result-property-name": "ShortString",
+  "date-format": "yyyy-MM-dd"
 }
