@@ -150,9 +150,9 @@ public class WDX1UtilsService {
                     getRightContext(),
                     getProcessingContext("protect")
             );
-        } catch (Exception e) {
+        } catch (Throwable e) {
             LOG.error("Transform exception: ", e);
-            throw new RPSTransformException(e);
+            throw new RPSTransformException(e.getMessage());
         }
 
         return rpsValues[0].getTransformed();
@@ -175,9 +175,9 @@ public class WDX1UtilsService {
                     getRightContext(),
                     getProcessingContext("Unprotect")
             );
-        } catch (Exception e) {
+        } catch (Throwable e) {
             LOG.error("Transform exception: ", e);
-            throw new RPSTransformException(e);
+            throw new RPSTransformException(e.getMessage());
         }
 
         // now replace tokens with clear data
@@ -290,7 +290,8 @@ public class WDX1UtilsService {
                 .toArray(String[]::new);
 
         if (words.length == 0) {
-            throw new RPSTransformException("First Names transformation did not return anything.");
+            String error = values.get("birthDate")[0].getError().getMessage();
+            throw new RPSTransformException("First Names transformation did not return anything: " + error);
         }
 
         request.setFirstName(String.join(" ", words));
@@ -302,7 +303,8 @@ public class WDX1UtilsService {
                 .toArray(String[]::new);
 
         if (words.length == 0) {
-            throw new RPSTransformException("Last Names transformation did not return anything.");
+            String error = values.get("birthDate")[0].getError().getMessage();
+            throw new RPSTransformException("Last Names transformation did not return anything: " + error);
         }
 
         request.setLastName(String.join(" ", words));
@@ -312,7 +314,8 @@ public class WDX1UtilsService {
         // Only one word for birthDate :-)
         String birthDate = values.get("birthDate")[0].getTransformed();
         if (birthDate == null) {
-            throw new RPSTransformException("birth date transformation did not return anything.");
+            String error = values.get("birthDate")[0].getError().getMessage();
+            throw new RPSTransformException("Birth date transformation did not return anything: " + error);
         }
         request.setBirthDate(birthDate);
     }
