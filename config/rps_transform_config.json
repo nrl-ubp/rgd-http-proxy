@@ -7,11 +7,14 @@
     ],
     "endpoint-transform-when": "BEFORE",
     "right-context": {
-      "Location": "Onshore"
+      "Target": "WDX1",
+      "Module": "WDX1Proxy",
+      "Right": "Transform"
     },
     "processing-context": {
       "Action": "Unprotect",
-      "Location": "Onshore"
+      "Module": "WDX1Proxy",
+      "Target": "WDX1"
     },
     "header-transform-configs": [
       {
@@ -67,11 +70,14 @@
     ],
     "endpoint-transform-when": "AFTER",
     "right-context": {
-      "Location": "Onshore"
+      "Target": "WDX1",
+      "Module": "WDX1Proxy",
+      "Right": "Transform"
     },
     "processing-context": {
       "Action": "Protect",
-      "Location": "Onshore"
+      "Module": "WDX1Proxy",
+      "Target": "WDX1"
     },
     "header-transform-configs": [
       {
