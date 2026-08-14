@@ -37,13 +37,16 @@ class FileTransformConfigTest {
 
         // Set right context
         HashMap<String, String> rightContext = new HashMap<>();
-        rightContext.put("Location", "Onshore");
+        rightContext.put("Target", "WDX1");
+        rightContext.put("Module", "WDX1Proxy");
+        rightContext.put("Right", "Transform");
         config.setRightContextEvidences(rightContext);
 
         // Set processing context
         Map<String, String> processingContext = new HashMap<>();
         processingContext.put("Action", "Protect");
-        processingContext.put("Location", "Onshore");
+        processingContext.put("Target", "WDX1");
+        processingContext.put("Module", "WDX1Proxy");
         config.setProcessingContextEvidences(processingContext);
 
         // Add entity transform configs
@@ -51,14 +54,14 @@ class FileTransformConfigTest {
         
         EntityTransformConfig nameConfig = new EntityTransformConfig();
         nameConfig.setJsonPath("$.firstName");
-        nameConfig.setRpsClassName("poc.Person");
-        nameConfig.setRpsPropertyName("Name");
+        nameConfig.setRpsClassName("Person");
+        nameConfig.setRpsPropertyName("ShortString");
         entityConfigs.add(nameConfig);
 
         EntityTransformConfig birthDateConfig = new EntityTransformConfig();
         birthDateConfig.setJsonPath("$.birthDate");
-        birthDateConfig.setRpsClassName("poc.Person");
-        birthDateConfig.setRpsPropertyName("BirthDate");
+        birthDateConfig.setRpsClassName("Person");
+        birthDateConfig.setRpsPropertyName("Date");
         entityConfigs.add(birthDateConfig);
 
         config.setEntityTransformConfigs(entityConfigs);
@@ -80,8 +83,12 @@ class FileTransformConfigTest {
         assertEquals(".processing", deserialized.getWorkInProgressSuffix());
         assertEquals(".*\\.json$", deserialized.getFilePattern());
         assertTrue(deserialized.isPreserveDirectoryStructure());
-        assertEquals("Onshore", deserialized.getRightContextEvidences().get("Location"));
+        assertEquals("Transform", deserialized.getRightContextEvidences().get("Right"));
+        assertEquals("WDX1", deserialized.getRightContextEvidences().get("Target"));
+        assertEquals("WDX1Proxy", deserialized.getRightContextEvidences().get("Module"));
         assertEquals("Protect", deserialized.getProcessingContextEvidences().get("Action"));
+        assertEquals("WDX1", deserialized.getProcessingContextEvidences().get("Target"));
+        assertEquals("WDX1Proxy", deserialized.getProcessingContextEvidences().get("Module"));
         assertEquals(2, deserialized.getEntityTransformConfigs().size());
     }
 
@@ -99,14 +106,15 @@ class FileTransformConfigTest {
 
         Map<String, String> protectContext = new HashMap<>();
         protectContext.put("Action", "Protect");
-        protectContext.put("Location", "Onshore");
+        protectContext.put("Module", "WDX1Proxy");
+        protectContext.put("Target", "WDX1");
         protectConfig.setProcessingContextEvidences(protectContext);
 
         Set<EntityTransformConfig> protectEntityConfigs = new HashSet<>();
         EntityTransformConfig firstName = new EntityTransformConfig();
         firstName.setJsonPath("$.firstName");
-        firstName.setRpsClassName("poc.Person");
-        firstName.setRpsPropertyName("Name");
+        firstName.setRpsClassName("Person");
+        firstName.setRpsPropertyName("ShortString");
         protectEntityConfigs.add(firstName);
         protectConfig.setEntityTransformConfigs(protectEntityConfigs);
 
@@ -121,14 +129,15 @@ class FileTransformConfigTest {
 
         Map<String, String> unprotectContext = new HashMap<>();
         unprotectContext.put("Action", "Unprotect");
-        unprotectContext.put("Location", "Onshore");
+        unprotectContext.put("Module", "WDX1Proxy");
+        unprotectContext.put("Target", "WDX1");
         unprotectConfig.setProcessingContextEvidences(unprotectContext);
 
         Set<EntityTransformConfig> unprotectEntityConfigs = new HashSet<>();
         EntityTransformConfig lastName = new EntityTransformConfig();
         lastName.setJsonPath("$.lastName");
-        lastName.setRpsClassName("poc.Person");
-        lastName.setRpsPropertyName("Name");
+        lastName.setRpsClassName("Person");
+        lastName.setRpsPropertyName("ShortString");
         unprotectEntityConfigs.add(lastName);
         unprotectConfig.setEntityTransformConfigs(unprotectEntityConfigs);
 
@@ -163,14 +172,14 @@ class FileTransformConfigTest {
         
         EntityTransformConfig config1 = new EntityTransformConfig();
         config1.setJsonPath("$.firstName");
-        config1.setRpsClassName("poc.Person");
-        config1.setRpsPropertyName("Name");
+        config1.setRpsClassName("Person");
+        config1.setRpsPropertyName("ShortString");
         entityConfigs.add(config1);
 
         EntityTransformConfig config2 = new EntityTransformConfig();
         config2.setJsonPath("$.lastName");
-        config2.setRpsClassName("poc.Person");
-        config2.setRpsPropertyName("Name");
+        config2.setRpsClassName("Person");
+        config2.setRpsPropertyName("ShortString");
         entityConfigs.add(config2);
 
         config.setEntityTransformConfigs(entityConfigs);
@@ -181,6 +190,6 @@ class FileTransformConfigTest {
         assertEquals(2, sorted.size());
         assertNotNull(sorted.get("$.firstName"));
         assertNotNull(sorted.get("$.lastName"));
-        assertEquals("Name", sorted.get("$.firstName").getRpsPropertyName());
+        assertEquals("ShortString", sorted.get("$.firstName").getRpsPropertyName());
     }
 }

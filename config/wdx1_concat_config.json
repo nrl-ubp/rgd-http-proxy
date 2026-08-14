@@ -17,7 +17,7 @@
     {
       "rps-mapping-type": "date",
       "rps-class-name": "Person",
-      "rps-property-name": "BirthDate"
+      "rps-property-name": "Date"
     },
     {
       "rps-mapping-type": "default",
