@@ -25,6 +25,8 @@ import org.jboss.logging.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Utility service for WDX1 to call from either the WDX1 services server OR inside a MSDynamics plugin.
@@ -32,6 +34,13 @@ import java.util.*;
 @ApplicationScoped
 public class WDX1UtilsService {
     private static final Logger LOG = Logger.getLogger(WDX1UtilsService.class);
+
+    /**
+     * A protected value is represented by one or more tokens. Each token is prefixed by the "RG"
+     * letters and its value is enclosed in single braces, e.g. {@code RG{...}}. The name fields
+     * ({@code firstNameToken}, {@code lastNameToken}) may contain several of these tokens.
+     */
+    private static final Pattern TOKEN_PATTERN = Pattern.compile("RG\\{[^}]*\\}");
 
     @Inject
     RPSClientEngineProvider rpsClientEngineProvider;
@@ -265,47 +274,47 @@ public class WDX1UtilsService {
 
         Map<String, RPSValue[]> values = new HashMap<>();
 
-        values.put("firstName", getRPSValues(request.getFirstName(), getRPSMapping("name")));
-        values.put("lastName", getRPSValues(request.getLastName(), getRPSMapping("name")));
+        // First and last names may each contain several RG{...} tokens: extract one RPS value per token.
+        values.put("firstName", getTokenRPSValues(request.getFirstName(), getRPSMapping("name")));
+        values.put("lastName", getTokenRPSValues(request.getLastName(), getRPSMapping("name")));
         // no transform for country : values.put("country", getRPSValues(getFirstName(), getRPSMapping("country")));
-        values.put("birthDate", getRPSValues(request.getTokenizationFormattedDate(request.getBirthDate(), concatConfig.getDateFormat()), getRPSMapping("date")));
+        values.put("birthDate", new RPSValue[]{
+                new RPSValue(getRPSMapping("date"),
+                        request.getTokenizationFormattedDate(request.getBirthDate(), concatConfig.getDateFormat()))
+        });
 
         return values;
     }
 
-    private RPSValue[] getRPSValues(String fieldValue, RPSMapping mapping) {
-        String[] words = fieldValue.split(" ");
-        return Arrays.stream(words).map(word -> new RPSValue(mapping, word))
-                .toArray(RPSValue[]::new);
+    /**
+     * Extract every {@code RG{...}} token contained in the given field value and create one
+     * {@link RPSValue} per token, in order of appearance, so they can be detokenized.
+     * @param fieldValue the raw field value possibly containing several tokens (may be null)
+     * @param mapping the RPS mapping to apply to each token
+     * @return an array of RPS values, one per token found (empty if none)
+     */
+    private RPSValue[] getTokenRPSValues(String fieldValue, RPSMapping mapping) {
+        if (fieldValue == null) {
+            return new RPSValue[0];
+        }
+
+        List<RPSValue> rpsValues = new ArrayList<>();
+        Matcher matcher = TOKEN_PATTERN.matcher(fieldValue);
+        while (matcher.find()) {
+            rpsValues.add(new RPSValue(mapping, matcher.group()));
+        }
+
+        return rpsValues.toArray(new RPSValue[0]);
     }
 
 
     @JsonIgnore
     public void setRPSValuesTransformed(Map<String, RPSValue[]> values, WDX1ConcatRequest request) throws RPSTransformException{
 
-        String[] words = Optional.ofNullable(values.get("firstName")).stream()
-                .flatMap(Arrays::stream)
-                .map(RPSValue::getTransformed)
-                .filter(Objects::nonNull)
-                .toArray(String[]::new);
-
-        if (words.length == 0) {
-            throw new RPSTransformException("First Names transformation did not return anything.");
-        }
-
-        request.setFirstName(String.join(" ", words));
-
-        words = Optional.ofNullable(values.get("lastName")).stream()
-                .flatMap(Arrays::stream)
-                .map(RPSValue::getTransformed)
-                .filter(Objects::nonNull)
-                .toArray(String[]::new);
-
-        if (words.length == 0) {
-            throw new RPSTransformException("Last Names transformation did not return anything.");
-        }
-
-        request.setLastName(String.join(" ", words));
+        // Replace each RG{...} token, in place, by its detokenized clear value while preserving
+        // the original field layout (separators, surrounding text, token ordering).
+        request.setFirstName(replaceTokensWithClearValues("First Name", request.getFirstName(), values.get("firstName")));
+        request.setLastName(replaceTokensWithClearValues("Last Name", request.getLastName(), values.get("lastName")));
 
         // no transform for country setCountry(values[x].getTransformed());
 
@@ -315,6 +324,42 @@ public class WDX1UtilsService {
             throw new RPSTransformException("birth date transformation did not return anything.");
         }
         request.setBirthDate(birthDate);
+    }
+
+    /**
+     * Rebuild a field value by substituting every {@code RG{...}} token with its detokenized clear
+     * value. The transformed values must be provided in the same order as the tokens appear in the
+     * original field (which is guaranteed since both use {@link #TOKEN_PATTERN}).
+     * @param fieldLabel human readable field name used in error messages
+     * @param originalField the original field value still holding the tokens
+     * @param transformedValues the detokenized RPS values, one per token, in order of appearance
+     * @return the field value with each token replaced by its clear value
+     * @throws RPSTransformException if no token was detokenized or a clear value is missing
+     */
+    private String replaceTokensWithClearValues(String fieldLabel, String originalField, RPSValue[] transformedValues)
+            throws RPSTransformException {
+
+        RPSValue[] tokens = transformedValues == null ? new RPSValue[0] : transformedValues;
+
+        if (tokens.length == 0) {
+            throw new RPSTransformException(String.format("%s transformation did not return anything.", fieldLabel));
+        }
+
+        Matcher matcher = TOKEN_PATTERN.matcher(originalField == null ? "" : originalField);
+        StringBuilder rebuilt = new StringBuilder();
+        int index = 0;
+
+        while (matcher.find() && index < tokens.length) {
+            String clearValue = tokens[index++].getTransformed();
+            if (clearValue == null) {
+                throw new RPSTransformException(String.format(
+                        "%s detokenization did not return a clear value for token: %s", fieldLabel, matcher.group()));
+            }
+            matcher.appendReplacement(rebuilt, Matcher.quoteReplacement(clearValue));
+        }
+        matcher.appendTail(rebuilt);
+
+        return rebuilt.toString();
     }
 
 }
