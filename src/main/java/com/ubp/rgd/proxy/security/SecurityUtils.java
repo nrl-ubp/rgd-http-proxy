@@ -135,9 +135,11 @@ public class SecurityUtils {
             Callable<byte[]> call = () -> {
                 GSSManager manager = GSSManager.getInstance();
 
-                // Target service name (SPNEGO / host-based service, e.g. HTTP/host.domain).
-                GSSName serverName = manager.createName(targetSpn, GSSName.NT_HOSTBASED_SERVICE,
-                        KerberosConstants.SPNEGO_OID);
+                // Target service name. Use the exact Kerberos principal name type so the SPN string
+                // (service/host) is sent to the KDC verbatim. Using NT_HOSTBASED_SERVICE here would
+                // trigger DNS hostname canonicalization and mis-parse the '/', causing the KDC to be
+                // queried for a different principal (KDC_ERR_S_PRINCIPAL_UNKNOWN / error 7).
+                GSSName serverName = manager.createName(targetSpn, KerberosConstants.KRB5_PRINCIPAL_OID);
 
                 // Initiator credential derived from the Subject's TGT.
                 GSSCredential initiatorCred = manager.createCredential(null,
