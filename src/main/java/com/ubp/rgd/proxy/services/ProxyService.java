@@ -242,6 +242,7 @@ public class ProxyService {
         }
 
         // 3) Default: forward the inbound Authorization header unchanged (may be null).
+        LOG.warn("No user subject nor delegation has been found in original request. Keeping Authorization header unchanged.");
         return inboundAuth;
     }
 

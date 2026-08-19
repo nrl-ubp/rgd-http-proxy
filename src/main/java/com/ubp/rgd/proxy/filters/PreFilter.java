@@ -230,6 +230,7 @@ public class PreFilter implements ContainerRequestFilter {
             if (krbToken.getToken() != null) {
                 // valid user, set the context into the request
                 securityContext.setToken(krbToken);
+                securityContext.setUserSubject(krbToken.getUserSubject());
                 LOG.debugf("User %s has %s roles configured.", krbToken.getUser(), krbToken.getRoles().size());
             } else {
                 Response respNegoKerb = getKerberosNegociateResponse(krbToken.getServiceToken());

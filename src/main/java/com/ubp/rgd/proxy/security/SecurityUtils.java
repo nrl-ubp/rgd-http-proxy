@@ -11,6 +11,7 @@ import java.io.File;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
@@ -141,13 +142,21 @@ public class SecurityUtils {
                 // queried for a different principal (KDC_ERR_S_PRINCIPAL_UNKNOWN / error 7).
                 GSSName serverName = manager.createName(targetSpn, KerberosConstants.KRB5_PRINCIPAL_OID);
 
-                // Initiator credential derived from the Subject's TGT.
-                GSSCredential initiatorCred = manager.createCredential(null,
-                        GSSCredential.DEFAULT_LIFETIME, KerberosConstants.SPNEGO_OID,
-                        GSSCredential.INITIATE_ONLY);
-
-                GSSContext context = manager.createContext(serverName, KerberosConstants.SPNEGO_OID,
-                        initiatorCred, GSSContext.DEFAULT_LIFETIME);
+                // Prefer a delegated credential when present (Kerberos/SPNEGO acceptor flow: the
+                // browser forwarded the user's credential). Otherwise derive an initiator credential
+                // from the Subject's TGT (basic-auth flow, where we logged the user in directly).
+                GSSCredential delegatedCred = firstDelegatedCredential(userSubject);
+                GSSContext context;
+                if (delegatedCred != null) {
+                    context = manager.createContext(serverName, KerberosConstants.SPNEGO_OID,
+                            delegatedCred, GSSContext.DEFAULT_LIFETIME);
+                } else {
+                    GSSCredential initiatorCred = manager.createCredential(null,
+                            GSSCredential.DEFAULT_LIFETIME, KerberosConstants.SPNEGO_OID,
+                            GSSCredential.INITIATE_ONLY);
+                    context = manager.createContext(serverName, KerberosConstants.SPNEGO_OID,
+                            initiatorCred, GSSContext.DEFAULT_LIFETIME);
+                }
 
                 // Plain authentication to the target: no further credential delegation required.
                 context.requestMutualAuth(false);
@@ -171,6 +180,20 @@ public class SecurityUtils {
             LOGGER.errorf(ex, "Could not obtain a client-to-service ticket for target SPN: %s", targetSpn);
             return null;
         }
+    }
+
+    /**
+     * Return the first delegated {@link GSSCredential} stored in the Subject's private credentials,
+     * or {@code null} if none is present. In the Kerberos/SPNEGO acceptor flow the end user's
+     * forwarded credential is captured this way (see
+     * {@code KerberosToken.captureDelegatedCredential}).
+     *
+     * @param subject the user Subject (must not be null)
+     * @return the delegated GSSCredential, or null if the Subject carries none
+     */
+    private static GSSCredential firstDelegatedCredential(Subject subject) {
+        Set<GSSCredential> creds = subject.getPrivateCredentials(GSSCredential.class);
+        return creds.isEmpty() ? null : creds.iterator().next();
     }
 
     static GSSCredential getServerCredential(final Subject subject, final GSSName serverSpn) throws Exception {

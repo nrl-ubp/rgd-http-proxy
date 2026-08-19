@@ -4,6 +4,7 @@ import com.ubp.rgd.proxy.security.ldap.LdapClient;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.ietf.jgss.GSSContext;
+import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSManager;
 import org.ietf.jgss.GSSName;
 import org.ietf.jgss.Oid;
@@ -82,6 +83,12 @@ public class KerberosToken extends SecurityToken {
                 GSSName userGssName = context.getSrcName();
                 decodeUser(userGssName.toString());
 
+                // Capture the end user's delegated credential (only available when the browser
+                // negotiated SPNEGO credential delegation and the service account is trusted for
+                // delegation). This is the only way, in the acceptor flow, to later obtain a
+                // client-to-service ticket as the user for the downstream API.
+                captureDelegatedCredential(context);
+
                 LOGGER.infof("Now loading AD groups for user: %s", this.user);
                 DirContext ctx = LdapClient.login(KerberosConstants.DEFAULT_LDAP_URL);
                 List<String> theRoles = LdapClient.listUserGroups(ctx, KerberosConstants.DEFAULT_BASE_DN, this.user);
@@ -100,6 +107,38 @@ public class KerberosToken extends SecurityToken {
             LOGGER.error("Error while decoding token.");
         } else {
             LOGGER.infof("Decoded user info: %s", this.user);
+        }
+    }
+
+    /**
+     * Capture the end user's delegated credential from the accepted SPNEGO context and store it in
+     * {@link #userSubject} as a private credential, so a downstream client-to-service ticket can be
+     * obtained as the user (see
+     * {@link SecurityUtils#getClientToServiceToken(Subject, String)}).
+     * <p>
+     * A delegated credential is only present when the browser negotiated SPNEGO credential
+     * delegation (forwardable TGT) and the service account is trusted for delegation. When it is
+     * absent, {@code userSubject} is left null and the caller falls back to the delegation-enabled
+     * path.
+     *
+     * @param context the established acceptor GSSContext
+     */
+    private void captureDelegatedCredential(GSSContext context) {
+        try {
+            GSSCredential delegatedCred = context.getDelegCred();
+            if (delegatedCred == null) {
+                LOGGER.warnf("No delegated credential available for user %s; " +
+                        "downstream call as this user will not be possible (credential delegation not negotiated).",
+                        this.user);
+                return;
+            }
+
+            Subject subject = new Subject();
+            subject.getPrivateCredentials().add(delegatedCred);
+            this.userSubject = subject;
+            LOGGER.infof("Captured delegated credential for user: %s", this.user);
+        } catch (Exception e) {
+            LOGGER.error("Could not capture the delegated credential from the SPNEGO context.", e);
         }
     }
 

@@ -1,10 +1,12 @@
 package com.ubp.rgd.proxy.security;
 
+import org.ietf.jgss.GSSCredential;
 import org.junit.jupiter.api.Test;
 
 import javax.security.auth.Subject;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 /**
  * Guard-level tests for {@link SecurityUtils#getClientToServiceToken(Subject, String)}.
@@ -36,4 +38,16 @@ class SecurityUtilsClientToServiceTest {
         // must fail gracefully (null) instead of propagating a GSSException.
         assertNull(SecurityUtils.getClientToServiceToken(new Subject(), "HTTP/host.corp.ubp.ch"));
     }
+
+    @Test
+    void testSubjectWithDelegatedCredentialSelectsDelegatedBranchGracefully() {
+        // A Subject carrying a delegated GSSCredential (Kerberos/SPNEGO flow) must select the
+        // delegated-credential branch. Without a live KDC the acquisition still cannot complete, so
+        // the method must return null gracefully rather than throwing.
+        Subject subject = new Subject();
+        subject.getPrivateCredentials().add(mock(GSSCredential.class));
+
+        assertNull(SecurityUtils.getClientToServiceToken(subject, "HTTP/host.corp.ubp.ch"));
+    }
 }
+
