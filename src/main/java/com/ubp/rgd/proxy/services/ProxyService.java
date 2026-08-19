@@ -65,6 +65,9 @@ public class ProxyService {
     @Inject
     SecurityContext securityContext;
 
+    @Inject
+    com.ubp.rgd.proxy.security.SecurityContext proxySecurityContext;
+
     private final Client client;
 
     public ProxyService() {
@@ -174,20 +177,11 @@ public class ProxyService {
             // Copier les headers (en filtrant certains headers système)
             copyHeaders(headers, requestBuilder);
 
-            // Implement Kerberos Delegation
-            if (delegationEnabled) {
-                String authHeader = headers.getHeaderString("Authorization");
-                if (authHeader != null && authHeader.startsWith("Negotiate ")) {
-                    String token = authHeader.substring("Negotiate ".length());
-                    String delegatedTokenStr = com.ubp.rgd.proxy.security.SecurityUtils.getDelegationTicket(token, kerbServicePrincipal, kerbKeytabPath, targetServicePrincipal);
-
-                    if (delegatedTokenStr != null) {
-                        LOG.info("Kerberos delegation successful, adding delegated token to request.");
-                        requestBuilder.header("Authorization", "Negotiate " + delegatedTokenStr);
-                    } else {
-                        LOG.warn("Kerberos delegation failed to obtain a service ticket.");
-                    }
-                }
+            // Resolve and set the downstream Authorization header explicitly (the inbound
+            // Authorization header is excluded from copyHeaders so we fully control it here).
+            String downstreamAuth = resolveDownstreamAuthorization(headers.getHeaderString("Authorization"));
+            if (downstreamAuth != null) {
+                requestBuilder.header("Authorization", downstreamAuth);
             }
 
             // Exécuter la requête selon la méthode HTTP
@@ -204,6 +198,49 @@ public class ProxyService {
         }
         }
 
+    /**
+     * Determine the {@code Authorization} header to send to the proxified (downstream) API.
+     * <ol>
+     *     <li>If a basic-auth user identity (Subject) was retained for this request, obtain a
+     *         client-to-service ticket <em>as that user</em> for the configured target SPN and send
+     *         it as {@code Negotiate}.</li>
+     *     <li>Otherwise, if Kerberos delegation is enabled and the inbound request carried a
+     *         {@code Negotiate} token, perform constrained delegation to the target SPN.</li>
+     *     <li>Otherwise, forward the inbound {@code Authorization} header unchanged.</li>
+     * </ol>
+     * @param inboundAuth the inbound Authorization header value (may be {@code null})
+     * @return the Authorization header value to send downstream, or {@code null} if none
+     */
+    private String resolveDownstreamAuthorization(String inboundAuth) {
+        // 1) Basic-auth identity available -> client-to-service ticket as this user.
+        javax.security.auth.Subject userSubject =
+                proxySecurityContext != null ? proxySecurityContext.getUserSubject() : null;
+        if (userSubject != null) {
+            String token = com.ubp.rgd.proxy.security.SecurityUtils
+                    .getClientToServiceToken(userSubject, targetServicePrincipal);
+            if (token != null) {
+                LOG.infof("Obtained client-to-service ticket for downstream call to SPN: %s", targetServicePrincipal);
+                return "Negotiate " + token;
+            }
+            LOG.warn("Could not obtain a client-to-service ticket for the basic-auth user; falling back.");
+        }
+
+        // 2) Incoming Kerberos + delegation enabled -> constrained delegation (existing behavior).
+        if (delegationEnabled && inboundAuth != null && inboundAuth.startsWith("Negotiate ")) {
+            String token = inboundAuth.substring("Negotiate ".length());
+            String delegatedTokenStr = com.ubp.rgd.proxy.security.SecurityUtils.getDelegationTicket(
+                    token, kerbServicePrincipal, kerbKeytabPath, targetServicePrincipal);
+            if (delegatedTokenStr != null) {
+                LOG.info("Kerberos delegation successful, adding delegated token to request.");
+                return "Negotiate " + delegatedTokenStr;
+            }
+            LOG.warn("Kerberos delegation failed to obtain a service ticket.");
+        }
+
+        // 3) Default: forward the inbound Authorization header unchanged (may be null).
+        return inboundAuth;
+    }
+
     private String buildTargetUrl(String path, UriInfo uriInfo) {
         String format = path.startsWith("/") ? "%s%s" : "%s/%s";
         return String.format(format, targetBaseUrl, path);
@@ -213,9 +250,12 @@ public class ProxyService {
                              jakarta.ws.rs.client.Invocation.Builder requestBuilder) {
 
         // Headers à exclure du proxy
+        // "authorization" is excluded here because the downstream Authorization header is set
+        // explicitly by resolveDownstreamAuthorization (basic-auth client-to-service ticket,
+        // Kerberos delegation, or pass-through).
         List<String> excludedHeaders = List.of(
                 "host", "content-length", "connection", "transfer-encoding",
-                "x-proxy-processed", "x-proxy-timestamp"
+                "authorization", "x-proxy-processed", "x-proxy-timestamp"
         );
 
         for (Map.Entry<String, List<String>> header : headers.getRequestHeaders().entrySet()) {

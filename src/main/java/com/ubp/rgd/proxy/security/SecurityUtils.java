@@ -107,6 +107,70 @@ public class SecurityUtils {
         return Subject.callAs(new Subject(), call);
     }
 
+    /**
+     * Obtain a client-to-service ticket (a TGS wrapped as a SPNEGO token) for the given target
+     * service, acting as the identity carried by the provided user Subject.
+     * <p>
+     * The user Subject must contain a usable TGT (as retained after a successful
+     * {@code Krb5LoginModule} login with {@code isInitiator=true}, e.g. the basic-auth login in
+     * {@link BasicToken}). The JGSS calls run inside {@link Subject#callAs} so the retained TGT is
+     * used as the initiator credential; the KDC is contacted transparently to issue the TGS.
+     *
+     * @param userSubject the authenticated user Subject holding the TGT (must not be null)
+     * @param targetSpn the known target service principal, e.g. {@code HTTP/host.domain}
+     * @return a Base64-encoded SPNEGO token suitable for an {@code Authorization: Negotiate <token>}
+     *         header, or {@code null} if the ticket could not be obtained
+     */
+    public static String getClientToServiceToken(Subject userSubject, String targetSpn) {
+        if (userSubject == null) {
+            LOGGER.error("Cannot obtain a client-to-service ticket: user Subject is null.");
+            return null;
+        }
+        if (targetSpn == null || targetSpn.isEmpty()) {
+            LOGGER.error("Cannot obtain a client-to-service ticket: target SPN is null or empty.");
+            return null;
+        }
+
+        try {
+            Callable<byte[]> call = () -> {
+                GSSManager manager = GSSManager.getInstance();
+
+                // Target service name (SPNEGO / host-based service, e.g. HTTP/host.domain).
+                GSSName serverName = manager.createName(targetSpn, GSSName.NT_HOSTBASED_SERVICE,
+                        KerberosConstants.SPNEGO_OID);
+
+                // Initiator credential derived from the Subject's TGT.
+                GSSCredential initiatorCred = manager.createCredential(null,
+                        GSSCredential.DEFAULT_LIFETIME, KerberosConstants.SPNEGO_OID,
+                        GSSCredential.INITIATE_ONLY);
+
+                GSSContext context = manager.createContext(serverName, KerberosConstants.SPNEGO_OID,
+                        initiatorCred, GSSContext.DEFAULT_LIFETIME);
+
+                // Plain authentication to the target: no further credential delegation required.
+                context.requestMutualAuth(false);
+                context.requestCredDeleg(false);
+
+                // This produces the client-to-service ticket (AP-REQ wrapped in a SPNEGO token).
+                byte[] token = new byte[0];
+                token = context.initSecContext(token, 0, token.length);
+                context.dispose();
+                return token;
+            };
+
+            byte[] serviceToken = Subject.callAs(userSubject, call);
+            if (serviceToken == null || serviceToken.length == 0) {
+                LOGGER.errorf("Empty client-to-service token obtained for target SPN: %s", targetSpn);
+                return null;
+            }
+
+            return Base64.getEncoder().encodeToString(serviceToken);
+        } catch (Exception ex) {
+            LOGGER.errorf(ex, "Could not obtain a client-to-service ticket for target SPN: %s", targetSpn);
+            return null;
+        }
+    }
+
     static GSSCredential getServerCredential(final Subject subject, final GSSName serverSpn) throws Exception {
         final Callable<GSSCredential> action = () -> {
                     GSSManager manager = GSSManager.getInstance();

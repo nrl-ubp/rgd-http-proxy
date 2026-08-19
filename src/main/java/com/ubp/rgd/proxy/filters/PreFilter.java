@@ -168,6 +168,9 @@ public class PreFilter implements ContainerRequestFilter {
 
             if (basicToken.getUser() != null) {
                 securityContext.setToken(basicToken);
+                // Retain the authenticated user's Subject (holding the TGT) for the request so that
+                // downstream forwarding can obtain a client-to-service ticket as this user.
+                securityContext.setUserSubject(basicToken.getUserSubject());
             } else {
                 // too bad, clear security context
                 securityContext.setToken(null);
