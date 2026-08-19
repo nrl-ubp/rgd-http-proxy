@@ -14,11 +14,15 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import javax.net.ssl.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.List;
+import java.util.zip.GZIPInputStream;
 import java.util.Map;
 
 @ApplicationScoped
@@ -285,8 +289,13 @@ public class ProxyService {
 
     private Response buildProxyResponse(Response originalResponse) {
         try {
-            // Lire le contenu de la réponse
-            String responseBody = originalResponse.readEntity(String.class);
+            // Read the downstream body as raw bytes and decompress it if it is gzip-encoded.
+            // The proxy always emits an uncompressed body to the client (see copyResponseHeaders,
+            // which drops the stale Content-Encoding header), which also lets the PostFilter
+            // AFTER-tokenization operate on readable text.
+            byte[] rawBytes = originalResponse.readEntity(byte[].class);
+            byte[] bodyBytes = gunzipIfNeeded(rawBytes);
+            String responseBody = bodyBytes == null ? "" : new String(bodyBytes, StandardCharsets.UTF_8);
 
             // Construire la nouvelle réponse
             Response.ResponseBuilder responseBuilder = Response
@@ -306,12 +315,48 @@ public class ProxyService {
         }
     }
 
+    /**
+     * Decompress the given bytes when they are GZIP-encoded, otherwise return them unchanged.
+     * <p>
+     * Detection relies on the GZIP magic number ({@code 0x1f 0x8b}) rather than the
+     * {@code Content-Encoding} header, so it works whether or not the underlying HTTP client already
+     * decoded the stream (avoiding a double-decompression).
+     *
+     * @param data the raw response body bytes (may be null)
+     * @return the decompressed bytes if gzip-encoded, otherwise the original bytes
+     */
+    static byte[] gunzipIfNeeded(byte[] data) {
+        if (data == null || data.length < 2) {
+            return data;
+        }
+
+        boolean isGzip = (data[0] == (byte) 0x1f) && (data[1] == (byte) 0x8b);
+        if (!isGzip) {
+            return data;
+        }
+
+        try (GZIPInputStream gzipStream = new GZIPInputStream(new ByteArrayInputStream(data));
+             ByteArrayOutputStream out = new ByteArrayOutputStream(data.length * 2)) {
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = gzipStream.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            return out.toByteArray();
+        } catch (Exception e) {
+            LOG.warnf(e, "Failed to gunzip response body; returning raw bytes.");
+            return data;
+        }
+    }
+
     private void copyResponseHeaders(Response originalResponse,
                                      Response.ResponseBuilder responseBuilder) {
 
-        // Headers à exclure
+        // Headers à exclure.
+        // "content-encoding" is dropped because the proxy always emits an uncompressed body
+        // (see buildProxyResponse / gunzipIfNeeded); advertising gzip would break the client.
         List<String> excludedHeaders = List.of(
-                "content-length", "transfer-encoding", "connection"
+                "content-length", "transfer-encoding", "connection", "content-encoding"
         );
 
         for (Map.Entry<String, List<Object>> header : originalResponse.getHeaders().entrySet()) {
