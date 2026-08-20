@@ -1,5 +1,7 @@
 package com.ubp.rgd.proxy.services;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
@@ -22,6 +24,8 @@ import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.GZIPInputStream;
 import java.util.Map;
 
@@ -66,13 +70,25 @@ public class ProxyService {
     @ConfigProperty(name = "proxy.kerberos.delegation-enabled", defaultValue = "false")
     boolean delegationEnabled;
 
+    /**
+     * Prometheus metrics registry.
+     */
     @Inject
-    SecurityContext securityContext;
+    MeterRegistry metricsRegistry;
 
+    /**
+     * Internal security context
+     */
     @Inject
     com.ubp.rgd.proxy.security.SecurityContext proxySecurityContext;
 
     private final Client client;
+
+    /**
+     * Per-endpoint (method + path) forward-duration aggregates, exposed through the
+     * {@code ubp_proxy_forward} gauges (stat = min|max|avg). Keyed by "METHOD path".
+     */
+    private final ConcurrentHashMap<String, DurationStats> forwardDurationStats = new ConcurrentHashMap<>();
 
     public ProxyService() {
         this.client = createHttpsClient();
@@ -162,23 +178,23 @@ public class ProxyService {
     public Response forwardRequest(String method, String path, String body,
                                    UriInfo uriInfo, HttpHeaders headers) {
         try {
-            // Construire l'URL de destination
+            // Build target URL
             String targetUrl = buildTargetUrl(path, uriInfo);
             LOG.infof("Forwarding %s request to: %s", method, targetUrl);
 
             WebTarget target = client.target(targetUrl);
 
-            // Ajouter les paramètres de requête
+            // Add request parameters
             for (Map.Entry<String, List<String>> param : uriInfo.getQueryParameters().entrySet()) {
                 for (String value : param.getValue()) {
                     target = target.queryParam(param.getKey(), value);
                 }
             }
 
-            // Préparer la requête
+            // Prepare the request
             var requestBuilder = target.request();
 
-            // Copier les headers (en filtrant certains headers système)
+            // Copy headers (system headers filtered out)
             copyHeaders(headers, requestBuilder);
 
             // Resolve and set the downstream Authorization header explicitly (the inbound
@@ -188,10 +204,19 @@ public class ProxyService {
                 requestBuilder.header("Authorization", downstreamAuth);
             }
 
-            // Exécuter la requête selon la méthode HTTP
+            long startTime = System.currentTimeMillis();
+
+            // Execute request ising indicated method and body
             Response response = executeRequest(method, requestBuilder, body);
 
-            // Construire la réponse proxy
+            long duration = System.currentTimeMillis() - startTime;
+
+            // Record per-endpoint (method + path) duration for the ubp_proxy_forward metrics.
+            recordForwardDuration(method, path, duration);
+
+            LOG.infof("Forwarded request took %d ms with return code: %d - %s", duration, response.getStatusInfo().getStatusCode(), response.getStatusInfo().getReasonPhrase());
+
+            // Now build the proxy response
             return buildProxyResponse(response);
 
         } catch (Exception e) {
@@ -200,7 +225,7 @@ public class ProxyService {
                     .entity("Erreur du proxy: " + e.getMessage())
                     .build();
         }
-        }
+    }
 
     /**
      * Determine the {@code Authorization} header to send to the proxified (downstream) API.
@@ -298,20 +323,20 @@ public class ProxyService {
             byte[] bodyBytes = gunzipIfNeeded(rawBytes);
             String responseBody = bodyBytes == null ? "" : new String(bodyBytes, StandardCharsets.UTF_8);
 
-            // Construire la nouvelle réponse
+            // Build the new response
             Response.ResponseBuilder responseBuilder = Response
                     .status(originalResponse.getStatus())
                     .entity(responseBody);
 
-            // Copier les headers de réponse (en filtrant certains)
+            // Copy response headers while filtering some to align with eg content encoding
             copyResponseHeaders(originalResponse, responseBuilder);
 
             return responseBuilder.build();
 
         } catch (Exception e) {
-            LOG.errorf(e, "Erreur lors de la construction de la réponse proxy");
+            LOG.errorf(e,"Error while building proxy response: %s", e.getMessage());
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Erreur lors du traitement de la réponse")
+                    .entity(String.format("Error while building proxy response: %s", e.getMessage()))
                     .build();
         }
     }
@@ -368,6 +393,72 @@ public class ProxyService {
                     responseBuilder.header(header.getKey(), value);
                 }
             }
+        }
+    }
+
+    /**
+     * Record a forward-request duration for the given HTTP method and (query-string-free) path, and
+     * expose it through the {@code ubp_proxy_forward} gauges.
+     * <p>
+     * On the first call for a (method, path) key, three gauges are registered under the same name
+     * {@code ubp_proxy_forward}, differentiated by the {@code stat} tag ({@code min}, {@code max},
+     * {@code avg}) and both bound to the same {@link DurationStats}; subsequent calls only update
+     * the aggregate, which the gauges reflect automatically.
+     *
+     * @param method the HTTP method (GET, POST, ...)
+     * @param path the proxified path without the query string
+     * @param durationMs the forward duration in milliseconds
+     */
+    void recordForwardDuration(String method, String path, long durationMs) {
+        String key = method + " " + path;
+        DurationStats stats = forwardDurationStats.computeIfAbsent(key, k -> {
+            DurationStats created = new DurationStats();
+            Tags baseTags = Tags.of("method", method, "uri", path);
+            metricsRegistry.gauge("ubp_proxy_forward", baseTags.and("stat", "min"), created, DurationStats::getMin);
+            metricsRegistry.gauge("ubp_proxy_forward", baseTags.and("stat", "max"), created, DurationStats::getMax);
+            metricsRegistry.gauge("ubp_proxy_forward", baseTags.and("stat", "avg"), created, DurationStats::getAvg);
+            return created;
+        });
+        stats.record(durationMs);
+    }
+
+    /**
+     * Thread-safe accumulator of forward-request durations (milliseconds) tracking the minimum,
+     * maximum, count and running sum, from which the average is derived. All values are 0 until the
+     * first duration is recorded.
+     */
+    static final class DurationStats {
+        private long min = 0;
+        private long max = 0;
+        private long count = 0;
+        private long sum = 0;
+
+        synchronized void record(long durationMs) {
+            if (count == 0) {
+                min = durationMs;
+                max = durationMs;
+            } else {
+                if (durationMs < min) {
+                    min = durationMs;
+                }
+                if (durationMs > max) {
+                    max = durationMs;
+                }
+            }
+            count++;
+            sum += durationMs;
+        }
+
+        synchronized double getMin() {
+            return min;
+        }
+
+        synchronized double getMax() {
+            return max;
+        }
+
+        synchronized double getAvg() {
+            return count == 0 ? 0.0 : (double) sum / count;
         }
     }
 }
