@@ -1,10 +1,14 @@
 package com.ubp.rgd.proxy.security.ldap;
 
+import com.ubp.rgd.proxy.security.KerberosConstants;
 import com.ubp.rgd.proxy.services.ProxyService;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
+import javax.naming.NamingException;
 import javax.naming.directory.*;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,15 +21,22 @@ import java.util.List;
  * Once connected a DirContext object is returned. This context must be reused to search into the LDAP tree.
  * This class provides utility methods to return specific objects.
  */
+@ApplicationScoped
 public class LdapClient {
     private static final Logger LOG = Logger.getLogger(ProxyService.class);
 
+    @ConfigProperty(name = "proxy.kerberos.ldap-url", defaultValue = KerberosConstants.DEFAULT_LDAP_URL)
+    String ldapUrl;
+
+    @ConfigProperty(name = "proxy.kerberos.ldap-base-dn", defaultValue = KerberosConstants.DEFAULT_BASE_DN)
+    String ldapBaseDn;
+
     /**
      * Use GSS API to  login to LDAP. This method MUST be called inside a PriviledgedAction.run() method.
-     * @param ldapUrl the LDAP server url
+     * The Ldap URL is taken from the config property above
      * @return a DirContext allowing to query LDPA tree with other methods of this LDAP Client class.
      */
-    public static DirContext login(String ldapUrl) {
+    public DirContext login() {
         Hashtable<String, String> env = new Hashtable<>();
         env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
         env.put(Context.PROVIDER_URL, ldapUrl);
@@ -41,6 +52,10 @@ public class LdapClient {
         }
     }
 
+    public DirContext login(String username, String password, String domainName) {
+        return login(ldapUrl, username, password, domainName);
+    }
+
     /**
      * Login against LDAP server using username and password. This does NOT use any kerberos procedures
      * and should be used only with service accounts with non expiring password.
@@ -49,7 +64,7 @@ public class LdapClient {
      * @param password password associated to user name-
      * @return a DirContext allowing to query LDPA tree with other methods of this LDAP Client class.
      */
-    public static DirContext login(String ldapUrl, String userDn, String password, String domainName) {
+    public DirContext login(String ldapUrl, String userDn, String password, String domainName) {
         Hashtable<String, String> env = new Hashtable<>();
         env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
         env.put(Context.PROVIDER_URL, ldapUrl);
@@ -67,6 +82,10 @@ public class LdapClient {
         }
     }
 
+    public List<String> listUserGroups(DirContext ctx, String userDn) {
+        return listUserGroups(ctx, ldapBaseDn, userDn);
+    }
+
     /**
      * Query active directory to find user's groups. This method issues a LDAP query ADAPTED to active directory.
      * The query is : <code>(sAMAccountName=%s)</code> where %s is the user account name we want the AD groups for.
@@ -75,7 +94,7 @@ public class LdapClient {
      * @param searchAccountName account name of the user we want to get the groups.
      * @return List of String with user's groups. Empty list if no groups for this user, null if user not found or any other problem
      */
-    public static List<String> listUserGroups(DirContext dirCtx, String baseDn, String searchAccountName) {
+    public List<String> listUserGroups(DirContext dirCtx, String baseDn, String searchAccountName) {
 
         if (dirCtx == null) {
             LOG.error("Must provide a initialized DirContext with the login method");

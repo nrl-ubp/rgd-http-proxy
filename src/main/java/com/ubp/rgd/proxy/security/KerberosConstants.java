@@ -24,4 +24,6 @@ public class KerberosConstants {
 
     public static final String DEFAULT_LDAP_URL = "ldap://srvdcnas01.corp.ubp.ch:389"; // Replace with your LDAP server URL
     public static final String DEFAULT_BASE_DN = "OU=Site-GVA,OU=ORGANIZATION,DC=corp,DC=ubp,DC=ch"; // Replace with your base DN
+
+    public static final String DEFAULT_REALM = "CORP.UBP.CH";
 }

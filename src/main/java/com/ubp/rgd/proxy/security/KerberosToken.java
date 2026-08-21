@@ -2,6 +2,7 @@ package com.ubp.rgd.proxy.security;
 
 import com.ubp.rgd.proxy.security.ldap.LdapClient;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSCredential;
@@ -29,6 +30,9 @@ public class KerberosToken extends SecurityToken {
 
     @ConfigProperty(name = "proxy.kerberos.service-principal-name")
     String servicePrincipalName;
+
+    @Inject
+    LdapClient ldapClient;
 
     private byte[] serviceToken;
     private byte[] acceptedToken;
@@ -90,8 +94,8 @@ public class KerberosToken extends SecurityToken {
                 captureDelegatedCredential(context);
 
                 LOGGER.infof("Now loading AD groups for user: %s", this.user);
-                DirContext ctx = LdapClient.login(KerberosConstants.DEFAULT_LDAP_URL);
-                List<String> theRoles = LdapClient.listUserGroups(ctx, KerberosConstants.DEFAULT_BASE_DN, this.user);
+                DirContext ctx = ldapClient.login();
+                List<String> theRoles = ldapClient.listUserGroups(ctx, this.user);
                 assert theRoles != null;
                 setRoles(new HashSet<>(theRoles));
 

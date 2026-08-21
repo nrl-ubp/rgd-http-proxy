@@ -7,6 +7,7 @@ import io.quarkus.cache.CacheName;
 import io.quarkus.cache.CaffeineCache;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import javax.naming.directory.DirContext;
@@ -29,8 +30,14 @@ public class BasicToken extends SecurityToken {
     private KerberosTicket kerbTicket = null;
 
     @Inject
+    LdapClient ldapClient;
+
+    @Inject
     @CacheName(("ubp_user_ad_groups"))
     public Cache userAdGroupsCache;
+
+    @ConfigProperty(name = "proxy.kerberos.service-principal-realm", defaultValue = KerberosConstants.DEFAULT_REALM)
+    String domainName;
 
     public BasicToken() {
     }
@@ -71,8 +78,8 @@ public class BasicToken extends SecurityToken {
 
     private CompletableFuture<List<String>> getUserGroups(String user, String pass) {
         return CompletableFuture.supplyAsync(() -> {
-            DirContext ctx = LdapClient.login(KerberosConstants.DEFAULT_LDAP_URL, user, pass, domainName);
-            return LdapClient.listUserGroups(ctx, KerberosConstants.DEFAULT_BASE_DN, user);
+            DirContext ctx = ldapClient.login(user, pass, this.domainName);
+            return ldapClient.listUserGroups(ctx, user);
         });
     }
 
