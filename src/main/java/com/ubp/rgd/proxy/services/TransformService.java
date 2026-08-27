@@ -7,6 +7,7 @@ import ch.regdata.rps.engine.client.RPSEngineConverter;
 import ch.regdata.rps.engine.client.RequestContext;
 import ch.regdata.rps.engine.client.enginecontext.ProcessingContext;
 import ch.regdata.rps.engine.client.enginecontext.RPSEngineContextResolver;
+import ch.regdata.rps.engine.client.enginecontext.RightContext;
 import ch.regdata.rps.engine.client.http.HttpClientEngineProvider;
 import ch.regdata.rps.engine.client.mapping.RPSMapping;
 import ch.regdata.rps.engine.client.model.api.value.IRPSValue;
@@ -52,6 +53,16 @@ public class TransformService {
 
     /** Fixed delimiter pattern of an RPS token ({@code RG{...}}), used to locate tokens on unprotect. */
     static final Pattern TOKEN_PATTERN = Pattern.compile("RG\\{[^}]*\\}");
+
+    @ConfigProperty(name = "proxy.transform.endpoint.right-context-target")
+    String rightContextTarget;
+
+    @ConfigProperty(name = "proxy.transform.endpoint.right-context-module")
+    String rightContextModule;
+
+    @ConfigProperty(name = "proxy.transform.endpoint.right-context-right")
+    String rightContextRight;
+
 
     @Inject
     RPSClientEngineProvider rpsClientEngineProvider;
@@ -144,7 +155,7 @@ public class TransformService {
         Arrays.stream(csv.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
-                .map(s -> s.toLowerCase())
+                .map(String::toLowerCase)
                 .forEach(result::add);
         return result;
     }
@@ -180,7 +191,7 @@ public class TransformService {
                 transformData(
                         rpsClientEngineProvider.getClientEngineProvider(),
                         flatValues.toArray(new RPSValue[0]),
-                        new Context(),
+                        buildRightContext(),
                         buildProcessingContext(set));
             } catch (RPSTransformException e) {
                 throw e;
@@ -195,6 +206,18 @@ public class TransformService {
             results.add(plan.reassemble());
         }
         return new TransformResultSet(results);
+    }
+
+    /**
+     * Build the right context for RoseGarden proxy taken from the application.properties configuration file
+     * @return the right context with evidences according to the config
+     */
+    private RightContext buildRightContext() {
+        RightContext context = new RightContext();
+        context.addEvidence(new Evidence("Target", this.rightContextTarget));
+        context.addEvidence(new Evidence("Module", this.rightContextModule));
+        context.addEvidence(new Evidence("Right",  this.rightContextRight));
+        return context;
     }
 
     /**
@@ -305,7 +328,7 @@ public class TransformService {
             }
             if (pattern == null) {
                 // Single whole-value segment.
-                return requireTransformed(rpsValues.get(0));
+                return requireTransformed(rpsValues.getFirst());
             }
 
             Matcher matcher = pattern.matcher(originalValue);
