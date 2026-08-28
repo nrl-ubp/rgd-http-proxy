@@ -7,47 +7,50 @@
     ],
     "endpoint-transform-when": "BEFORE",
     "right-context": {
-      "Location": "Onshore"
+      "Target": "WDX1",
+      "Module": "WDX1Proxy",
+      "Right": "Transform"
     },
     "processing-context": {
       "Action": "Unprotect",
-      "Location": "Onshore"
+      "Module": "WDX1Proxy",
+      "Target": "WDX1"
     },
     "header-transform-configs": [
       {
         "name": "X-transform-header",
-        "rps-class-name": "poc.Person",
-        "rps-property-name": "Name"
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
       }
     ],
     "entity-transform-configs": [
       {
         "json-path": "$.[*]lastName",
-        "rps-class-name": "poc.Person",
-        "rps-property-name": "Name"
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
       },
       {
         "json-path": "$.[*]firstName",
-        "rps-class-name": "poc.Person",
-        "rps-property-name": "Name"
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
       },
       {
         "json-path": "$.[*]birthDate",
-        "rps-class-name": "poc.Person",
-        "rps-property-name": "BirthDate"
+        "rps-class-name": "Person",
+        "rps-property-name": "Date"
       }
     ],
     "url-query-transform-configs": [
       {
         "name": "person-name",
         "regexp": false,
-        "rps-class-name": "poc.Person",
-        "rps-property-name": "Name"
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
       },
       {
         "name": "email.*",
         "regexp": true,
-        "rps-class-name": "poc.Person",
+        "rps-class-name": "Person",
         "rps-property-name": "Email"
       }
     ],
@@ -55,8 +58,8 @@
       {
         "name-or-position": "person",
         "regexp": false,
-        "rps-class-name": "poc.Person",
-        "rps-property-name": "Name"
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
       }
     ]
   },
@@ -67,34 +70,37 @@
     ],
     "endpoint-transform-when": "AFTER",
     "right-context": {
-      "Location": "Onshore"
+      "Target": "WDX1",
+      "Module": "WDX1Proxy",
+      "Right": "Transform"
     },
     "processing-context": {
       "Action": "Protect",
-      "Location": "Onshore"
+      "Module": "WDX1Proxy",
+      "Target": "WDX1"
     },
     "header-transform-configs": [
       {
         "name": "X-transform-header",
-        "rps-class-name": "poc.Person",
-        "rps-property-name": "Name"
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
       }
     ],
     "entity-transform-configs": [
       {
         "json-path": "$.[*]lastName",
-        "rps-class-name": "poc.Person",
-        "rps-property-name": "Name"
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
       },
       {
         "json-path": "$.[*]firstName",
-        "rps-class-name": "poc.Person",
-        "rps-property-name": "Name"
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
       },
       {
         "json-path": "$.[*]birthDate",
-        "rps-class-name": "poc.Person",
-        "rps-property-name": "BirthDate"
+        "rps-class-name": "Person",
+        "rps-property-name": "Date"
       }
     ]
   }
