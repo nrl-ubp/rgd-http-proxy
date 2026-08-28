@@ -18,7 +18,11 @@ public class TestProfile implements QuarkusTestProfile {
                 "proxy.target.base-url", "http://localhost:37200",
                 "quarkus.log.console.json.enabled", "false",
                 "proxy.prefilter.auth-enabled", "false",
-                "token.utils.wdx1.authorized-spn", "HTTP/wdx1e01.corp.ubp.ch"
+                "token.utils.wdx1.authorized-spn", "HTTP/wdxe01.corp.ubp.ch",
+                "proxy.transform.endpoint.authorized-spn", "HTTP/dcle01.corp.ubp.ch",
+                "proxy.transform.endpoint.right-context-target", "WDX1",
+                "proxy.transform.endpoint.right-context-module", "WDX1Proxy",
+                "proxy.transform.endpoint.right-context-right", "Transform"
         );
     }
 }
