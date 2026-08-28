@@ -13,13 +13,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public class TransformValue {
 
-    @JsonProperty(value = "value")
+    @JsonProperty(value = "value", required = true)
     private String value;
 
-    @JsonProperty(value = "class-name")
+    @JsonProperty(value = "class-name", required = true)
     private String className;
 
-    @JsonProperty(value = "property-name")
+    @JsonProperty(value = "property-name", required = true)
     private String propertyName;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
