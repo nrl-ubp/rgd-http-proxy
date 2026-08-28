@@ -13,7 +13,7 @@ import java.util.List;
 @JsonRootName("transformRequest")
 public class TransformRequest {
 
-    @JsonProperty(value = "sets")
+    @JsonProperty(value = "sets", required = true)
     private List<TransformSet> sets = new ArrayList<>();
 
     public List<TransformSet> getSets() {
