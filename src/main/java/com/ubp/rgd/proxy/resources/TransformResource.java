@@ -11,7 +11,9 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -65,9 +67,41 @@ public class TransformResource {
                     content = @Content(schema = @Schema(implementation = String.class))
             )
     })
-    public TransformResponse transform(TransformRequest body,
-                                       @Context UriInfo uriInfo,
-                                       @Context HttpHeaders headers) throws RPSTransformException {
+    public TransformResponse transform(
+            @RequestBody(required = true,
+                         description = "Sample request payload",
+                         content = @Content(
+                            schema = @Schema(implementation = TransformRequest.class),
+                                 examples = {
+                                    @ExampleObject(
+                                            name = "OnSaitJamais",
+                                            value= """
+                                                    {
+                                                      "sets": [
+                                                        {
+                                                          "action": "Protect",
+                                                          "target": "WDX1",
+                                                          "module": "WDX1Proxy",
+                                                          "jurisdiction": "LU",
+                                                          "values": [
+                                                            {
+                                                              "value": "Jean-Claude DUSSE",
+                                                              "class-name": "Person",
+                                                              "property-name": "ShortString",
+                                                              "extract-regex": "(?:\\\\w(?<!_)|~)+"
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                    """
+                                    )
+                                 }
+                         )
+            )
+            TransformRequest body,
+           @Context UriInfo uriInfo,
+           @Context HttpHeaders headers) throws RPSTransformException {
         Objects.requireNonNull(metricsRegistry.counter("ubp_proxy_counter", Tags.of("name", "transform"))).increment();
 
         int setCount = body == null || body.getSets() == null ? 0 : body.getSets().size();
