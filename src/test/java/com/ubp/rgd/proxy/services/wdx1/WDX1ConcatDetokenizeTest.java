@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class WDX1ConcatDetokenizeTest {
 
     private static final RPSMapping NAME_MAPPING = new RPSMapping("Person", "ShortString");
-    private static final RPSMapping DATE_MAPPING = new RPSMapping("Person", "BirthDate");
+    private static final RPSMapping DATE_MAPPING = new RPSMapping("Person", "Date");
 
     private RPSValue token(String original, String transformed) {
         RPSValue value = new RPSValue(NAME_MAPPING, original);
