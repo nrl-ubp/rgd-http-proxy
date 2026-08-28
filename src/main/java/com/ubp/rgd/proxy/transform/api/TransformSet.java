@@ -12,16 +12,19 @@ import java.util.List;
  */
 public class TransformSet {
 
-    @JsonProperty(value = "action")
+    @JsonProperty(value = "action", required = true)
     private String action;
 
-    @JsonProperty(value = "target")
+    @JsonProperty(value = "target", required = true)
     private String target;
 
-    @JsonProperty(value = "jurisdiction")
+    @JsonProperty(value = "module", required = true)
+    private String module;
+
+    @JsonProperty(value = "jurisdiction", required = true)
     private String jurisdiction;
 
-    @JsonProperty(value = "values")
+    @JsonProperty(value = "values", required = true)
     private List<TransformValue> values = new ArrayList<>();
 
     public String getAction() {
@@ -38,6 +41,14 @@ public class TransformSet {
 
     public void setTarget(String target) {
         this.target = target;
+    }
+
+    public String getModule() {
+        return module;
+    }
+
+    public void setModule(String module) {
+        this.module = module;
     }
 
     public String getJurisdiction() {
