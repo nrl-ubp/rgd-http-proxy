@@ -276,7 +276,7 @@ public class TransformService {
         ProcessingContext processingContext = new ProcessingContext();
         addEvidence(processingContext, "Action", set.getAction());
         addEvidence(processingContext, "Target", set.getTarget());
-        addEvidence(processingContext, "Jurisdiction", set.getJurisdiction());
+        addEvidence(processingContext, "Module", set.getModule());
         processingContext.getEvidences()
                 .forEach(e -> LOG.debugf("Processing context: %s = %s", e.getName(), e.getValue()));
         return processingContext;
