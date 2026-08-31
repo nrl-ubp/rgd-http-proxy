@@ -50,11 +50,55 @@ The test is doing 2 calls and compare clear and protected data.
 1. GET a person, forward to person server and protect data before responding
 2. POST a protected person data, un protect and forward to person server.
 
+## Flight SQL server
+
+The proxy can also expose an **Apache Arrow Flight SQL** server that proxies a whole JDBC datasource.
+Every statement is executed on the proxied database, and each value of the result sets matching an
+RPS token (`RG{...}`) is detokenized through the RegData engine before being streamed back to the
+client.
+
+Configuration (see `config/application.properties`):
+
+| Property | Description |
+| --- | --- |
+| `proxy.flight-sql.enabled` | Enables the Flight SQL server (disabled by default). |
+| `proxy.flight-sql.host` / `proxy.flight-sql.port` | Listening address of the gRPC server (default `0.0.0.0:32010`). |
+| `proxy.flight-sql.jdbc-url` | JDBC URL of the proxied database. |
+| `proxy.flight-sql.batch-size` | Rows per Arrow record batch, i.e. per detokenization call. |
+| `proxy.flight-sql.mapping-config-file` | Table/column to RPS class/property mapping file. |
+
+Clients authenticate with **basic credentials that are forwarded to the proxied database**: the
+credentials are validated by opening a real connection, then every query runs under the caller's own
+database identity.
+
+Result sets carry no RPS metadata, so the RPS class and property names of each column are resolved
+from `config/flight_sql_mapping_config.json`. That file also holds the right-context and
+processing-context evidences sent to the engine:
+
+```json
+{
+  "right-context": { "Target": "WDX1", "Module": "RoseGarden", "Right": "Transform" },
+  "processing-context": { "Action": "Unprotect", "Target": "WDX1" },
+  "column-mappings": [
+    { "table": "PERSON", "column": "FIRST_NAME",
+      "rps-class-name": "Person", "rps-property-name": "shortString" },
+    { "table": "*", "column": "EMAIL",
+      "rps-class-name": "Person", "rps-property-name": "email" }
+  ]
+}
+```
+
+A `table` set to `*` (or omitted) makes the mapping apply to any table exposing that column. Columns
+without a mapping are returned untouched.
+
+Apache Arrow needs access to the `java.nio` internals of the JDK, so the server **must** be started
+with `--add-opens=java.base/java.nio=ALL-UNNAMED` (see the launch commands below).
+
 ## Useful commands
 
 Launch proxy in dev mode :
 
-`mvn quarkus:dev`
+`mvn quarkus:dev -Djvm.args="--add-opens=java.base/java.nio=ALL-UNNAMED"`
 
 Package with native profile :
 
@@ -62,7 +106,7 @@ Package with native profile :
 
 Launch server:
 
-`java -jar ./target/rgd-http-proxy-1.0.0.jar`
+`java --add-opens=java.base/java.nio=ALL-UNNAMED -jar ./target/rgd-http-proxy-1.0.0.jar`
 
 Change version accordingly.
 
