@@ -1,0 +1,4054 @@
+schema @link(url: "https:\/\/specs.apollo.dev\/federation\/v2.6", import: [ "@shareable", "@tag", "FieldSet" ]) {
+  query: Query
+}
+
+type AccountGraphQLResponse {
+  contractualRelationship: ContractualRelationshipGraphQLResponse
+  partyToAccountRoles: [PartyToAccountRoleGraphQLResponse!]
+  idTiersAnym: String
+  accountId: String
+  crId: String
+  longName: String
+  shortName: String
+  refReportingCurrency: String
+  refInvestmentReferenceCurrency: String
+  state: String
+  cdmRefStatus: String
+  statusDate: DateTime
+  accountApprovalDate: DateTime
+  openDate: DateTime
+  closeDate: DateTime
+  lastModified: DateTime
+  cdmRefManagementType: String
+  cdmRefServiceLevel: String
+  cdmRefProfile: String
+  cashOnly: Boolean
+  relationshipManagerId: String
+  servicingEntityRelationshipManagerId: String
+  portfolioAdvisorId: String
+  investmentAdvisorId: String
+  cdmRefAmlRiskLevel: String
+  bienTrouve: Boolean
+  bienTrouveLastDate: DateTime
+  accountOriginId: String
+  cdmRefDormantStatus: String
+  lastDateOfContact: DateTime
+  cdmRefLastDateOfContactReason: String
+  sdd: Boolean
+  qualifiedInvestor: Boolean
+  priipsKidFlag: Boolean
+  expectedAUMAccountOpening: Float
+  expectedAUMAccountLifecycle: Float
+  dutyToDiscloseFlag: Boolean
+  sanctions: String
+  tiersNostroDividend: String
+  euroclearTiersSuspens: String
+  usCorporateTiersSuspens: String
+  pledge: String
+  portfolioID: String
+  ofactiveblockrecords: String
+  generalInstructions: String
+  legalInstructions: String
+  complianceInstructions: String
+  accountGUID: String
+  dynamiCuserroles: String
+  dynamiCuserteams: String
+  servicingEntity: String
+  businessArea: String
+  advisoryPortfolioReview: [AdvisoryPortfolioReview!]
+  blockingRecords: [BlockingRecords!]
+  mailingInstructions: [MailingInstruction!]
+  pledgeAgreementsId: [PledgeAgreementsId!]
+}
+
+type AccountLifecycleAUM {
+  accountNumber: String
+  accountName: String
+  expectedAUMAccountLifecycle: Float
+  crId: String
+  crGUID: String
+}
+
+type AccountOpeningAUM {
+  accountNumber: String
+  accountName: String
+  expectedAUMAccountOpening: Float
+  crId: String
+  crGUID: String
+}
+
+"A connection to a list of items."
+type AccountSuitabilitiesConnection {
+  "Information to aid in pagination."
+  pageInfo: PageInfo!
+  "A list of edges."
+  edges: [AccountSuitabilitiesEdge!]
+  "A flattened list of the nodes."
+  nodes: [AccountSuitabilityGraphQLResponse!]
+  "Identifies the total count of items in the connection."
+  totalCount: Int! @cost(weight: "10")
+}
+
+"An edge in a connection."
+type AccountSuitabilitiesEdge {
+  "A cursor for use in pagination."
+  cursor: String!
+  "The item at the end of the edge."
+  node: AccountSuitabilityGraphQLResponse!
+}
+
+type AccountSuitabilityGraphQLResponse {
+  newfield: String
+  cdmRefCarpInvestmentHorizon: String
+  cdmRefCarpWithdrawlTimeframe: String
+  cdmRefCarpAccWithdrawProportion: String
+  cdmRefCarpInvObjLiquidityNeeds: String
+  cdmRefCarpInvestmentObjectives: String
+  cdmRefCarpPercentRegularIncome: String
+  cdmRefCarpInflationPerfObjectives: String
+  cdmRefCarpImpactValueDecrease: String
+  cdmRefCarpInvApproach: String
+  cdmRefCarpLeverageLevel: String
+  cdmRefCarpPreferredAccount: String
+  cdmRefCarpAccountStatement: String
+  cdmRefCarpValueFall: String
+  cdmRefCarpInvPriority: String
+  cdmRefCarpFinancialRisk: String
+  cdmRefCarpMarketEnvTolerance: String
+  cdmRefCarpPercentInvAssets: String
+  cdmRefCarpInvRisk: String
+  cdmRefCarpInvScenario: String
+  cdmRefCarpRiskAppetite: String
+  cdmRefCarpCalculatedRisk: String
+  cdmRefCarpValidatedRisk: String
+  carpJustification: String
+  caspIsEnvSensitive: Boolean
+  caspInvNegativeImpacts: [String!]
+  caspPercentSustainableInv: Float
+  caspPercentEnvInv: Float
+  accountGUID: String
+  dynamiCuserteams: String
+  servicingEntity: String
+  businessArea: String
+  accountId: String
+  idTiersAnym: String
+  cdmRefStatus: String
+}
+
+"A connection to a list of items."
+type AccountsConnection {
+  "Information to aid in pagination."
+  pageInfo: PageInfo!
+  "A list of edges."
+  edges: [AccountsEdge!]
+  "A flattened list of the nodes."
+  nodes: [AccountGraphQLResponse!]
+  "Identifies the total count of items in the connection."
+  totalCount: Int! @cost(weight: "10")
+}
+
+"An edge in a connection."
+type AccountsEdge {
+  "A cursor for use in pagination."
+  cursor: String!
+  "The item at the end of the edge."
+  node: AccountGraphQLResponse!
+}
+
+type Address {
+  cdmRefContactType: String
+  securityRoles: String
+  personId: String
+  teams: String
+  createdOn: DateTime
+  userTeams: String
+  personGUID: String
+  contactId: String
+  numberOfDomicileAddressType: String
+  numberOfRegisteredOfficesType: String
+  cdmRefAddressType: String
+  addressId: String
+  identifier: String
+  isPrimaryAddress: Boolean
+  addressLine1: String
+  number: String
+  addressLine2: String
+  postcode: String
+  poBox: String
+  city: String
+  refCountry: String
+  refRegionStateCanton: String
+  stateCode: String
+  addressStatus: String
+  validFrom: DateTime
+  validTo: DateTime
+  comment: String
+  hash: String
+  isLocked: Boolean
+  longitude: Float
+  latitude: Float
+  postalAddressLine1: String
+  postalAddressLine2: String
+  postalAddressLine3: String
+  postalAddressLine4: String
+  postalAddressLine5: String
+  postalAddressLine6: String
+  postalAddressLine7: String
+  postalAddressLine8: String
+  linkedDocument: [AddressLinkedDocument!]
+}
+
+type AddressCorroboratingEvidence {
+  identificationAddressCorrobId: String
+  cdmRefType: String
+  documentNumber: String
+  cdmRefIdentificationProcess: String
+  issuancePlace: String
+  refIssuanceCountry: String
+  refNationality: String
+  issuanceDate: DateTime
+  expirationDate: DateTime
+  cdmRefDocumentType: String
+  endOfValidity: DateTime
+  certifiedCopy: Boolean
+  attachment: String
+  recordType: String
+  cdmRefStatus: String
+  personGUID: String
+  personId: String
+}
+
+type AddressLinkedDocument {
+  linkedDocument: String
+  "The address corroborating evidence identified by this linked document."
+  addressCorroboratingEvidence: AddressCorroboratingEvidence @cost(weight: "10")
+}
+
+type AdvisoryPortfolioReview {
+  reviewDate: DateTime
+  hasRiskAlert: Boolean
+  hasAnnualReviewReason: Boolean
+  isAdhocReview: Boolean
+  isPerformanceAlert: Boolean
+  hasCarpProfileAdequacy: Boolean
+  isInlineDefineReange: Boolean
+  isInlineCarpLimits: Boolean
+  isInlineConcentrationLimits: Boolean
+  hasRemedialAction: Boolean
+  remedialActionDate: DateTime
+  hasRemedialCarpReview: Boolean
+  remedialCarpDate: DateTime
+  hasClientDisagreement: Boolean
+  isDulySigned: Boolean
+  cdmRefStatus: String
+  stateCode: String
+  portfolioReviewId: String
+  cdmRefAdvPortfolioReviewType: String
+  accountId: String
+  accountGUID: String
+  createdOn: DateTime
+}
+
+type AmlInformation {
+  riskScore: Float
+  cdmRefRiskLevel: String
+  cdmRefStatus: String
+  stateConde: String
+  personId: String
+  personGUID: String
+}
+
+type Assets {
+  refCurrency: String
+  financialId: String
+  cdmRefType: String
+  amount: String
+  bankName: String
+  refCountryId: String
+  personId: String
+  personGUID: String
+  cdmRefFinancialType: String
+}
+
+type BlockingRecords {
+  brId: String
+  cdmRefBlockLevel: String
+  cdmRefBlockType: String
+  cdmRefVisibility: String
+  comment: String
+  cdmRefStatus: String
+  stateCode: String
+  startDate: DateTime
+  endDate: DateTime
+  requestedBy: String
+  requestedByTeam: String
+  affirmed: Boolean
+  affirmedDate: DateTime
+  affirmedText: String
+  accountId: String
+  accountGUID: String
+}
+
+type ClassOfBeneficiariesGraphQLResponse {
+  personId: String
+  idTiersActorAnonym: String
+  cdmRefBusinessArea: String
+  cdmRefTitle: String
+  firstName: String
+  lastName: String
+  relationshipManagerId: String
+  cdmRefType: String
+  cdmRefPersonStatus: String
+  status: String
+  kycComplete: Boolean
+  userTeams: String
+  contactID: String
+  suitabilityReviewLookup: String
+  currentSRC: String
+  detailsUpdated: Boolean
+  suitabilityreviewid: String
+  allMandatoryDocumentsAttached: Boolean
+  wdxcontactid: String
+}
+
+"A connection to a list of items."
+type ClassOfBeneficiariesListConnection {
+  "Information to aid in pagination."
+  pageInfo: PageInfo!
+  "A list of edges."
+  edges: [ClassOfBeneficiariesListEdge!]
+  "A flattened list of the nodes."
+  nodes: [ClassOfBeneficiariesGraphQLResponse!]
+  "Identifies the total count of items in the connection."
+  totalCount: Int! @cost(weight: "10")
+}
+
+"An edge in a connection."
+type ClassOfBeneficiariesListEdge {
+  "A cursor for use in pagination."
+  cursor: String!
+  "The item at the end of the edge."
+  node: ClassOfBeneficiariesGraphQLResponse!
+}
+
+type ContractualRelationshipGraphQLResponse {
+  accounts: [AccountGraphQLResponse!]
+  partyToContractualRelationshipRoles: [PartyToContractualRelationshipRoleGraphQLResponse!]
+  userTeams2: String
+  contractualRelationshipGUID: String
+  userTeams: String
+  teams: String
+  securityRoles: String
+  accountid: String
+  contractualRelationshipType: String
+  ofactiveportfolios: String
+  crId: String
+  cdmRefNameType: String
+  longName: String
+  state: String
+  cdmRefStatus: String
+  openDate: DateTime
+  closeDate: DateTime
+  statusDate: DateTime
+  primaryContact: String
+  owner: String
+  bookingCentre: String
+  cdmRefNature: String
+  cdmRefSubNature: String
+  cdmRefUbpContractingEntity: String
+  servicingEntityBA: String
+  cdmRefServicingEntityId: String
+  cdmRefStandingInstructionsInFavorOf: String
+  cdmRefSignaturePolicy: String
+  employee: Boolean
+  refReferenceCurrency: String
+  referenceLanguage: [String!]
+  relationshipManagerId: String
+  servicingEntityRelationshipManagerId: String
+  familyOffice: String
+  cdmRefType: String
+  cdmRefEconomicSector: String
+  cdmRefDormantStatus: String
+  lastDateOfContact: DateTime
+  cdmRefLastDateOfContactReason: String
+  exit: Boolean
+  cdmRefReasonForExit: String
+  cdmRefFATCAStatus: String
+  cdmRefCrsStatus: String
+  cdmRefIsTaxConformant: Boolean
+  cdmRefInvestmentAdvisorStatusInUS: String
+  cdmRefEamStatus: String
+  isVatInBookingCentre: Boolean
+  isVatInServicingEntity: Boolean
+  cdmRefInvestorProtectionLevel: String
+  cdmRefProtectionClientCategory: String
+  telecommunicationWaiver: Boolean
+  boOrAhRegularPayments: Boolean
+  regularTransfers: Boolean
+  commercialTransactions: Boolean
+  issueOrReceiveLoans: Boolean
+  cdmRefPurposeOfTheCR: String
+  purposeOfTheCRAdditional: String
+  expectedAUMCHFAccountOpening: String
+  totalAumAtAccountOpening: Float
+  expectedAUMCHFAccountLifecycle: String
+  totalAumAccountLifecycle: Float
+  commercialBusinessActivity: String
+  otherActivities: String
+  countries: [String!]
+  businessStructure: String
+  existenceOfInvoicesETC: String
+  titleExpectedOutgoingTransactions: String
+  mainTransactionsCurrencies: [String!]
+  titleExpectedIncomingTransactions: String
+  ofactiveblockrecords: String
+  postalCorrespondance: Boolean
+  fiduciaryMandate: Boolean
+  specialFiduciaryMandate: Boolean
+  specialFiduciaryMandateComment: String
+  standingAgreementAlternativeInvestments: Boolean
+  frameworkAgreementInstructionsForTransaction: Boolean
+  frameworkAgreementForLombardCredits: Boolean
+  waiverEmail: Boolean
+  waiverPhone: Boolean
+  waiverFax: Boolean
+  authorisationEbanking: Boolean
+  waiverOfBankingSecrecy: Boolean
+  cisaWaiver: Boolean
+  supplementaryInformationForItalianClient: Boolean
+  standingInstructionCocos: Boolean
+  orderAndApplicationToRegisterShares: Boolean
+  commitmentInvestmentUndertaking: Boolean
+  conditionsForIssuanceAndRenewalOfGuarantees: Boolean
+  bankingRelationshipsWithGermanClients: Boolean
+  germanyWithdrawalRight: Boolean
+  standingDeclarationOfCanadianPermittedClient: Boolean
+  declarationIsraeliEligibleClientIndividuals: Boolean
+  declarationIsraeliEligibleClientEntities: Boolean
+  qualifiedInvestorDeclaration: Boolean
+  waiverPertainingToTheSubscriptionOfNewIssues: Boolean
+  instructionRegardingRussianCurrency: Boolean
+  waiverLimitedLiabilityPartnership: Boolean
+  accountLifecycleAUM: [AccountLifecycleAUM!]
+  accountOpeningAUM: [AccountOpeningAUM!]
+  expectedIncomingTransactions: [ExpectedIncomingTransactions!]
+  expectedOutgoingTransactions: [ExpectedOutgoingTransactions!]
+  fiscalReporting: [FiscalReporting!]
+  mailingInstructions: [MailingInstruction!]
+}
+
+"A connection to a list of items."
+type ContractualRelationshipsConnection {
+  "Information to aid in pagination."
+  pageInfo: PageInfo!
+  "A list of edges."
+  edges: [ContractualRelationshipsEdge!]
+  "A flattened list of the nodes."
+  nodes: [ContractualRelationshipGraphQLResponse!]
+  "Identifies the total count of items in the connection."
+  totalCount: Int! @cost(weight: "10")
+}
+
+"An edge in a connection."
+type ContractualRelationshipsEdge {
+  "A cursor for use in pagination."
+  cursor: String!
+  "The item at the end of the edge."
+  node: ContractualRelationshipGraphQLResponse!
+}
+
+type DeathCertificateLinkedDocId {
+  cdmRefDocumentType: String
+  documentName: String
+  documentDate: DateTime
+  status: String
+  entityId: String
+  src: String
+}
+
+type DocumentGraphQLResponse {
+  wdxattacheddocumentid: String
+  fileName: String
+  name: String
+  dmsId: String
+  annotationId: String
+  documentId: String
+  documentExternalId: String
+  personId: String
+  crId: String
+  accountId: String
+  batchNumber: String
+  cdmRefType: String
+  cdmRefDocumentClassification: String
+  documentBehaviour: String
+  cdmRefVersion: String
+  cdmRefStatus: String
+  cdmRefReminder: String
+  cdmRefReminderCategory: String
+  exportToEms: Boolean
+  furtherInformation: String
+  createdOn: DateTime
+  createdBy: String
+  lastModifiedDate: DateTime
+  receptionDate: DateTime
+  scanningDate: DateTime
+  startDate: DateTime
+  endDate: DateTime
+  cdmRefDocumentCategory: String
+  expiryDate: DateTime
+  remediationLimitDate: DateTime
+  cancellationDate: DateTime
+  signatureDate: DateTime
+  linkedAddress: String
+  documentTypeCode: String
+}
+
+"A connection to a list of items."
+type DocumentsConnection {
+  "Information to aid in pagination."
+  pageInfo: PageInfo!
+  "A list of edges."
+  edges: [DocumentsEdge!]
+  "A flattened list of the nodes."
+  nodes: [DocumentGraphQLResponse!]
+  "Identifies the total count of items in the connection."
+  totalCount: Int! @cost(weight: "10")
+}
+
+"An edge in a connection."
+type DocumentsEdge {
+  "A cursor for use in pagination."
+  cursor: String!
+  "The item at the end of the edge."
+  node: DocumentGraphQLResponse!
+}
+
+type Dtta {
+  dttaId: String
+  id: String
+  refDttaInvestmentCountry: String
+  dttaEndValidity: DateTime
+  name: String
+  personId: String
+  personGUID: String
+}
+
+type EBankingUserId {
+  systemId: String
+  originId: String
+  personId: String
+  personGUID: String
+}
+
+type ElectronicConnectionAgreementId {
+  systemId: String
+  originId: String
+  personId: String
+  personGUID: String
+}
+
+type EmailAddresses {
+  order: Int
+  emailId: String
+  emailCorrespondenceType: String
+  cdmRefEmailType: String
+  emailAddress: String
+  comment: String
+  isPrimary: Boolean
+  eBankingFlag: Boolean
+  cdmRefStatus: String
+  emailStatecode: String
+  personId: String
+  personGUID: String
+}
+
+type ExpectedIncomingTransactions {
+  knowYourTransactionId: String
+  cdmRefTransactionTypeOutgoing: String
+  cdmRefTransactionTypeIncoming: String
+  originatingBank: String
+  refCountry: String
+  counterpartyName: String
+  cdmRefAmountRange: String
+  description: String
+  cdmRefNumberOfTransactions: String
+  cdmRefStatus: String
+  stateCode: String
+  crId: String
+  crGUID: String
+  cdmRefTransactionDirection: String
+}
+
+type ExpectedOutgoingTransactions {
+  knowYourTransactionId: String
+  cdmRefTransactionTypeOutgoing: String
+  cdmRefTransactionTypeIncoming: String
+  originatingBank: String
+  refCountry: String
+  counterpartyName: String
+  cdmRefAmountRange: String
+  description: String
+  cdmRefNumberOfTransactions: String
+  cdmRefStatus: String
+  stateCode: String
+  crId: String
+  crGUID: String
+  cdmRefTransactionDirection: String
+}
+
+type FiscalReporting {
+  fiscalReportingId: String
+  id: String
+  fiscalstat: Boolean
+  cdmRefTypeId: String
+  refCurrencyID: String
+  refLanguageId: String
+  refRegionId: String
+  cdmRefStatus: String
+  cr: String
+  crId: String
+  crGUID: String
+  name: String
+}
+
+type Identification {
+  identificationAddressCorrobId: String
+  cdmRefType: String
+  documentNumber: String
+  cdmRefIdentificationProcess: String
+  issuancePlace: String
+  refIssuanceCountry: String
+  refNationality: String
+  issuanceDate: DateTime
+  expirationDate: DateTime
+  cdmRefDocumentType: String
+  endOfValidity: DateTime
+  refAccreditationCountry: String
+  refCountryOfResidence: String
+  certifiedCopy: Boolean
+  attachment: String
+  recordType: String
+  personId: String
+  personGUID: String
+}
+
+type Income {
+  refCurrency: String
+  financialId: String
+  cdmRefType: String
+  amount: String
+  comment: String
+  personId: String
+  personGUID: String
+  cdmRefFinancialType: String
+}
+
+type IndividualPersonGraphQLResponse {
+  idTiersActorAnonym: String
+  cdmRefBusinessArea: String
+  cdmRefTitle: String
+  firstName: String
+  lastName: String
+  middleName: String
+  birthDate: DateTime
+  refCountryOfBirth: String
+  placeOfBirth: String
+  cdmRefGender: String
+  potentialFATCAIndiciaPlaceofbirthisUS: String
+  nationalities: [String!]
+  languages: [String!]
+  relationshipManagerId: String
+  cdmRefMaritalStatus: String
+  cdmRefMatrimonialRegime: String
+  maritalStatusExplanation: String
+  numberOfChildren: Int
+  additionalInfoFamilySituation: String
+  underGuardianship: Boolean
+  underCuratorship: Boolean
+  vulnerableClient: Boolean
+  cdmRefVulnerableReason: [String!]
+  cdmRefProfession: String
+  businessActivityDetails: String
+  educationAndQualification: String
+  cdmRefCategory: [String!]
+  cdmRefCurrentBusinessActivityLevel1: [String!]
+  cdmRefCurrentBusinessActivityLevel2: [String!]
+  cdmRefCurrentBusinessActivityLevel3: [String!]
+  currentCountryOfActivity: [String!]
+  cdmRefAssociatedRisks: [String!]
+  amlComments: String
+  uuid: String
+  clientHasResidenceRights: Boolean
+  clientHasResidentRightsOtherJurisdictions: Boolean
+  clientResidentRightsOtherJurisdictionsDetails: String
+  clientSpentMoreDaysOtherJurisdictions: Boolean
+  clientSpentMoreDaysOtherJurisdictionsDetails: String
+  personalIncomeTaxJurisdictions: [String!]
+  clientCentreOfLife: String
+  estimationDate: DateTime
+  wealthCompositionDescription: String
+  sowCountry: [String!]
+  businessActivitySOWLevel1: [String!]
+  businessActivitySOWLevel2: [String!]
+  businessActivitySOWLevel3: [String!]
+  cdmRefSourceOfWealthCurrency: String
+  percentOfTotalWealthToBeInvested: Float
+  expectedAggregatedUBPAccountBalance: String
+  consolidatedTotalAssets: String
+  cdmRefAnnualIncome: String
+  additionalInformation: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_01Jurisdiction: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_01_productClass: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_01_productClassId: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_01Knowledge: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_01Experience: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_02Jurisdiction: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_02_productClass: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_02_productClassId: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_02Knowledge: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_02Experience: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_03Jurisdiction: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_03_productClass: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_03_productClassId: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_03Knowledge: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_03Experience: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_04Jurisdiction: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_04_productClass: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_04_productClassId: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_04Knowledge: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_04Experience: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_05Jurisdiction: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_05_productClass: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_05_productClassId: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_05Knowledge: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_05Experience: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_06Jurisdiction: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_06_productClass: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_06_productClassId: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_06Knowledge: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_06Experience: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_07Jurisdiction: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_07_productClass: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_07_productClassId: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_07Knowledge: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_07Experience: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_08Jurisdiction: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_08_productClass: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_08_productClassId: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_08Knowledge: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_08Experience: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_09Jurisdiction: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_09_productClass: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_09_productClassId: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_09Knowledge: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_09Experience: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_10Jurisdiction: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_10_productClass: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_10_productClassId: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_10Knowledge: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_10Experience: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_11Jurisdiction: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_11_productClass: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_11_productClassId: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_11Knowledge: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_11Experience: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_12Jurisdiction: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_12_productClass: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_12_productClassId: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_12Knowledge: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_12Experience: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_13Jurisdiction: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_13_productClass: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_13_productClassId: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_13Knowledge: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_13Experience: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_14Jurisdiction: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_14_productClass: String
+  keSubform_KEWdx_productclassidPRODUCTCLASS_14_productClassId: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_14Knowledge: String
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_14Experience: String
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_01Jurisdiction: String
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_01ServiceProductClass: String
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_01ServiceProductClassId: String
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_01ServiceExperience: String
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_02Jurisdiction: String
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_02ServiceProductClass: String
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_02ServiceProductClassId: String
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_02ServiceExperience: String
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_03Jurisdiction: String
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_03ServiceProductClass: String
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_03ServiceProductClassId: String
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_03ServiceExperience: String
+  contactComment: String
+  originOfContact: String
+  potentialFATCAIndiciaAddressisUS: String
+  preferredContactMethod: String
+  noMarketing: Boolean
+  noEmails: Boolean
+  noPhoneCalls: Boolean
+  noMail: Boolean
+  noFax: Boolean
+  noBulkEmail: Boolean
+  noEBanking: Boolean
+  cdmRefHowPartyWasIntroduced: String
+  clientAccountNumber: String
+  thirdParty: String
+  introducerCode: String
+  externalManagerCode: String
+  activeAccountNumbers: String
+  activeRoles: String
+  cdmRefRelationWithBank: String
+  accountOpenedWithAnotherRM: Boolean
+  introductionComment: String
+  cdmRefMeetingWithParty: String
+  reasonForNotMeeting: String
+  reasonforChoosingEntity: String
+  cdmRefPersonStatus: String
+  isDeceased: Boolean
+  cdmRefStatus: String
+  dateOfDeath: DateTime
+  statecode: String
+  creationDate: DateTime
+  closeDate: DateTime
+  modificationDate: DateTime
+  isAssociatedPerson: Boolean
+  cdmRefPepType: String
+  pepAffiliateName: String
+  isDomecticPEP: Boolean
+  hasPublicFunction: Boolean
+  publicFunctionEndDate: DateTime
+  pepExplanation: String
+  cdmRefCalculatedPepStatus: String
+  cdmRefValidatedPepStatus: String
+  pepComplianceComment: String
+  isInsider: Boolean
+  isClosePartnerOfInsider: Boolean
+  isMajorShareholder: Boolean
+  isTrader: Boolean
+  insiderTraderDetails: String
+  isAdvancedInvestor: Boolean
+  insiderInvestorDetails: String
+  cdmRefDormantStatus: String
+  lastDateOfContact: DateTime
+  cdmRefLastDateOfContactReason: String
+  cdmRefDeathCertificateEvidenceType: [String!]
+  mifidFullRetailClient: Boolean
+  mifidFullOptupProfessional: Boolean
+  mifidFullRequestsOptupProfessional: Boolean
+  mifidFull10TransactionsPerQuarter: Boolean
+  mifidFullClientPortfolioExceeds500K: Boolean
+  mifidFull1YearProfessionalExperience: Boolean
+  mifidFullIsPerSeProfessional: Boolean
+  mifidFullHasNetTurnoverAbove40mil: Boolean
+  mifidFullHasBalanceSheetTotalAbove20mil: Boolean
+  mifidFullHasShareholdersEquityAbove2mil: Boolean
+  mifidFullIsEligibleCounterparty: Boolean
+  eligibleCounterparties: [String!]
+  mifidFullHasEquities: Boolean
+  mifidFullHasBonds: Boolean
+  mifidFullHasMoneyMarketInstruments: Boolean
+  mifidFullHasPreciousMetals: Boolean
+  mifidFullHasForeignExchange: Boolean
+  mifidFullHasNonComplexInvestmentFunds: Boolean
+  mifidFullHasComplexInvestmentFunds: Boolean
+  mifidFullHasHedgeFunds: Boolean
+  mifidFullHasPrivateEquityOrVentureCapital: Boolean
+  mifidFullHasStructuredProducts: Boolean
+  mifidFullHasOptionsAndWarrants: Boolean
+  mifidFullHasFutures: Boolean
+  mifidFullHasCommodities: Boolean
+  mifidFullHasConvertibleBonds: Boolean
+  mifidFullHasNetTotalTurnoverMin40mil: Boolean
+  mifidFullHasBalanceSheetTotalMin20mil: Boolean
+  mifidFullHasCapitalMin2mil: Boolean
+  mifidFullWaivedOptupProfessionalStatus: Boolean
+  mifidFullWaivedPerSeProfessionalStatus: Boolean
+  mifidFullWaivedEcpForPerSe: Boolean
+  mifidFullWaivedEcpForRetail: Boolean
+  cdmRefMifidFullClientCategoryId: String
+  mifidLightClientPortfolioExceeds1mil: Boolean
+  mifidLight1YearProfessionalExperience: Boolean
+  mifidLightHasNetTotalTurnoverMin40mil: Boolean
+  mifidLightHasBalanceSheetTotalMin20mil: Boolean
+  mifidLightHasEquityMin2mil: Boolean
+  cdmRefMifidLightClientCategoryId: String
+  cdmRefFinsaClientCategory: String
+  finsaOptOutAum500k: Boolean
+  finsaOptOutAum2mil: Boolean
+  finsaInstitProfessionalOnRequestToBe: Boolean
+  finsaInstitProfessionalToBe: Boolean
+  finsaSwissOptOut: Boolean
+  finsaProfClientOptOut: Boolean
+  finsaInstitProfessionalToBeOptIn: Boolean
+  finsaProfPrivateToBe: Boolean
+  finsaProfClientStatusConfirmation: Boolean
+  dynamicClientCategory: String
+  dynamicClientSubCategory: String
+  dynamicRoles: String
+  dynamicServiceTypes: String
+  dynamicSuitabilityRequired: String
+  kycComplete: Boolean
+  dynamicUserRoles: String
+  userTeams: String
+  contactID: String
+  suitabilityReviewLookup: String
+  lastSRCCompleted: String
+  currentSRC: String
+  detailsUpdated: Boolean
+  suitabilityreviewid: String
+  isonboardingclient: String
+  allMandatoryDocumentsAttached: Boolean
+  hasexistingactiveclients: String
+  wdxcontactid: String
+  jurisdiction: String
+  cdmRefProductClass: String
+  cdmRefProductClassId: String
+  cdmRefKnowledge: String
+  cdmRefExperience: String
+  cdmRefServiceProductClass: String
+  serviceProductClassId: String
+  cdmRefServiceExperience: String
+  deathCertificateLinkedDocId: [DeathCertificateLinkedDocId!]
+  dtta: [Dtta!]
+  identification: [Identification!]
+  income: [Income!]
+  insiderDetails: [InsiderDetails!]
+  insiderDetailsPartner: [InsiderDetailsPartner!]
+  insiderDetailsShareholder: [InsiderDetailsShareholder!]
+  otherNames: [OtherNames!]
+  pepDetails: [PepDetails!]
+  screening: [Screening!]
+  id: UUID
+  personId: String
+  address: [Address!]
+  addressCorroboratingEvidence: [AddressCorroboratingEvidence!]
+  amlInformation: [AmlInformation!]
+  assets: [Assets!]
+  eBankingUserId: [EBankingUserId!]
+  electronicConnectionAgreementId: [ElectronicConnectionAgreementId!]
+  emailAddresses: [EmailAddresses!]
+  liabilities: [Liabilities!]
+  mailingInstructions: [MailingInstruction!]
+  personOrigin: [PersonOrigin!]
+  phoneNumbers: [PhoneNumbers!]
+  taxIdentification: [TaxIdentification!]
+  additionalProperties: [KeyValuePairOfStringAndObject!]!
+  "Party-to-Account roles where this person is the party (personFromId)."
+  partyToAccountRoles(where: PartyToAccountRoleFilterInput @cost(weight: "10") order: [PartyToAccountRoleSortInput!] @cost(weight: "10")): [PartyToAccountRoleGraphQLResponse!]! @cost(weight: "10")
+  "Party-to-ContractualRelationship roles where this person is the party (personFromId)."
+  partyToContractualRelationshipRoles(where: PartyToContractualRelationshipRoleFilterInput @cost(weight: "10") order: [PartyToContractualRelationshipRoleSortInput!] @cost(weight: "10")): [PartyToContractualRelationshipRoleGraphQLResponse!]! @cost(weight: "10")
+  "Party-to-Party roles where this person is the 'from' party (personFromId)."
+  partyToPartyRolesFrom(where: PartyToPartyRoleFilterInput @cost(weight: "10") order: [PartyToPartyRoleSortInput!] @cost(weight: "10")): [PartyToPartyRoleGraphQLResponse!]! @cost(weight: "10")
+  "Party-to-Party roles where this person is the 'to' party (personToId)."
+  partyToPartyRolesTo(where: PartyToPartyRoleFilterInput @cost(weight: "10") order: [PartyToPartyRoleSortInput!] @cost(weight: "10")): [PartyToPartyRoleGraphQLResponse!]! @cost(weight: "10")
+}
+
+"A connection to a list of items."
+type IndividualPersonsConnection {
+  "Information to aid in pagination."
+  pageInfo: PageInfo!
+  "A list of edges."
+  edges: [IndividualPersonsEdge!]
+  "A flattened list of the nodes."
+  nodes: [IndividualPersonGraphQLResponse!]
+  "Identifies the total count of items in the connection."
+  totalCount: Int! @cost(weight: "10")
+}
+
+"An edge in a connection."
+type IndividualPersonsEdge {
+  "A cursor for use in pagination."
+  cursor: String!
+  "The item at the end of the edge."
+  node: IndividualPersonGraphQLResponse!
+}
+
+type InsiderDetails {
+  insiderId: String
+  insiderCompanyName: String
+  insiderCompanyLEI: String
+  insiderCompanyIssuerId: String
+  cdmRefInsiderCompanyRole: String
+  stateCode: String
+  cdmRefStatus: String
+  personId: String
+  personGUID: String
+  cdmRefInsiderType: String
+}
+
+type InsiderDetailsPartner {
+  insiderId: String
+  insiderName: String
+  insiderCompanyName: String
+  insiderCompanyLEI: String
+  insiderCompanyIssuerId: String
+  cdmRefInsiderCompanyRole: String
+  cdmRefInsiderPartnerClientRelation: String
+  status: String
+  personId: String
+  personGUID: String
+  cdmRefInsiderType: String
+  statuscode: String
+}
+
+type InsiderDetailsShareholder {
+  insiderId: String
+  insiderCompanyName: String
+  insiderCompanyLEI: String
+  insiderCompanyIssuerId: String
+  insiderPercentageShareholding: Float
+  status: String
+  statecode: String
+  personId: String
+  personGUID: String
+  cdmRefInsiderType: String
+}
+
+type KeyValuePairOfStringAndObject {
+  key: String!
+}
+
+"A connection to a list of items."
+type LegalEntitiesConnection {
+  "Information to aid in pagination."
+  pageInfo: PageInfo!
+  "A list of edges."
+  edges: [LegalEntitiesEdge!]
+  "A flattened list of the nodes."
+  nodes: [LegalEntityGraphQLResponse!]
+  "Identifies the total count of items in the connection."
+  totalCount: Int! @cost(weight: "10")
+}
+
+"An edge in a connection."
+type LegalEntitiesEdge {
+  "A cursor for use in pagination."
+  cursor: String!
+  "The item at the end of the edge."
+  node: LegalEntityGraphQLResponse!
+}
+
+type LegalEntityGraphQLResponse {
+  idTiersActorAnonym: String
+  companyName: String
+  dateOfIncorporation: DateTime
+  cdmRefCompanyPartnershipActivityType: String
+  charitablePurpose: Boolean
+  isRelatedToRiskCountry: Boolean
+  purposeOfTheEntity: String
+  cdmRefTypeOfFoundationTrust: String
+  cdmRefRevocability: String
+  cdmRefLegalEntityActivity: String
+  hasCorpSignatoryException: Boolean
+  isSupervised: Boolean
+  cdmRefCountryOfIncorporation: String
+  cdmRefLegalForm: String
+  listedQuotedStockExchange: Boolean
+  relationshipManagerId: String
+  cdmRefCurrentBusinessActivityLevel1: [String!]
+  cdmRefCurrentBusinessActivityLevel2: [String!]
+  cdmRefCurrentBusinessActivityLevel3: [String!]
+  connectionBetweenAccountHolderPOA: String
+  countryOfActivity: [String!]
+  cdmRefAssociatedRisks: [String!]
+  amlCommitteeComments: String
+  entityBelongsToGroup: Boolean
+  groupChartProvided: Boolean
+  groupStructureExplanation: String
+  shareCapital: String
+  netProfit: String
+  annualTurnover: String
+  cdmRefEmployeesRange: String
+  numberOfEmployees: Int
+  hasHighRiskOwnership: Boolean
+  cdmRefTypeOfHighRiskEntity: String
+  issuesBearerShares: Boolean
+  uuid: String
+  emirDelegatedReporting: Boolean
+  cdmRefEmirUkClassification: String
+  cdmRefClearingThresholdParty2: String
+  linkedToCommercialOrTreasuryFinancing: Boolean
+  cdmRefEmirEuClassification: String
+  cdmRefFmiaClassification: String
+  cdmRefEmirCorporateSector: String
+  mifidDelegatedReporting: Boolean
+  cdmRefSourceOfWealthCurrency: String
+  percentOfTotalWealthToBeInvested: Float
+  expectedAggregatedUBPAccountBalance: String
+  howPartyEstablishedWealth: String
+  sowCountry: [String!]
+  businessActivitySOWLevel1: [String!]
+  businessActivitySOWLevel2: [String!]
+  businessActivitySOWLevel3: [String!]
+  estimationDate: DateTime
+  contactComment: String
+  originOfContact: String
+  preferredContactMethod: String
+  noMarketing: Boolean
+  noEmails: Boolean
+  noPhoneCalls: Boolean
+  noMail: Boolean
+  noFax: Boolean
+  noBulkEmail: Boolean
+  noEBanking: Boolean
+  contactID: String
+  cdmRefHowPartyWasIntroduced: String
+  introductionDate: DateTime
+  cdmRefLocalEAMRegulator: String
+  clientAccountNumber: String
+  thirdParty: String
+  introducerCode: String
+  externalManagerCode: String
+  activeAccountNumbers: String
+  activeRoles: String
+  cdmRefRelationWithBank: String
+  accountOpenedWithAnotherRM: Boolean
+  introductionComment: String
+  cdmRefMeetingWithParty: String
+  reasonForNotMeeting: String
+  reasonforChoosingEntity: String
+  isMandateSignedWithUBP: Boolean
+  isMandateSignedWithEAM: Boolean
+  isMandateSignedWithAnotherInstitution: Boolean
+  isDirectorManagingFinancialAssets: Boolean
+  isEntityFinancialInstitutionForOtherReason: Boolean
+  cdmRefPersonStatus: String
+  cdmRefStatus: String
+  creationDate: DateTime
+  closeDate: DateTime
+  modificationDate: DateTime
+  isAssociatedPerson: Boolean
+  cdmRefDormantStatus: String
+  lastDateOfContact: DateTime
+  cdmRefLastDateOfContactReason: String
+  mifidFullRetailClient: Boolean
+  mifidFullOptupProfessional: Boolean
+  mifidFullRequestsOptupProfessional: Boolean
+  mifidFull10TransactionsPerQuarter: Boolean
+  mifidFullClientPortfolioExceeds500K: Boolean
+  mifidFull1YearProfessionalExperience: Boolean
+  mifidFullIsPerSeProfessional: Boolean
+  mifidFullHasNetTurnoverAbove40mil: Boolean
+  mifidFullHasBalanceSheetTotalAbove20mil: Boolean
+  mifidFullHasShareholdersEquityAbove2mil: Boolean
+  mifidFullIsEligibleCounterparty: Boolean
+  eligibleCounterparties: [String!]
+  mifidFullHasEquities: Boolean
+  mifidFullHasBonds: Boolean
+  mifidFullHasMoneyMarketInstruments: Boolean
+  mifidFullHasPreciousMetals: Boolean
+  mifidFullHasForeignExchange: Boolean
+  mifidFullHasNonComplexInvestmentFunds: Boolean
+  mifidFullHasComplexInvestmentFunds: Boolean
+  mifidFullHasHedgeFunds: Boolean
+  mifidFullHasPrivateEquityOrVentureCapital: Boolean
+  mifidFullHasStructuredProducts: Boolean
+  mifidFullHasOptionsAndWarrants: Boolean
+  mifidFullHasFutures: Boolean
+  mifidFullHasCommodities: Boolean
+  mifidFullHasConvertibleBonds: Boolean
+  mifidFullHasNetTotalTurnoverMin40mil: Boolean
+  mifidFullHasBalanceSheetTotalMin20mil: Boolean
+  mifidFullHasCapitalMin2mil: Boolean
+  mifidFullWaivedOptupProfessionalStatus: Boolean
+  mifidFullWaivedPerSeProfessionalStatus: Boolean
+  mifidFullWaivedEcpForPerSe: Boolean
+  mifidFullWaivedEcpForRetail: Boolean
+  cdmRefMifidFullClientCategoryId: String
+  mifidLightClientPortfolioExceeds1mil: Boolean
+  mifidLight1YearProfessionalExperience: Boolean
+  mifidLightHasNetTotalTurnoverMin40mil: Boolean
+  mifidLightHasBalanceSheetTotalMin20mil: Boolean
+  mifidLightHasEquityMin2mil: Boolean
+  cdmRefMifidLightClientCategoryId: String
+  cdmRefFinsaClientCategory: String
+  finsaOptOutAum500k: Boolean
+  finsaOptOutAum2mil: Boolean
+  finsaInstitProfessionalOnRequestToBe: Boolean
+  finsaInstitProfessionalToBe: Boolean
+  finsaSwissOptOut: Boolean
+  finsaProfClientOptOut: Boolean
+  finsaInstitProfessionalToBeOptIn: Boolean
+  finsaProfPrivateToBe: Boolean
+  finsaProfClientStatusConfirmation: Boolean
+  dynamicClientCategory: String
+  dynamicClientSubCategory: String
+  dynamicRoles: String
+  dynamicServiceTypes: String
+  dynamicSuitabilityRequired: String
+  kycComplete: Boolean
+  dynamicUserRoles: String
+  userTeams: String
+  cdmRefContactCategory: String
+  suitabilityReviewLookup: String
+  lastSRCCompleted: String
+  currentSRC: String
+  detailsUpdated: Boolean
+  suitabilityreviewid: String
+  isonboardingclient: String
+  allMandatoryDocumentsAttached: Boolean
+  hasexistingactiveclients: String
+  wdxcontactid: String
+  id: UUID
+  personId: String
+  address: [Address!]
+  addressCorroboratingEvidence: [AddressCorroboratingEvidence!]
+  amlInformation: [AmlInformation!]
+  assets: [Assets!]
+  eBankingUserId: [EBankingUserId!]
+  electronicConnectionAgreementId: [ElectronicConnectionAgreementId!]
+  emailAddresses: [EmailAddresses!]
+  liabilities: [Liabilities!]
+  mailingInstructions: [MailingInstruction!]
+  personOrigin: [PersonOrigin!]
+  phoneNumbers: [PhoneNumbers!]
+  taxIdentification: [TaxIdentification!]
+  additionalProperties: [KeyValuePairOfStringAndObject!]!
+  "Party-to-Account roles where this person is the party (personFromId)."
+  partyToAccountRoles(where: PartyToAccountRoleFilterInput @cost(weight: "10") order: [PartyToAccountRoleSortInput!] @cost(weight: "10")): [PartyToAccountRoleGraphQLResponse!]! @cost(weight: "10")
+  "Party-to-ContractualRelationship roles where this person is the party (personFromId)."
+  partyToContractualRelationshipRoles(where: PartyToContractualRelationshipRoleFilterInput @cost(weight: "10") order: [PartyToContractualRelationshipRoleSortInput!] @cost(weight: "10")): [PartyToContractualRelationshipRoleGraphQLResponse!]! @cost(weight: "10")
+  "Party-to-Party roles where this person is the 'from' party (personFromId)."
+  partyToPartyRolesFrom(where: PartyToPartyRoleFilterInput @cost(weight: "10") order: [PartyToPartyRoleSortInput!] @cost(weight: "10")): [PartyToPartyRoleGraphQLResponse!]! @cost(weight: "10")
+  "Party-to-Party roles where this person is the 'to' party (personToId)."
+  partyToPartyRolesTo(where: PartyToPartyRoleFilterInput @cost(weight: "10") order: [PartyToPartyRoleSortInput!] @cost(weight: "10")): [PartyToPartyRoleGraphQLResponse!]! @cost(weight: "10")
+}
+
+type Liabilities {
+  refCurrency: String
+  financialId: String
+  cdmRefType: String
+  amount: String
+  bankName: String
+  refCountryId: String
+  personId: String
+  personGUID: String
+  cdmRefFinancialType: String
+}
+
+type MailingInstruction {
+  personId: String
+  name: String
+  miId: String
+  cdmRefInstructionType: String
+  cdmRefScopeOfDocument: String
+  linkedPerson: String
+  crName: String
+  crId: String
+  crGUID: String
+  accountName: String
+  accountId: String
+  accountGUID: String
+  cdmRefAddressType: String
+  correspondenceAddress: String
+  mailingRecipient: String
+  statecode: String
+  status: String
+  numberOfCopiesIssued: Int
+  periodicity: String
+  "The address referenced by correspondenceAddress (→ address.AddressId)."
+  correspondenceAddressRef: Address @cost(weight: "10")
+  "The party (IndividualPerson or LegalEntity) referenced by linkedPerson."
+  linkedPersonRef: Person @cost(weight: "10")
+}
+
+type OtherNames {
+  cdmRefNameType: String
+  name: String
+  nameStatecode: String
+  nameStatus: String
+  personId: String
+  personGUID: String
+}
+
+"Information about pagination in a connection."
+type PageInfo {
+  "Indicates whether more edges exist following the set defined by the clients arguments."
+  hasNextPage: Boolean! @shareable
+  "Indicates whether more edges exist prior the set defined by the clients arguments."
+  hasPreviousPage: Boolean! @shareable
+  "When paginating backwards, the cursor to continue."
+  startCursor: String @shareable
+  "When paginating forwards, the cursor to continue."
+  endCursor: String @shareable
+}
+
+type PartyToAccountRoleGraphQLResponse {
+  personFromId: String
+  account: AccountGraphQLResponse
+  associatedSystemIdentifiers: [PartyToAccountRoleSystemIdentifiers!]
+  accountId: String
+  comments: String
+  eBankingComment: String
+  eBankingEndDate: DateTime
+  cdmRefEBankingFlag: String
+  cdmRefEBankingPowerOnly: String
+  eBankingStartDate: DateTime
+  cdmRefEBankingUseRight: String
+  endDate: DateTime
+  number: Int
+  roleId: String
+  roleTypeId: String
+  selectPeople: [String!]
+  cdmRefSignatureRights: String
+  startDate: DateTime
+  cdmRefStatus: String
+  cdmRefStatusReason: String
+  "The party (IndividualPerson or LegalEntity) referenced by personFromId."
+  personFrom: Person @cost(weight: "10")
+}
+
+type PartyToAccountRoleSystemIdentifiers {
+  systemId: String!
+  identifiers: [String!]
+}
+
+"A connection to a list of items."
+type PartyToAccountRolesConnection {
+  "Information to aid in pagination."
+  pageInfo: PageInfo!
+  "A list of edges."
+  edges: [PartyToAccountRolesEdge!]
+  "A flattened list of the nodes."
+  nodes: [PartyToAccountRoleGraphQLResponse!]
+  "Identifies the total count of items in the connection."
+  totalCount: Int! @cost(weight: "10")
+}
+
+"An edge in a connection."
+type PartyToAccountRolesEdge {
+  "A cursor for use in pagination."
+  cursor: String!
+  "The item at the end of the edge."
+  node: PartyToAccountRoleGraphQLResponse!
+}
+
+type PartyToContractualRelationshipRoleGraphQLResponse {
+  personFromId: String
+  contractualRelationship: ContractualRelationshipGraphQLResponse
+  accountRestriction: [String!]
+  associatedSystemIdentifiers: [RoleSystemIdentifiers!]
+  comments: String
+  crId: String
+  eBankingComment: String
+  eBankingEndDate: DateTime
+  cdmRefEBankingFlag: String
+  eBankingStartDate: DateTime
+  cdmRefEBankingUseRight: String
+  cdmRefEconomicSettlor: String
+  endDate: DateTime
+  numberOfSignatureRights: Int
+  cdmRefRightToClaimDistribution: String
+  cdmRefRightToRevoke: String
+  roleId: String
+  roleTypeId: String
+  selectPeople: [String!]
+  cdmRefSignatureRights: String
+  startDate: DateTime
+  cdmRefStatus: String
+  validityYear: [ValidityYearDto!]
+  "The party (IndividualPerson or LegalEntity) referenced by personFromId."
+  personFrom: Person @cost(weight: "10")
+}
+
+"A connection to a list of items."
+type PartyToContractualRelationshipRolesConnection {
+  "Information to aid in pagination."
+  pageInfo: PageInfo!
+  "A list of edges."
+  edges: [PartyToContractualRelationshipRolesEdge!]
+  "A flattened list of the nodes."
+  nodes: [PartyToContractualRelationshipRoleGraphQLResponse!]
+  "Identifies the total count of items in the connection."
+  totalCount: Int! @cost(weight: "10")
+}
+
+"An edge in a connection."
+type PartyToContractualRelationshipRolesEdge {
+  "A cursor for use in pagination."
+  cursor: String!
+  "The item at the end of the edge."
+  node: PartyToContractualRelationshipRoleGraphQLResponse!
+}
+
+type PartyToPartyRoleGraphQLResponse {
+  personFromId: String
+  personToId: String
+  accountRestriction: [String!]
+  associatedSystemIdentifiers: [RoleSystemIdentifiers!]
+  cdmRefBearerShares: String
+  comments: String
+  cdmRefCrsReportable: String
+  cdmRefCrsType: String
+  eBankingComment: String
+  eBankingEndDate: DateTime
+  cdmRefEBankingFlag: String
+  eBankingStartDate: DateTime
+  cdmRefEBankingUseRight: String
+  cdmRefEconomicSettlor: String
+  endDate: DateTime
+  cdmRefFirstBeneficiary: String
+  cdmRefNominee: String
+  numberOfSignatureRights: Int
+  percentageBareOwnership: Float
+  percentageInvestment: Float
+  percentageOfUsufructuary: Float
+  percentagePartnership: Float
+  percentageShareholding: Float
+  cdmRefRightToAppoint: String
+  cdmRefRightToClaimDistribution: String
+  cdmRefRightToRevoke: String
+  roleId: String
+  roleTypeId: String
+  selectPeople: [String!]
+  cdmRefSignatureRights: String
+  startDate: DateTime
+  cdmRefStatus: String
+  validityYear: [ValidityYearDto!]
+  "The 'from' party (IndividualPerson or LegalEntity) referenced by personFromId."
+  personFrom: Person @cost(weight: "10")
+  "The 'to' party (IndividualPerson or LegalEntity) referenced by personToId."
+  personTo: Person @cost(weight: "10")
+}
+
+"A connection to a list of items."
+type PartyToPartyRolesConnection {
+  "Information to aid in pagination."
+  pageInfo: PageInfo!
+  "A list of edges."
+  edges: [PartyToPartyRolesEdge!]
+  "A flattened list of the nodes."
+  nodes: [PartyToPartyRoleGraphQLResponse!]
+  "Identifies the total count of items in the connection."
+  totalCount: Int! @cost(weight: "10")
+}
+
+"An edge in a connection."
+type PartyToPartyRolesEdge {
+  "A cursor for use in pagination."
+  cursor: String!
+  "The item at the end of the edge."
+  node: PartyToPartyRoleGraphQLResponse!
+}
+
+type PepDetails {
+  cdmRefPepFunctionType: String
+  cdmRefPepFunctionCountry: String
+  primaryId: String
+  pepId: String
+  internalId: Int
+  personId: String
+  cdmRefStatus: String
+  stateCode: String
+}
+
+type PersonOrigin {
+  systemId: String
+  originId: String
+  personId: String
+  personGUID: String
+  cdmRefStatus: String
+  stateCode: String
+}
+
+type PhoneNumbers {
+  order: Int
+  phoneId: String
+  correspondenceType: String
+  cdmRefPhoneType: String
+  refCountryCode: String
+  phoneNumber: String
+  comment: String
+  isPrimary: Boolean
+  eBankingFlag: Boolean
+  communicationLeapXpertFlag: Boolean
+  cdmRefStatus: String
+  validFrom: DateTime
+  validTo: DateTime
+  phoneStatecode: String
+  personId: String
+  personGUID: String
+}
+
+type PledgeAgreementsId {
+  pledgeId: String
+  name: String
+  cdmRefPledgeTypeId: String
+  accountId: String
+  accountGUID: String
+  pledgedToId: String
+  reciprocalId: String
+  cdmRefStatus: String
+  stateCode: String
+}
+
+type Query {
+  "Retrieve a single ContractualRelationship by CrId"
+  contractualRelationship(id: String! where: ContractualRelationshipFilterInput @cost(weight: "10") order: [ContractualRelationshipSortInput!] @cost(weight: "10")): [ContractualRelationshipGraphQLResponse!]! @cost(weight: "10")
+  "Retrieve contractual relationships (paged, filtered, sorted, projected)"
+  contractualRelationships("Returns the first _n_ elements from the list." first: Int "Returns the elements in the list that come after the specified cursor." after: String "Returns the last _n_ elements from the list." last: Int "Returns the elements in the list that come before the specified cursor." before: String where: ContractualRelationshipFilterInput @cost(weight: "10") order: [ContractualRelationshipSortInput!] @cost(weight: "10")): ContractualRelationshipsConnection @listSize(assumedSize: 100, slicingArguments: [ "first", "last" ], slicingArgumentDefaultValue: 50, sizedFields: [ "edges", "nodes" ], requireOneSlicingArgument: false) @cost(weight: "10")
+  "Retrieve a single Account by AccountId"
+  account(id: String! where: AccountFilterInput @cost(weight: "10") order: [AccountSortInput!] @cost(weight: "10")): [AccountGraphQLResponse!]! @cost(weight: "10")
+  "Retrieve accounts (paged, filtered, sorted, projected)"
+  accounts("Returns the first _n_ elements from the list." first: Int "Returns the elements in the list that come after the specified cursor." after: String "Returns the last _n_ elements from the list." last: Int "Returns the elements in the list that come before the specified cursor." before: String where: AccountFilterInput @cost(weight: "10") order: [AccountSortInput!] @cost(weight: "10")): AccountsConnection @listSize(assumedSize: 100, slicingArguments: [ "first", "last" ], slicingArgumentDefaultValue: 50, sizedFields: [ "edges", "nodes" ], requireOneSlicingArgument: false) @cost(weight: "10")
+  "Retrieve a single IndividualPerson by PersonId"
+  individualPerson(id: String! where: IndividualPersonFilterInput @cost(weight: "10") order: [IndividualPersonSortInput!] @cost(weight: "10")): [IndividualPersonGraphQLResponse!]! @cost(weight: "10")
+  "Retrieve individual persons (paged, filtered, sorted, projected)"
+  individualPersons("Returns the first _n_ elements from the list." first: Int "Returns the elements in the list that come after the specified cursor." after: String "Returns the last _n_ elements from the list." last: Int "Returns the elements in the list that come before the specified cursor." before: String where: IndividualPersonFilterInput @cost(weight: "10") order: [IndividualPersonSortInput!] @cost(weight: "10")): IndividualPersonsConnection @listSize(assumedSize: 100, slicingArguments: [ "first", "last" ], slicingArgumentDefaultValue: 50, sizedFields: [ "edges", "nodes" ], requireOneSlicingArgument: false) @cost(weight: "10")
+  "Retrieve a single LegalEntity by PersonId"
+  legalEntity(id: String! where: LegalEntityFilterInput @cost(weight: "10") order: [LegalEntitySortInput!] @cost(weight: "10")): [LegalEntityGraphQLResponse!]! @cost(weight: "10")
+  "Retrieve legal entities (paged, filtered, sorted, projected)"
+  legalEntities("Returns the first _n_ elements from the list." first: Int "Returns the elements in the list that come after the specified cursor." after: String "Returns the last _n_ elements from the list." last: Int "Returns the elements in the list that come before the specified cursor." before: String where: LegalEntityFilterInput @cost(weight: "10") order: [LegalEntitySortInput!] @cost(weight: "10")): LegalEntitiesConnection @listSize(assumedSize: 100, slicingArguments: [ "first", "last" ], slicingArgumentDefaultValue: 50, sizedFields: [ "edges", "nodes" ], requireOneSlicingArgument: false) @cost(weight: "10")
+  "Retrieve a single Party-to-Account role by RoleId"
+  partyToAccountRole(id: String! where: PartyToAccountRoleFilterInput @cost(weight: "10") order: [PartyToAccountRoleSortInput!] @cost(weight: "10")): [PartyToAccountRoleGraphQLResponse!]! @cost(weight: "10")
+  "Retrieve Party-to-Account roles (paged, filtered, sorted, projected)"
+  partyToAccountRoles("Returns the first _n_ elements from the list." first: Int "Returns the elements in the list that come after the specified cursor." after: String "Returns the last _n_ elements from the list." last: Int "Returns the elements in the list that come before the specified cursor." before: String where: PartyToAccountRoleFilterInput @cost(weight: "10") order: [PartyToAccountRoleSortInput!] @cost(weight: "10")): PartyToAccountRolesConnection @listSize(assumedSize: 100, slicingArguments: [ "first", "last" ], slicingArgumentDefaultValue: 50, sizedFields: [ "edges", "nodes" ], requireOneSlicingArgument: false) @cost(weight: "10")
+  "Retrieve a single Party-to-ContractualRelationship role by RoleId"
+  partyToContractualRelationshipRole(id: String! where: PartyToContractualRelationshipRoleFilterInput @cost(weight: "10") order: [PartyToContractualRelationshipRoleSortInput!] @cost(weight: "10")): [PartyToContractualRelationshipRoleGraphQLResponse!]! @cost(weight: "10")
+  "Retrieve Party-to-ContractualRelationship roles (paged, filtered, sorted, projected)"
+  partyToContractualRelationshipRoles("Returns the first _n_ elements from the list." first: Int "Returns the elements in the list that come after the specified cursor." after: String "Returns the last _n_ elements from the list." last: Int "Returns the elements in the list that come before the specified cursor." before: String where: PartyToContractualRelationshipRoleFilterInput @cost(weight: "10") order: [PartyToContractualRelationshipRoleSortInput!] @cost(weight: "10")): PartyToContractualRelationshipRolesConnection @listSize(assumedSize: 100, slicingArguments: [ "first", "last" ], slicingArgumentDefaultValue: 50, sizedFields: [ "edges", "nodes" ], requireOneSlicingArgument: false) @cost(weight: "10")
+  "Retrieve a single Party-to-Party role by RoleId"
+  partyToPartyRole(id: String! where: PartyToPartyRoleFilterInput @cost(weight: "10") order: [PartyToPartyRoleSortInput!] @cost(weight: "10")): [PartyToPartyRoleGraphQLResponse!]! @cost(weight: "10")
+  "Retrieve Party-to-Party roles (paged, filtered, sorted, projected)"
+  partyToPartyRoles("Returns the first _n_ elements from the list." first: Int "Returns the elements in the list that come after the specified cursor." after: String "Returns the last _n_ elements from the list." last: Int "Returns the elements in the list that come before the specified cursor." before: String where: PartyToPartyRoleFilterInput @cost(weight: "10") order: [PartyToPartyRoleSortInput!] @cost(weight: "10")): PartyToPartyRolesConnection @listSize(assumedSize: 100, slicingArguments: [ "first", "last" ], slicingArgumentDefaultValue: 50, sizedFields: [ "edges", "nodes" ], requireOneSlicingArgument: false) @cost(weight: "10")
+  "Retrieve a single Document by DocumentId"
+  document(id: String! where: DocumentFilterInput @cost(weight: "10") order: [DocumentSortInput!] @cost(weight: "10")): [DocumentGraphQLResponse!]! @cost(weight: "10")
+  "Retrieve documents (paged, filtered, sorted, projected)"
+  documents("Returns the first _n_ elements from the list." first: Int "Returns the elements in the list that come after the specified cursor." after: String "Returns the last _n_ elements from the list." last: Int "Returns the elements in the list that come before the specified cursor." before: String where: DocumentFilterInput @cost(weight: "10") order: [DocumentSortInput!] @cost(weight: "10")): DocumentsConnection @listSize(assumedSize: 100, slicingArguments: [ "first", "last" ], slicingArgumentDefaultValue: 50, sizedFields: [ "edges", "nodes" ], requireOneSlicingArgument: false) @cost(weight: "10")
+  "Retrieve a single Account Suitability by AccountId"
+  accountSuitability(id: String! where: AccountSuitabilityFilterInput @cost(weight: "10") order: [AccountSuitabilitySortInput!] @cost(weight: "10")): [AccountSuitabilityGraphQLResponse!]! @cost(weight: "10")
+  "Retrieve account suitabilities (paged, filtered, sorted, projected)"
+  accountSuitabilities("Returns the first _n_ elements from the list." first: Int "Returns the elements in the list that come after the specified cursor." after: String "Returns the last _n_ elements from the list." last: Int "Returns the elements in the list that come before the specified cursor." before: String where: AccountSuitabilityFilterInput @cost(weight: "10") order: [AccountSuitabilitySortInput!] @cost(weight: "10")): AccountSuitabilitiesConnection @listSize(assumedSize: 100, slicingArguments: [ "first", "last" ], slicingArgumentDefaultValue: 50, sizedFields: [ "edges", "nodes" ], requireOneSlicingArgument: false) @cost(weight: "10")
+  "Retrieve a single Class Of Beneficiaries by PersonId"
+  classOfBeneficiaries(id: String! where: ClassOfBeneficiariesFilterInput @cost(weight: "10") order: [ClassOfBeneficiariesSortInput!] @cost(weight: "10")): [ClassOfBeneficiariesGraphQLResponse!]! @cost(weight: "10")
+  "Retrieve class of beneficiaries (paged, filtered, sorted, projected)"
+  classOfBeneficiariesList("Returns the first _n_ elements from the list." first: Int "Returns the elements in the list that come after the specified cursor." after: String "Returns the last _n_ elements from the list." last: Int "Returns the elements in the list that come before the specified cursor." before: String where: ClassOfBeneficiariesFilterInput @cost(weight: "10") order: [ClassOfBeneficiariesSortInput!] @cost(weight: "10")): ClassOfBeneficiariesListConnection @listSize(assumedSize: 100, slicingArguments: [ "first", "last" ], slicingArgumentDefaultValue: 50, sizedFields: [ "edges", "nodes" ], requireOneSlicingArgument: false) @cost(weight: "10")
+  _service: _Service!
+}
+
+type RoleSystemIdentifiers {
+  systemId: String!
+  identifiers: [String!]
+}
+
+type Screening {
+  screeningId: String
+  screeningDate: DateTime
+  hasNegativeMediaInfo: Boolean
+  isRiskMitigated: Boolean
+  screeningDetails: String
+  cdmRefStatus: String
+  statecode: String
+  personId: String
+  personGUID: String
+}
+
+type TaxIdentification {
+  taxIdentifierId: String
+  refTaxIdentificationCountry: String
+  taxIdentificationHasTIN: Boolean
+  cdmRefTaxIdentificationSubType: String
+  taxIdentificationNumber: String
+  cdmRefTaxIdentificationReasonForNoTin: String
+  taxIdentificationValidFrom: DateTime
+  taxIdentificationEndDate: DateTime
+  cdmRefTaxIdentificationAttachDocument: String
+  cdmRefTaxIdentificationRecordType: String
+  personId: String
+  personGUID: String
+}
+
+type ValidityYearDto {
+  validityYear: String
+  distributionReceived: Boolean
+}
+
+"This type provides a field named sdl: String! which exposes the SDL of the service's schema. This SDL (schema definition language) is a printed version of the service's schema including the annotations of federation directives. This SDL does not include the additions of the federation spec."
+type _Service {
+  sdl: String!
+}
+
+union Person = IndividualPersonGraphQLResponse | LegalEntityGraphQLResponse
+
+input AccountFilterInput {
+  and: [AccountFilterInput!]
+  or: [AccountFilterInput!]
+  contractualRelationship: ContractualRelationshipFilterInput
+  partyToAccountRoles: ListFilterInputTypeOfPartyToAccountRoleFilterInput
+  idTiersAnym: StringOperationFilterInput
+  accountId: StringOperationFilterInput
+  crId: StringOperationFilterInput
+  longName: StringOperationFilterInput
+  shortName: StringOperationFilterInput
+  refReportingCurrency: StringOperationFilterInput
+  refInvestmentReferenceCurrency: StringOperationFilterInput
+  state: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  statusDate: DateTimeOperationFilterInput
+  accountApprovalDate: DateTimeOperationFilterInput
+  openDate: DateTimeOperationFilterInput
+  closeDate: DateTimeOperationFilterInput
+  lastModified: DateTimeOperationFilterInput
+  cdmRefManagementType: StringOperationFilterInput
+  cdmRefServiceLevel: StringOperationFilterInput
+  cdmRefProfile: StringOperationFilterInput
+  cashOnly: BooleanOperationFilterInput
+  relationshipManagerId: StringOperationFilterInput
+  servicingEntityRelationshipManagerId: StringOperationFilterInput
+  portfolioAdvisorId: StringOperationFilterInput
+  investmentAdvisorId: StringOperationFilterInput
+  cdmRefAmlRiskLevel: StringOperationFilterInput
+  bienTrouve: BooleanOperationFilterInput
+  bienTrouveLastDate: DateTimeOperationFilterInput
+  accountOriginId: StringOperationFilterInput
+  cdmRefDormantStatus: StringOperationFilterInput
+  lastDateOfContact: DateTimeOperationFilterInput
+  cdmRefLastDateOfContactReason: StringOperationFilterInput
+  sdd: BooleanOperationFilterInput
+  qualifiedInvestor: BooleanOperationFilterInput
+  priipsKidFlag: BooleanOperationFilterInput
+  expectedAUMAccountOpening: FloatOperationFilterInput
+  expectedAUMAccountLifecycle: FloatOperationFilterInput
+  dutyToDiscloseFlag: BooleanOperationFilterInput
+  sanctions: StringOperationFilterInput
+  tiersNostroDividend: StringOperationFilterInput
+  euroclearTiersSuspens: StringOperationFilterInput
+  usCorporateTiersSuspens: StringOperationFilterInput
+  pledge: StringOperationFilterInput
+  portfolioID: StringOperationFilterInput
+  ofactiveblockrecords: StringOperationFilterInput
+  generalInstructions: StringOperationFilterInput
+  legalInstructions: StringOperationFilterInput
+  complianceInstructions: StringOperationFilterInput
+  accountGUID: StringOperationFilterInput
+  dynamiCuserroles: StringOperationFilterInput
+  dynamiCuserteams: StringOperationFilterInput
+  servicingEntity: StringOperationFilterInput
+  businessArea: StringOperationFilterInput
+  advisoryPortfolioReview: ListAdvisoryPortfolioReviewFilterInput
+  blockingRecords: ListBlockingRecordsFilterInput
+  mailingInstructions: ListFilterInputTypeOfMailingInstructionFilterInput
+  pledgeAgreementsId: ListPledgeAgreementsIdFilterInput
+}
+
+input AccountLifecycleAUMFilterInput {
+  and: [AccountLifecycleAUMFilterInput!]
+  or: [AccountLifecycleAUMFilterInput!]
+  accountNumber: StringOperationFilterInput
+  accountName: StringOperationFilterInput
+  expectedAUMAccountLifecycle: FloatOperationFilterInput
+  crId: StringOperationFilterInput
+  crGUID: StringOperationFilterInput
+}
+
+input AccountOpeningAUMFilterInput {
+  and: [AccountOpeningAUMFilterInput!]
+  or: [AccountOpeningAUMFilterInput!]
+  accountNumber: StringOperationFilterInput
+  accountName: StringOperationFilterInput
+  expectedAUMAccountOpening: FloatOperationFilterInput
+  crId: StringOperationFilterInput
+  crGUID: StringOperationFilterInput
+}
+
+input AccountSortInput {
+  contractualRelationship: ContractualRelationshipSortInput @cost(weight: "10")
+  idTiersAnym: SortEnumType @cost(weight: "10")
+  accountId: SortEnumType @cost(weight: "10")
+  crId: SortEnumType @cost(weight: "10")
+  longName: SortEnumType @cost(weight: "10")
+  shortName: SortEnumType @cost(weight: "10")
+  refReportingCurrency: SortEnumType @cost(weight: "10")
+  refInvestmentReferenceCurrency: SortEnumType @cost(weight: "10")
+  state: SortEnumType @cost(weight: "10")
+  cdmRefStatus: SortEnumType @cost(weight: "10")
+  statusDate: SortEnumType @cost(weight: "10")
+  accountApprovalDate: SortEnumType @cost(weight: "10")
+  openDate: SortEnumType @cost(weight: "10")
+  closeDate: SortEnumType @cost(weight: "10")
+  lastModified: SortEnumType @cost(weight: "10")
+  cdmRefManagementType: SortEnumType @cost(weight: "10")
+  cdmRefServiceLevel: SortEnumType @cost(weight: "10")
+  cdmRefProfile: SortEnumType @cost(weight: "10")
+  cashOnly: SortEnumType @cost(weight: "10")
+  relationshipManagerId: SortEnumType @cost(weight: "10")
+  servicingEntityRelationshipManagerId: SortEnumType @cost(weight: "10")
+  portfolioAdvisorId: SortEnumType @cost(weight: "10")
+  investmentAdvisorId: SortEnumType @cost(weight: "10")
+  cdmRefAmlRiskLevel: SortEnumType @cost(weight: "10")
+  bienTrouve: SortEnumType @cost(weight: "10")
+  bienTrouveLastDate: SortEnumType @cost(weight: "10")
+  accountOriginId: SortEnumType @cost(weight: "10")
+  cdmRefDormantStatus: SortEnumType @cost(weight: "10")
+  lastDateOfContact: SortEnumType @cost(weight: "10")
+  cdmRefLastDateOfContactReason: SortEnumType @cost(weight: "10")
+  sdd: SortEnumType @cost(weight: "10")
+  qualifiedInvestor: SortEnumType @cost(weight: "10")
+  priipsKidFlag: SortEnumType @cost(weight: "10")
+  expectedAUMAccountOpening: SortEnumType @cost(weight: "10")
+  expectedAUMAccountLifecycle: SortEnumType @cost(weight: "10")
+  dutyToDiscloseFlag: SortEnumType @cost(weight: "10")
+  sanctions: SortEnumType @cost(weight: "10")
+  tiersNostroDividend: SortEnumType @cost(weight: "10")
+  euroclearTiersSuspens: SortEnumType @cost(weight: "10")
+  usCorporateTiersSuspens: SortEnumType @cost(weight: "10")
+  pledge: SortEnumType @cost(weight: "10")
+  portfolioID: SortEnumType @cost(weight: "10")
+  ofactiveblockrecords: SortEnumType @cost(weight: "10")
+  generalInstructions: SortEnumType @cost(weight: "10")
+  legalInstructions: SortEnumType @cost(weight: "10")
+  complianceInstructions: SortEnumType @cost(weight: "10")
+  accountGUID: SortEnumType @cost(weight: "10")
+  dynamiCuserroles: SortEnumType @cost(weight: "10")
+  dynamiCuserteams: SortEnumType @cost(weight: "10")
+  servicingEntity: SortEnumType @cost(weight: "10")
+  businessArea: SortEnumType @cost(weight: "10")
+}
+
+input AccountSuitabilityFilterInput {
+  and: [AccountSuitabilityFilterInput!]
+  or: [AccountSuitabilityFilterInput!]
+  newfield: StringOperationFilterInput
+  cdmRefCarpInvestmentHorizon: StringOperationFilterInput
+  cdmRefCarpWithdrawlTimeframe: StringOperationFilterInput
+  cdmRefCarpAccWithdrawProportion: StringOperationFilterInput
+  cdmRefCarpInvObjLiquidityNeeds: StringOperationFilterInput
+  cdmRefCarpInvestmentObjectives: StringOperationFilterInput
+  cdmRefCarpPercentRegularIncome: StringOperationFilterInput
+  cdmRefCarpInflationPerfObjectives: StringOperationFilterInput
+  cdmRefCarpImpactValueDecrease: StringOperationFilterInput
+  cdmRefCarpInvApproach: StringOperationFilterInput
+  cdmRefCarpLeverageLevel: StringOperationFilterInput
+  cdmRefCarpPreferredAccount: StringOperationFilterInput
+  cdmRefCarpAccountStatement: StringOperationFilterInput
+  cdmRefCarpValueFall: StringOperationFilterInput
+  cdmRefCarpInvPriority: StringOperationFilterInput
+  cdmRefCarpFinancialRisk: StringOperationFilterInput
+  cdmRefCarpMarketEnvTolerance: StringOperationFilterInput
+  cdmRefCarpPercentInvAssets: StringOperationFilterInput
+  cdmRefCarpInvRisk: StringOperationFilterInput
+  cdmRefCarpInvScenario: StringOperationFilterInput
+  cdmRefCarpRiskAppetite: StringOperationFilterInput
+  cdmRefCarpCalculatedRisk: StringOperationFilterInput
+  cdmRefCarpValidatedRisk: StringOperationFilterInput
+  carpJustification: StringOperationFilterInput
+  caspIsEnvSensitive: BooleanOperationFilterInput
+  caspInvNegativeImpacts: ListStringOperationFilterInput
+  caspPercentSustainableInv: FloatOperationFilterInput
+  caspPercentEnvInv: FloatOperationFilterInput
+  accountGUID: StringOperationFilterInput
+  dynamiCuserteams: StringOperationFilterInput
+  servicingEntity: StringOperationFilterInput
+  businessArea: StringOperationFilterInput
+  accountId: StringOperationFilterInput
+  idTiersAnym: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+}
+
+input AccountSuitabilitySortInput {
+  newfield: SortEnumType @cost(weight: "10")
+  cdmRefCarpInvestmentHorizon: SortEnumType @cost(weight: "10")
+  cdmRefCarpWithdrawlTimeframe: SortEnumType @cost(weight: "10")
+  cdmRefCarpAccWithdrawProportion: SortEnumType @cost(weight: "10")
+  cdmRefCarpInvObjLiquidityNeeds: SortEnumType @cost(weight: "10")
+  cdmRefCarpInvestmentObjectives: SortEnumType @cost(weight: "10")
+  cdmRefCarpPercentRegularIncome: SortEnumType @cost(weight: "10")
+  cdmRefCarpInflationPerfObjectives: SortEnumType @cost(weight: "10")
+  cdmRefCarpImpactValueDecrease: SortEnumType @cost(weight: "10")
+  cdmRefCarpInvApproach: SortEnumType @cost(weight: "10")
+  cdmRefCarpLeverageLevel: SortEnumType @cost(weight: "10")
+  cdmRefCarpPreferredAccount: SortEnumType @cost(weight: "10")
+  cdmRefCarpAccountStatement: SortEnumType @cost(weight: "10")
+  cdmRefCarpValueFall: SortEnumType @cost(weight: "10")
+  cdmRefCarpInvPriority: SortEnumType @cost(weight: "10")
+  cdmRefCarpFinancialRisk: SortEnumType @cost(weight: "10")
+  cdmRefCarpMarketEnvTolerance: SortEnumType @cost(weight: "10")
+  cdmRefCarpPercentInvAssets: SortEnumType @cost(weight: "10")
+  cdmRefCarpInvRisk: SortEnumType @cost(weight: "10")
+  cdmRefCarpInvScenario: SortEnumType @cost(weight: "10")
+  cdmRefCarpRiskAppetite: SortEnumType @cost(weight: "10")
+  cdmRefCarpCalculatedRisk: SortEnumType @cost(weight: "10")
+  cdmRefCarpValidatedRisk: SortEnumType @cost(weight: "10")
+  carpJustification: SortEnumType @cost(weight: "10")
+  caspIsEnvSensitive: SortEnumType @cost(weight: "10")
+  caspPercentSustainableInv: SortEnumType @cost(weight: "10")
+  caspPercentEnvInv: SortEnumType @cost(weight: "10")
+  accountGUID: SortEnumType @cost(weight: "10")
+  dynamiCuserteams: SortEnumType @cost(weight: "10")
+  servicingEntity: SortEnumType @cost(weight: "10")
+  businessArea: SortEnumType @cost(weight: "10")
+  accountId: SortEnumType @cost(weight: "10")
+  idTiersAnym: SortEnumType @cost(weight: "10")
+  cdmRefStatus: SortEnumType @cost(weight: "10")
+}
+
+input AddressCorroboratingEvidenceFilterInput {
+  and: [AddressCorroboratingEvidenceFilterInput!]
+  or: [AddressCorroboratingEvidenceFilterInput!]
+  identificationAddressCorrobId: StringOperationFilterInput
+  cdmRefType: StringOperationFilterInput
+  documentNumber: StringOperationFilterInput
+  cdmRefIdentificationProcess: StringOperationFilterInput
+  issuancePlace: StringOperationFilterInput
+  refIssuanceCountry: StringOperationFilterInput
+  refNationality: StringOperationFilterInput
+  issuanceDate: DateTimeOperationFilterInput
+  expirationDate: DateTimeOperationFilterInput
+  cdmRefDocumentType: StringOperationFilterInput
+  endOfValidity: DateTimeOperationFilterInput
+  certifiedCopy: BooleanOperationFilterInput
+  attachment: StringOperationFilterInput
+  recordType: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+  personId: StringOperationFilterInput
+}
+
+input AddressFilterInput {
+  and: [AddressFilterInput!]
+  or: [AddressFilterInput!]
+  cdmRefContactType: StringOperationFilterInput
+  securityRoles: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  teams: StringOperationFilterInput
+  createdOn: DateTimeOperationFilterInput
+  userTeams: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+  contactId: StringOperationFilterInput
+  numberOfDomicileAddressType: StringOperationFilterInput
+  numberOfRegisteredOfficesType: StringOperationFilterInput
+  cdmRefAddressType: StringOperationFilterInput
+  addressId: StringOperationFilterInput
+  identifier: StringOperationFilterInput
+  isPrimaryAddress: BooleanOperationFilterInput
+  addressLine1: StringOperationFilterInput
+  number: StringOperationFilterInput
+  addressLine2: StringOperationFilterInput
+  postcode: StringOperationFilterInput
+  poBox: StringOperationFilterInput
+  city: StringOperationFilterInput
+  refCountry: StringOperationFilterInput
+  refRegionStateCanton: StringOperationFilterInput
+  stateCode: StringOperationFilterInput
+  addressStatus: StringOperationFilterInput
+  validFrom: DateTimeOperationFilterInput
+  validTo: DateTimeOperationFilterInput
+  comment: StringOperationFilterInput
+  hash: StringOperationFilterInput
+  isLocked: BooleanOperationFilterInput
+  longitude: FloatOperationFilterInput
+  latitude: FloatOperationFilterInput
+  postalAddressLine1: StringOperationFilterInput
+  postalAddressLine2: StringOperationFilterInput
+  postalAddressLine3: StringOperationFilterInput
+  postalAddressLine4: StringOperationFilterInput
+  postalAddressLine5: StringOperationFilterInput
+  postalAddressLine6: StringOperationFilterInput
+  postalAddressLine7: StringOperationFilterInput
+  postalAddressLine8: StringOperationFilterInput
+  linkedDocument: ListAddressLinkedDocumentFilterInput
+}
+
+input AddressLinkedDocumentFilterInput {
+  and: [AddressLinkedDocumentFilterInput!]
+  or: [AddressLinkedDocumentFilterInput!]
+  linkedDocument: StringOperationFilterInput
+}
+
+input AdvisoryPortfolioReviewFilterInput {
+  and: [AdvisoryPortfolioReviewFilterInput!]
+  or: [AdvisoryPortfolioReviewFilterInput!]
+  reviewDate: DateTimeOperationFilterInput
+  hasRiskAlert: BooleanOperationFilterInput
+  hasAnnualReviewReason: BooleanOperationFilterInput
+  isAdhocReview: BooleanOperationFilterInput
+  isPerformanceAlert: BooleanOperationFilterInput
+  hasCarpProfileAdequacy: BooleanOperationFilterInput
+  isInlineDefineReange: BooleanOperationFilterInput
+  isInlineCarpLimits: BooleanOperationFilterInput
+  isInlineConcentrationLimits: BooleanOperationFilterInput
+  hasRemedialAction: BooleanOperationFilterInput
+  remedialActionDate: DateTimeOperationFilterInput
+  hasRemedialCarpReview: BooleanOperationFilterInput
+  remedialCarpDate: DateTimeOperationFilterInput
+  hasClientDisagreement: BooleanOperationFilterInput
+  isDulySigned: BooleanOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  stateCode: StringOperationFilterInput
+  portfolioReviewId: StringOperationFilterInput
+  cdmRefAdvPortfolioReviewType: StringOperationFilterInput
+  accountId: StringOperationFilterInput
+  accountGUID: StringOperationFilterInput
+  createdOn: DateTimeOperationFilterInput
+}
+
+input AmlInformationFilterInput {
+  and: [AmlInformationFilterInput!]
+  or: [AmlInformationFilterInput!]
+  riskScore: FloatOperationFilterInput
+  cdmRefRiskLevel: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  stateConde: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+}
+
+input AssetsFilterInput {
+  and: [AssetsFilterInput!]
+  or: [AssetsFilterInput!]
+  refCurrency: StringOperationFilterInput
+  financialId: StringOperationFilterInput
+  cdmRefType: StringOperationFilterInput
+  amount: StringOperationFilterInput
+  bankName: StringOperationFilterInput
+  refCountryId: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+  cdmRefFinancialType: StringOperationFilterInput
+}
+
+input BlockingRecordsFilterInput {
+  and: [BlockingRecordsFilterInput!]
+  or: [BlockingRecordsFilterInput!]
+  brId: StringOperationFilterInput
+  cdmRefBlockLevel: StringOperationFilterInput
+  cdmRefBlockType: StringOperationFilterInput
+  cdmRefVisibility: StringOperationFilterInput
+  comment: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  stateCode: StringOperationFilterInput
+  startDate: DateTimeOperationFilterInput
+  endDate: DateTimeOperationFilterInput
+  requestedBy: StringOperationFilterInput
+  requestedByTeam: StringOperationFilterInput
+  affirmed: BooleanOperationFilterInput
+  affirmedDate: DateTimeOperationFilterInput
+  affirmedText: StringOperationFilterInput
+  accountId: StringOperationFilterInput
+  accountGUID: StringOperationFilterInput
+}
+
+input BooleanOperationFilterInput {
+  eq: Boolean @cost(weight: "10")
+  neq: Boolean @cost(weight: "10")
+}
+
+input ClassOfBeneficiariesFilterInput {
+  and: [ClassOfBeneficiariesFilterInput!]
+  or: [ClassOfBeneficiariesFilterInput!]
+  personId: StringOperationFilterInput
+  idTiersActorAnonym: StringOperationFilterInput
+  cdmRefBusinessArea: StringOperationFilterInput
+  cdmRefTitle: StringOperationFilterInput
+  firstName: StringOperationFilterInput
+  lastName: StringOperationFilterInput
+  relationshipManagerId: StringOperationFilterInput
+  cdmRefType: StringOperationFilterInput
+  cdmRefPersonStatus: StringOperationFilterInput
+  status: StringOperationFilterInput
+  kycComplete: BooleanOperationFilterInput
+  userTeams: StringOperationFilterInput
+  contactID: StringOperationFilterInput
+  suitabilityReviewLookup: StringOperationFilterInput
+  currentSRC: StringOperationFilterInput
+  detailsUpdated: BooleanOperationFilterInput
+  suitabilityreviewid: StringOperationFilterInput
+  allMandatoryDocumentsAttached: BooleanOperationFilterInput
+  wdxcontactid: StringOperationFilterInput
+}
+
+input ClassOfBeneficiariesSortInput {
+  personId: SortEnumType @cost(weight: "10")
+  idTiersActorAnonym: SortEnumType @cost(weight: "10")
+  cdmRefBusinessArea: SortEnumType @cost(weight: "10")
+  cdmRefTitle: SortEnumType @cost(weight: "10")
+  firstName: SortEnumType @cost(weight: "10")
+  lastName: SortEnumType @cost(weight: "10")
+  relationshipManagerId: SortEnumType @cost(weight: "10")
+  cdmRefType: SortEnumType @cost(weight: "10")
+  cdmRefPersonStatus: SortEnumType @cost(weight: "10")
+  status: SortEnumType @cost(weight: "10")
+  kycComplete: SortEnumType @cost(weight: "10")
+  userTeams: SortEnumType @cost(weight: "10")
+  contactID: SortEnumType @cost(weight: "10")
+  suitabilityReviewLookup: SortEnumType @cost(weight: "10")
+  currentSRC: SortEnumType @cost(weight: "10")
+  detailsUpdated: SortEnumType @cost(weight: "10")
+  suitabilityreviewid: SortEnumType @cost(weight: "10")
+  allMandatoryDocumentsAttached: SortEnumType @cost(weight: "10")
+  wdxcontactid: SortEnumType @cost(weight: "10")
+}
+
+input ContractualRelationshipFilterInput {
+  and: [ContractualRelationshipFilterInput!]
+  or: [ContractualRelationshipFilterInput!]
+  accounts: ListFilterInputTypeOfAccountFilterInput
+  partyToContractualRelationshipRoles: ListFilterInputTypeOfPartyToContractualRelationshipRoleFilterInput
+  userTeams2: StringOperationFilterInput
+  contractualRelationshipGUID: StringOperationFilterInput
+  userTeams: StringOperationFilterInput
+  teams: StringOperationFilterInput
+  securityRoles: StringOperationFilterInput
+  accountid: StringOperationFilterInput
+  contractualRelationshipType: StringOperationFilterInput
+  ofactiveportfolios: StringOperationFilterInput
+  crId: StringOperationFilterInput
+  cdmRefNameType: StringOperationFilterInput
+  longName: StringOperationFilterInput
+  state: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  openDate: DateTimeOperationFilterInput
+  closeDate: DateTimeOperationFilterInput
+  statusDate: DateTimeOperationFilterInput
+  primaryContact: StringOperationFilterInput
+  owner: StringOperationFilterInput
+  bookingCentre: StringOperationFilterInput
+  cdmRefNature: StringOperationFilterInput
+  cdmRefSubNature: StringOperationFilterInput
+  cdmRefUbpContractingEntity: StringOperationFilterInput
+  servicingEntityBA: StringOperationFilterInput
+  cdmRefServicingEntityId: StringOperationFilterInput
+  cdmRefStandingInstructionsInFavorOf: StringOperationFilterInput
+  cdmRefSignaturePolicy: StringOperationFilterInput
+  employee: BooleanOperationFilterInput
+  refReferenceCurrency: StringOperationFilterInput
+  referenceLanguage: ListStringOperationFilterInput
+  relationshipManagerId: StringOperationFilterInput
+  servicingEntityRelationshipManagerId: StringOperationFilterInput
+  familyOffice: StringOperationFilterInput
+  cdmRefType: StringOperationFilterInput
+  cdmRefEconomicSector: StringOperationFilterInput
+  cdmRefDormantStatus: StringOperationFilterInput
+  lastDateOfContact: DateTimeOperationFilterInput
+  cdmRefLastDateOfContactReason: StringOperationFilterInput
+  exit: BooleanOperationFilterInput
+  cdmRefReasonForExit: StringOperationFilterInput
+  cdmRefFATCAStatus: StringOperationFilterInput
+  cdmRefCrsStatus: StringOperationFilterInput
+  cdmRefIsTaxConformant: BooleanOperationFilterInput
+  cdmRefInvestmentAdvisorStatusInUS: StringOperationFilterInput
+  cdmRefEamStatus: StringOperationFilterInput
+  isVatInBookingCentre: BooleanOperationFilterInput
+  isVatInServicingEntity: BooleanOperationFilterInput
+  cdmRefInvestorProtectionLevel: StringOperationFilterInput
+  cdmRefProtectionClientCategory: StringOperationFilterInput
+  telecommunicationWaiver: BooleanOperationFilterInput
+  boOrAhRegularPayments: BooleanOperationFilterInput
+  regularTransfers: BooleanOperationFilterInput
+  commercialTransactions: BooleanOperationFilterInput
+  issueOrReceiveLoans: BooleanOperationFilterInput
+  cdmRefPurposeOfTheCR: StringOperationFilterInput
+  purposeOfTheCRAdditional: StringOperationFilterInput
+  expectedAUMCHFAccountOpening: StringOperationFilterInput
+  totalAumAtAccountOpening: FloatOperationFilterInput
+  expectedAUMCHFAccountLifecycle: StringOperationFilterInput
+  totalAumAccountLifecycle: FloatOperationFilterInput
+  commercialBusinessActivity: StringOperationFilterInput
+  otherActivities: StringOperationFilterInput
+  countries: ListStringOperationFilterInput
+  businessStructure: StringOperationFilterInput
+  existenceOfInvoicesETC: StringOperationFilterInput
+  titleExpectedOutgoingTransactions: StringOperationFilterInput
+  mainTransactionsCurrencies: ListStringOperationFilterInput
+  titleExpectedIncomingTransactions: StringOperationFilterInput
+  ofactiveblockrecords: StringOperationFilterInput
+  postalCorrespondance: BooleanOperationFilterInput
+  fiduciaryMandate: BooleanOperationFilterInput
+  specialFiduciaryMandate: BooleanOperationFilterInput
+  specialFiduciaryMandateComment: StringOperationFilterInput
+  standingAgreementAlternativeInvestments: BooleanOperationFilterInput
+  frameworkAgreementInstructionsForTransaction: BooleanOperationFilterInput
+  frameworkAgreementForLombardCredits: BooleanOperationFilterInput
+  waiverEmail: BooleanOperationFilterInput
+  waiverPhone: BooleanOperationFilterInput
+  waiverFax: BooleanOperationFilterInput
+  authorisationEbanking: BooleanOperationFilterInput
+  waiverOfBankingSecrecy: BooleanOperationFilterInput
+  cisaWaiver: BooleanOperationFilterInput
+  supplementaryInformationForItalianClient: BooleanOperationFilterInput
+  standingInstructionCocos: BooleanOperationFilterInput
+  orderAndApplicationToRegisterShares: BooleanOperationFilterInput
+  commitmentInvestmentUndertaking: BooleanOperationFilterInput
+  conditionsForIssuanceAndRenewalOfGuarantees: BooleanOperationFilterInput
+  bankingRelationshipsWithGermanClients: BooleanOperationFilterInput
+  germanyWithdrawalRight: BooleanOperationFilterInput
+  standingDeclarationOfCanadianPermittedClient: BooleanOperationFilterInput
+  declarationIsraeliEligibleClientIndividuals: BooleanOperationFilterInput
+  declarationIsraeliEligibleClientEntities: BooleanOperationFilterInput
+  qualifiedInvestorDeclaration: BooleanOperationFilterInput
+  waiverPertainingToTheSubscriptionOfNewIssues: BooleanOperationFilterInput
+  instructionRegardingRussianCurrency: BooleanOperationFilterInput
+  waiverLimitedLiabilityPartnership: BooleanOperationFilterInput
+  accountLifecycleAUM: ListAccountLifecycleAUMFilterInput
+  accountOpeningAUM: ListAccountOpeningAUMFilterInput
+  expectedIncomingTransactions: ListExpectedIncomingTransactionsFilterInput
+  expectedOutgoingTransactions: ListExpectedOutgoingTransactionsFilterInput
+  fiscalReporting: ListFiscalReportingFilterInput
+  mailingInstructions: ListFilterInputTypeOfMailingInstructionFilterInput
+}
+
+input ContractualRelationshipSortInput {
+  userTeams2: SortEnumType @cost(weight: "10")
+  contractualRelationshipGUID: SortEnumType @cost(weight: "10")
+  userTeams: SortEnumType @cost(weight: "10")
+  teams: SortEnumType @cost(weight: "10")
+  securityRoles: SortEnumType @cost(weight: "10")
+  accountid: SortEnumType @cost(weight: "10")
+  contractualRelationshipType: SortEnumType @cost(weight: "10")
+  ofactiveportfolios: SortEnumType @cost(weight: "10")
+  crId: SortEnumType @cost(weight: "10")
+  cdmRefNameType: SortEnumType @cost(weight: "10")
+  longName: SortEnumType @cost(weight: "10")
+  state: SortEnumType @cost(weight: "10")
+  cdmRefStatus: SortEnumType @cost(weight: "10")
+  openDate: SortEnumType @cost(weight: "10")
+  closeDate: SortEnumType @cost(weight: "10")
+  statusDate: SortEnumType @cost(weight: "10")
+  primaryContact: SortEnumType @cost(weight: "10")
+  owner: SortEnumType @cost(weight: "10")
+  bookingCentre: SortEnumType @cost(weight: "10")
+  cdmRefNature: SortEnumType @cost(weight: "10")
+  cdmRefSubNature: SortEnumType @cost(weight: "10")
+  cdmRefUbpContractingEntity: SortEnumType @cost(weight: "10")
+  servicingEntityBA: SortEnumType @cost(weight: "10")
+  cdmRefServicingEntityId: SortEnumType @cost(weight: "10")
+  cdmRefStandingInstructionsInFavorOf: SortEnumType @cost(weight: "10")
+  cdmRefSignaturePolicy: SortEnumType @cost(weight: "10")
+  employee: SortEnumType @cost(weight: "10")
+  refReferenceCurrency: SortEnumType @cost(weight: "10")
+  relationshipManagerId: SortEnumType @cost(weight: "10")
+  servicingEntityRelationshipManagerId: SortEnumType @cost(weight: "10")
+  familyOffice: SortEnumType @cost(weight: "10")
+  cdmRefType: SortEnumType @cost(weight: "10")
+  cdmRefEconomicSector: SortEnumType @cost(weight: "10")
+  cdmRefDormantStatus: SortEnumType @cost(weight: "10")
+  lastDateOfContact: SortEnumType @cost(weight: "10")
+  cdmRefLastDateOfContactReason: SortEnumType @cost(weight: "10")
+  exit: SortEnumType @cost(weight: "10")
+  cdmRefReasonForExit: SortEnumType @cost(weight: "10")
+  cdmRefFATCAStatus: SortEnumType @cost(weight: "10")
+  cdmRefCrsStatus: SortEnumType @cost(weight: "10")
+  cdmRefIsTaxConformant: SortEnumType @cost(weight: "10")
+  cdmRefInvestmentAdvisorStatusInUS: SortEnumType @cost(weight: "10")
+  cdmRefEamStatus: SortEnumType @cost(weight: "10")
+  isVatInBookingCentre: SortEnumType @cost(weight: "10")
+  isVatInServicingEntity: SortEnumType @cost(weight: "10")
+  cdmRefInvestorProtectionLevel: SortEnumType @cost(weight: "10")
+  cdmRefProtectionClientCategory: SortEnumType @cost(weight: "10")
+  telecommunicationWaiver: SortEnumType @cost(weight: "10")
+  boOrAhRegularPayments: SortEnumType @cost(weight: "10")
+  regularTransfers: SortEnumType @cost(weight: "10")
+  commercialTransactions: SortEnumType @cost(weight: "10")
+  issueOrReceiveLoans: SortEnumType @cost(weight: "10")
+  cdmRefPurposeOfTheCR: SortEnumType @cost(weight: "10")
+  purposeOfTheCRAdditional: SortEnumType @cost(weight: "10")
+  expectedAUMCHFAccountOpening: SortEnumType @cost(weight: "10")
+  totalAumAtAccountOpening: SortEnumType @cost(weight: "10")
+  expectedAUMCHFAccountLifecycle: SortEnumType @cost(weight: "10")
+  totalAumAccountLifecycle: SortEnumType @cost(weight: "10")
+  commercialBusinessActivity: SortEnumType @cost(weight: "10")
+  otherActivities: SortEnumType @cost(weight: "10")
+  businessStructure: SortEnumType @cost(weight: "10")
+  existenceOfInvoicesETC: SortEnumType @cost(weight: "10")
+  titleExpectedOutgoingTransactions: SortEnumType @cost(weight: "10")
+  titleExpectedIncomingTransactions: SortEnumType @cost(weight: "10")
+  ofactiveblockrecords: SortEnumType @cost(weight: "10")
+  postalCorrespondance: SortEnumType @cost(weight: "10")
+  fiduciaryMandate: SortEnumType @cost(weight: "10")
+  specialFiduciaryMandate: SortEnumType @cost(weight: "10")
+  specialFiduciaryMandateComment: SortEnumType @cost(weight: "10")
+  standingAgreementAlternativeInvestments: SortEnumType @cost(weight: "10")
+  frameworkAgreementInstructionsForTransaction: SortEnumType @cost(weight: "10")
+  frameworkAgreementForLombardCredits: SortEnumType @cost(weight: "10")
+  waiverEmail: SortEnumType @cost(weight: "10")
+  waiverPhone: SortEnumType @cost(weight: "10")
+  waiverFax: SortEnumType @cost(weight: "10")
+  authorisationEbanking: SortEnumType @cost(weight: "10")
+  waiverOfBankingSecrecy: SortEnumType @cost(weight: "10")
+  cisaWaiver: SortEnumType @cost(weight: "10")
+  supplementaryInformationForItalianClient: SortEnumType @cost(weight: "10")
+  standingInstructionCocos: SortEnumType @cost(weight: "10")
+  orderAndApplicationToRegisterShares: SortEnumType @cost(weight: "10")
+  commitmentInvestmentUndertaking: SortEnumType @cost(weight: "10")
+  conditionsForIssuanceAndRenewalOfGuarantees: SortEnumType @cost(weight: "10")
+  bankingRelationshipsWithGermanClients: SortEnumType @cost(weight: "10")
+  germanyWithdrawalRight: SortEnumType @cost(weight: "10")
+  standingDeclarationOfCanadianPermittedClient: SortEnumType @cost(weight: "10")
+  declarationIsraeliEligibleClientIndividuals: SortEnumType @cost(weight: "10")
+  declarationIsraeliEligibleClientEntities: SortEnumType @cost(weight: "10")
+  qualifiedInvestorDeclaration: SortEnumType @cost(weight: "10")
+  waiverPertainingToTheSubscriptionOfNewIssues: SortEnumType @cost(weight: "10")
+  instructionRegardingRussianCurrency: SortEnumType @cost(weight: "10")
+  waiverLimitedLiabilityPartnership: SortEnumType @cost(weight: "10")
+}
+
+input DateTimeOperationFilterInput {
+  eq: DateTime @cost(weight: "10")
+  neq: DateTime @cost(weight: "10")
+  in: [DateTime] @cost(weight: "10")
+  nin: [DateTime] @cost(weight: "10")
+  gt: DateTime @cost(weight: "10")
+  ngt: DateTime @cost(weight: "10")
+  gte: DateTime @cost(weight: "10")
+  ngte: DateTime @cost(weight: "10")
+  lt: DateTime @cost(weight: "10")
+  nlt: DateTime @cost(weight: "10")
+  lte: DateTime @cost(weight: "10")
+  nlte: DateTime @cost(weight: "10")
+}
+
+input DeathCertificateLinkedDocIdFilterInput {
+  and: [DeathCertificateLinkedDocIdFilterInput!]
+  or: [DeathCertificateLinkedDocIdFilterInput!]
+  cdmRefDocumentType: StringOperationFilterInput
+  documentName: StringOperationFilterInput
+  documentDate: DateTimeOperationFilterInput
+  status: StringOperationFilterInput
+  entityId: StringOperationFilterInput
+  src: StringOperationFilterInput
+}
+
+input DocumentFilterInput {
+  and: [DocumentFilterInput!]
+  or: [DocumentFilterInput!]
+  wdxattacheddocumentid: StringOperationFilterInput
+  fileName: StringOperationFilterInput
+  name: StringOperationFilterInput
+  dmsId: StringOperationFilterInput
+  annotationId: StringOperationFilterInput
+  documentId: StringOperationFilterInput
+  documentExternalId: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  crId: StringOperationFilterInput
+  accountId: StringOperationFilterInput
+  batchNumber: StringOperationFilterInput
+  cdmRefType: StringOperationFilterInput
+  cdmRefDocumentClassification: StringOperationFilterInput
+  documentBehaviour: StringOperationFilterInput
+  cdmRefVersion: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  cdmRefReminder: StringOperationFilterInput
+  cdmRefReminderCategory: StringOperationFilterInput
+  exportToEms: BooleanOperationFilterInput
+  furtherInformation: StringOperationFilterInput
+  createdOn: DateTimeOperationFilterInput
+  createdBy: StringOperationFilterInput
+  lastModifiedDate: DateTimeOperationFilterInput
+  receptionDate: DateTimeOperationFilterInput
+  scanningDate: DateTimeOperationFilterInput
+  startDate: DateTimeOperationFilterInput
+  endDate: DateTimeOperationFilterInput
+  cdmRefDocumentCategory: StringOperationFilterInput
+  expiryDate: DateTimeOperationFilterInput
+  remediationLimitDate: DateTimeOperationFilterInput
+  cancellationDate: DateTimeOperationFilterInput
+  signatureDate: DateTimeOperationFilterInput
+  linkedAddress: StringOperationFilterInput
+  documentTypeCode: StringOperationFilterInput
+}
+
+input DocumentSortInput {
+  wdxattacheddocumentid: SortEnumType @cost(weight: "10")
+  fileName: SortEnumType @cost(weight: "10")
+  name: SortEnumType @cost(weight: "10")
+  dmsId: SortEnumType @cost(weight: "10")
+  annotationId: SortEnumType @cost(weight: "10")
+  documentId: SortEnumType @cost(weight: "10")
+  documentExternalId: SortEnumType @cost(weight: "10")
+  personId: SortEnumType @cost(weight: "10")
+  crId: SortEnumType @cost(weight: "10")
+  accountId: SortEnumType @cost(weight: "10")
+  batchNumber: SortEnumType @cost(weight: "10")
+  cdmRefType: SortEnumType @cost(weight: "10")
+  cdmRefDocumentClassification: SortEnumType @cost(weight: "10")
+  documentBehaviour: SortEnumType @cost(weight: "10")
+  cdmRefVersion: SortEnumType @cost(weight: "10")
+  cdmRefStatus: SortEnumType @cost(weight: "10")
+  cdmRefReminder: SortEnumType @cost(weight: "10")
+  cdmRefReminderCategory: SortEnumType @cost(weight: "10")
+  exportToEms: SortEnumType @cost(weight: "10")
+  furtherInformation: SortEnumType @cost(weight: "10")
+  createdOn: SortEnumType @cost(weight: "10")
+  createdBy: SortEnumType @cost(weight: "10")
+  lastModifiedDate: SortEnumType @cost(weight: "10")
+  receptionDate: SortEnumType @cost(weight: "10")
+  scanningDate: SortEnumType @cost(weight: "10")
+  startDate: SortEnumType @cost(weight: "10")
+  endDate: SortEnumType @cost(weight: "10")
+  cdmRefDocumentCategory: SortEnumType @cost(weight: "10")
+  expiryDate: SortEnumType @cost(weight: "10")
+  remediationLimitDate: SortEnumType @cost(weight: "10")
+  cancellationDate: SortEnumType @cost(weight: "10")
+  signatureDate: SortEnumType @cost(weight: "10")
+  linkedAddress: SortEnumType @cost(weight: "10")
+  documentTypeCode: SortEnumType @cost(weight: "10")
+}
+
+input DttaFilterInput {
+  and: [DttaFilterInput!]
+  or: [DttaFilterInput!]
+  dttaId: StringOperationFilterInput
+  id: StringOperationFilterInput
+  refDttaInvestmentCountry: StringOperationFilterInput
+  dttaEndValidity: DateTimeOperationFilterInput
+  name: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+}
+
+input EBankingUserIdFilterInput {
+  and: [EBankingUserIdFilterInput!]
+  or: [EBankingUserIdFilterInput!]
+  systemId: StringOperationFilterInput
+  originId: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+}
+
+input ElectronicConnectionAgreementIdFilterInput {
+  and: [ElectronicConnectionAgreementIdFilterInput!]
+  or: [ElectronicConnectionAgreementIdFilterInput!]
+  systemId: StringOperationFilterInput
+  originId: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+}
+
+input EmailAddressesFilterInput {
+  and: [EmailAddressesFilterInput!]
+  or: [EmailAddressesFilterInput!]
+  order: IntOperationFilterInput
+  emailId: StringOperationFilterInput
+  emailCorrespondenceType: StringOperationFilterInput
+  cdmRefEmailType: StringOperationFilterInput
+  emailAddress: StringOperationFilterInput
+  comment: StringOperationFilterInput
+  isPrimary: BooleanOperationFilterInput
+  eBankingFlag: BooleanOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  emailStatecode: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+}
+
+input ExpectedIncomingTransactionsFilterInput {
+  and: [ExpectedIncomingTransactionsFilterInput!]
+  or: [ExpectedIncomingTransactionsFilterInput!]
+  knowYourTransactionId: StringOperationFilterInput
+  cdmRefTransactionTypeOutgoing: StringOperationFilterInput
+  cdmRefTransactionTypeIncoming: StringOperationFilterInput
+  originatingBank: StringOperationFilterInput
+  refCountry: StringOperationFilterInput
+  counterpartyName: StringOperationFilterInput
+  cdmRefAmountRange: StringOperationFilterInput
+  description: StringOperationFilterInput
+  cdmRefNumberOfTransactions: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  stateCode: StringOperationFilterInput
+  crId: StringOperationFilterInput
+  crGUID: StringOperationFilterInput
+  cdmRefTransactionDirection: StringOperationFilterInput
+}
+
+input ExpectedOutgoingTransactionsFilterInput {
+  and: [ExpectedOutgoingTransactionsFilterInput!]
+  or: [ExpectedOutgoingTransactionsFilterInput!]
+  knowYourTransactionId: StringOperationFilterInput
+  cdmRefTransactionTypeOutgoing: StringOperationFilterInput
+  cdmRefTransactionTypeIncoming: StringOperationFilterInput
+  originatingBank: StringOperationFilterInput
+  refCountry: StringOperationFilterInput
+  counterpartyName: StringOperationFilterInput
+  cdmRefAmountRange: StringOperationFilterInput
+  description: StringOperationFilterInput
+  cdmRefNumberOfTransactions: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  stateCode: StringOperationFilterInput
+  crId: StringOperationFilterInput
+  crGUID: StringOperationFilterInput
+  cdmRefTransactionDirection: StringOperationFilterInput
+}
+
+input FiscalReportingFilterInput {
+  and: [FiscalReportingFilterInput!]
+  or: [FiscalReportingFilterInput!]
+  fiscalReportingId: StringOperationFilterInput
+  id: StringOperationFilterInput
+  fiscalstat: BooleanOperationFilterInput
+  cdmRefTypeId: StringOperationFilterInput
+  refCurrencyID: StringOperationFilterInput
+  refLanguageId: StringOperationFilterInput
+  refRegionId: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  cr: StringOperationFilterInput
+  crId: StringOperationFilterInput
+  crGUID: StringOperationFilterInput
+  name: StringOperationFilterInput
+}
+
+input FloatOperationFilterInput {
+  eq: Float @cost(weight: "10")
+  neq: Float @cost(weight: "10")
+  in: [Float] @cost(weight: "10")
+  nin: [Float] @cost(weight: "10")
+  gt: Float @cost(weight: "10")
+  ngt: Float @cost(weight: "10")
+  gte: Float @cost(weight: "10")
+  ngte: Float @cost(weight: "10")
+  lt: Float @cost(weight: "10")
+  nlt: Float @cost(weight: "10")
+  lte: Float @cost(weight: "10")
+  nlte: Float @cost(weight: "10")
+}
+
+input IdentificationFilterInput {
+  and: [IdentificationFilterInput!]
+  or: [IdentificationFilterInput!]
+  identificationAddressCorrobId: StringOperationFilterInput
+  cdmRefType: StringOperationFilterInput
+  documentNumber: StringOperationFilterInput
+  cdmRefIdentificationProcess: StringOperationFilterInput
+  issuancePlace: StringOperationFilterInput
+  refIssuanceCountry: StringOperationFilterInput
+  refNationality: StringOperationFilterInput
+  issuanceDate: DateTimeOperationFilterInput
+  expirationDate: DateTimeOperationFilterInput
+  cdmRefDocumentType: StringOperationFilterInput
+  endOfValidity: DateTimeOperationFilterInput
+  refAccreditationCountry: StringOperationFilterInput
+  refCountryOfResidence: StringOperationFilterInput
+  certifiedCopy: BooleanOperationFilterInput
+  attachment: StringOperationFilterInput
+  recordType: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+}
+
+input IncomeFilterInput {
+  and: [IncomeFilterInput!]
+  or: [IncomeFilterInput!]
+  refCurrency: StringOperationFilterInput
+  financialId: StringOperationFilterInput
+  cdmRefType: StringOperationFilterInput
+  amount: StringOperationFilterInput
+  comment: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+  cdmRefFinancialType: StringOperationFilterInput
+}
+
+input IndividualPersonFilterInput {
+  and: [IndividualPersonFilterInput!]
+  or: [IndividualPersonFilterInput!]
+  idTiersActorAnonym: StringOperationFilterInput
+  cdmRefBusinessArea: StringOperationFilterInput
+  cdmRefTitle: StringOperationFilterInput
+  firstName: StringOperationFilterInput
+  lastName: StringOperationFilterInput
+  middleName: StringOperationFilterInput
+  birthDate: DateTimeOperationFilterInput
+  refCountryOfBirth: StringOperationFilterInput
+  placeOfBirth: StringOperationFilterInput
+  cdmRefGender: StringOperationFilterInput
+  potentialFATCAIndiciaPlaceofbirthisUS: StringOperationFilterInput
+  nationalities: ListStringOperationFilterInput
+  languages: ListStringOperationFilterInput
+  relationshipManagerId: StringOperationFilterInput
+  cdmRefMaritalStatus: StringOperationFilterInput
+  cdmRefMatrimonialRegime: StringOperationFilterInput
+  maritalStatusExplanation: StringOperationFilterInput
+  numberOfChildren: IntOperationFilterInput
+  additionalInfoFamilySituation: StringOperationFilterInput
+  underGuardianship: BooleanOperationFilterInput
+  underCuratorship: BooleanOperationFilterInput
+  vulnerableClient: BooleanOperationFilterInput
+  cdmRefVulnerableReason: ListStringOperationFilterInput
+  cdmRefProfession: StringOperationFilterInput
+  businessActivityDetails: StringOperationFilterInput
+  educationAndQualification: StringOperationFilterInput
+  cdmRefCategory: ListStringOperationFilterInput
+  cdmRefCurrentBusinessActivityLevel1: ListStringOperationFilterInput
+  cdmRefCurrentBusinessActivityLevel2: ListStringOperationFilterInput
+  cdmRefCurrentBusinessActivityLevel3: ListStringOperationFilterInput
+  currentCountryOfActivity: ListStringOperationFilterInput
+  cdmRefAssociatedRisks: ListStringOperationFilterInput
+  amlComments: StringOperationFilterInput
+  uuid: StringOperationFilterInput
+  clientHasResidenceRights: BooleanOperationFilterInput
+  clientHasResidentRightsOtherJurisdictions: BooleanOperationFilterInput
+  clientResidentRightsOtherJurisdictionsDetails: StringOperationFilterInput
+  clientSpentMoreDaysOtherJurisdictions: BooleanOperationFilterInput
+  clientSpentMoreDaysOtherJurisdictionsDetails: StringOperationFilterInput
+  personalIncomeTaxJurisdictions: ListStringOperationFilterInput
+  clientCentreOfLife: StringOperationFilterInput
+  estimationDate: DateTimeOperationFilterInput
+  wealthCompositionDescription: StringOperationFilterInput
+  sowCountry: ListStringOperationFilterInput
+  businessActivitySOWLevel1: ListStringOperationFilterInput
+  businessActivitySOWLevel2: ListStringOperationFilterInput
+  businessActivitySOWLevel3: ListStringOperationFilterInput
+  cdmRefSourceOfWealthCurrency: StringOperationFilterInput
+  percentOfTotalWealthToBeInvested: FloatOperationFilterInput
+  expectedAggregatedUBPAccountBalance: StringOperationFilterInput
+  consolidatedTotalAssets: StringOperationFilterInput
+  cdmRefAnnualIncome: StringOperationFilterInput
+  additionalInformation: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_01Jurisdiction: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_01_productClass: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_01_productClassId: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_01Knowledge: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_01Experience: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_02Jurisdiction: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_02_productClass: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_02_productClassId: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_02Knowledge: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_02Experience: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_03Jurisdiction: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_03_productClass: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_03_productClassId: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_03Knowledge: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_03Experience: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_04Jurisdiction: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_04_productClass: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_04_productClassId: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_04Knowledge: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_04Experience: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_05Jurisdiction: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_05_productClass: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_05_productClassId: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_05Knowledge: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_05Experience: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_06Jurisdiction: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_06_productClass: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_06_productClassId: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_06Knowledge: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_06Experience: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_07Jurisdiction: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_07_productClass: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_07_productClassId: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_07Knowledge: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_07Experience: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_08Jurisdiction: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_08_productClass: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_08_productClassId: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_08Knowledge: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_08Experience: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_09Jurisdiction: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_09_productClass: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_09_productClassId: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_09Knowledge: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_09Experience: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_10Jurisdiction: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_10_productClass: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_10_productClassId: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_10Knowledge: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_10Experience: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_11Jurisdiction: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_11_productClass: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_11_productClassId: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_11Knowledge: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_11Experience: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_12Jurisdiction: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_12_productClass: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_12_productClassId: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_12Knowledge: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_12Experience: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_13Jurisdiction: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_13_productClass: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_13_productClassId: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_13Knowledge: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_13Experience: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_14Jurisdiction: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_14_productClass: StringOperationFilterInput
+  keSubform_KEWdx_productclassidPRODUCTCLASS_14_productClassId: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_14Knowledge: StringOperationFilterInput
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_14Experience: StringOperationFilterInput
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_01Jurisdiction: StringOperationFilterInput
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_01ServiceProductClass: StringOperationFilterInput
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_01ServiceProductClassId: StringOperationFilterInput
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_01ServiceExperience: StringOperationFilterInput
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_02Jurisdiction: StringOperationFilterInput
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_02ServiceProductClass: StringOperationFilterInput
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_02ServiceProductClassId: StringOperationFilterInput
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_02ServiceExperience: StringOperationFilterInput
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_03Jurisdiction: StringOperationFilterInput
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_03ServiceProductClass: StringOperationFilterInput
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_03ServiceProductClassId: StringOperationFilterInput
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_03ServiceExperience: StringOperationFilterInput
+  contactComment: StringOperationFilterInput
+  originOfContact: StringOperationFilterInput
+  potentialFATCAIndiciaAddressisUS: StringOperationFilterInput
+  preferredContactMethod: StringOperationFilterInput
+  noMarketing: BooleanOperationFilterInput
+  noEmails: BooleanOperationFilterInput
+  noPhoneCalls: BooleanOperationFilterInput
+  noMail: BooleanOperationFilterInput
+  noFax: BooleanOperationFilterInput
+  noBulkEmail: BooleanOperationFilterInput
+  noEBanking: BooleanOperationFilterInput
+  cdmRefHowPartyWasIntroduced: StringOperationFilterInput
+  clientAccountNumber: StringOperationFilterInput
+  thirdParty: StringOperationFilterInput
+  introducerCode: StringOperationFilterInput
+  externalManagerCode: StringOperationFilterInput
+  activeAccountNumbers: StringOperationFilterInput
+  activeRoles: StringOperationFilterInput
+  cdmRefRelationWithBank: StringOperationFilterInput
+  accountOpenedWithAnotherRM: BooleanOperationFilterInput
+  introductionComment: StringOperationFilterInput
+  cdmRefMeetingWithParty: StringOperationFilterInput
+  reasonForNotMeeting: StringOperationFilterInput
+  reasonforChoosingEntity: StringOperationFilterInput
+  cdmRefPersonStatus: StringOperationFilterInput
+  isDeceased: BooleanOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  dateOfDeath: DateTimeOperationFilterInput
+  statecode: StringOperationFilterInput
+  creationDate: DateTimeOperationFilterInput
+  closeDate: DateTimeOperationFilterInput
+  modificationDate: DateTimeOperationFilterInput
+  isAssociatedPerson: BooleanOperationFilterInput
+  cdmRefPepType: StringOperationFilterInput
+  pepAffiliateName: StringOperationFilterInput
+  isDomecticPEP: BooleanOperationFilterInput
+  hasPublicFunction: BooleanOperationFilterInput
+  publicFunctionEndDate: DateTimeOperationFilterInput
+  pepExplanation: StringOperationFilterInput
+  cdmRefCalculatedPepStatus: StringOperationFilterInput
+  cdmRefValidatedPepStatus: StringOperationFilterInput
+  pepComplianceComment: StringOperationFilterInput
+  isInsider: BooleanOperationFilterInput
+  isClosePartnerOfInsider: BooleanOperationFilterInput
+  isMajorShareholder: BooleanOperationFilterInput
+  isTrader: BooleanOperationFilterInput
+  insiderTraderDetails: StringOperationFilterInput
+  isAdvancedInvestor: BooleanOperationFilterInput
+  insiderInvestorDetails: StringOperationFilterInput
+  cdmRefDormantStatus: StringOperationFilterInput
+  lastDateOfContact: DateTimeOperationFilterInput
+  cdmRefLastDateOfContactReason: StringOperationFilterInput
+  cdmRefDeathCertificateEvidenceType: ListStringOperationFilterInput
+  mifidFullRetailClient: BooleanOperationFilterInput
+  mifidFullOptupProfessional: BooleanOperationFilterInput
+  mifidFullRequestsOptupProfessional: BooleanOperationFilterInput
+  mifidFull10TransactionsPerQuarter: BooleanOperationFilterInput
+  mifidFullClientPortfolioExceeds500K: BooleanOperationFilterInput
+  mifidFull1YearProfessionalExperience: BooleanOperationFilterInput
+  mifidFullIsPerSeProfessional: BooleanOperationFilterInput
+  mifidFullHasNetTurnoverAbove40mil: BooleanOperationFilterInput
+  mifidFullHasBalanceSheetTotalAbove20mil: BooleanOperationFilterInput
+  mifidFullHasShareholdersEquityAbove2mil: BooleanOperationFilterInput
+  mifidFullIsEligibleCounterparty: BooleanOperationFilterInput
+  eligibleCounterparties: ListStringOperationFilterInput
+  mifidFullHasEquities: BooleanOperationFilterInput
+  mifidFullHasBonds: BooleanOperationFilterInput
+  mifidFullHasMoneyMarketInstruments: BooleanOperationFilterInput
+  mifidFullHasPreciousMetals: BooleanOperationFilterInput
+  mifidFullHasForeignExchange: BooleanOperationFilterInput
+  mifidFullHasNonComplexInvestmentFunds: BooleanOperationFilterInput
+  mifidFullHasComplexInvestmentFunds: BooleanOperationFilterInput
+  mifidFullHasHedgeFunds: BooleanOperationFilterInput
+  mifidFullHasPrivateEquityOrVentureCapital: BooleanOperationFilterInput
+  mifidFullHasStructuredProducts: BooleanOperationFilterInput
+  mifidFullHasOptionsAndWarrants: BooleanOperationFilterInput
+  mifidFullHasFutures: BooleanOperationFilterInput
+  mifidFullHasCommodities: BooleanOperationFilterInput
+  mifidFullHasConvertibleBonds: BooleanOperationFilterInput
+  mifidFullHasNetTotalTurnoverMin40mil: BooleanOperationFilterInput
+  mifidFullHasBalanceSheetTotalMin20mil: BooleanOperationFilterInput
+  mifidFullHasCapitalMin2mil: BooleanOperationFilterInput
+  mifidFullWaivedOptupProfessionalStatus: BooleanOperationFilterInput
+  mifidFullWaivedPerSeProfessionalStatus: BooleanOperationFilterInput
+  mifidFullWaivedEcpForPerSe: BooleanOperationFilterInput
+  mifidFullWaivedEcpForRetail: BooleanOperationFilterInput
+  cdmRefMifidFullClientCategoryId: StringOperationFilterInput
+  mifidLightClientPortfolioExceeds1mil: BooleanOperationFilterInput
+  mifidLight1YearProfessionalExperience: BooleanOperationFilterInput
+  mifidLightHasNetTotalTurnoverMin40mil: BooleanOperationFilterInput
+  mifidLightHasBalanceSheetTotalMin20mil: BooleanOperationFilterInput
+  mifidLightHasEquityMin2mil: BooleanOperationFilterInput
+  cdmRefMifidLightClientCategoryId: StringOperationFilterInput
+  cdmRefFinsaClientCategory: StringOperationFilterInput
+  finsaOptOutAum500k: BooleanOperationFilterInput
+  finsaOptOutAum2mil: BooleanOperationFilterInput
+  finsaInstitProfessionalOnRequestToBe: BooleanOperationFilterInput
+  finsaInstitProfessionalToBe: BooleanOperationFilterInput
+  finsaSwissOptOut: BooleanOperationFilterInput
+  finsaProfClientOptOut: BooleanOperationFilterInput
+  finsaInstitProfessionalToBeOptIn: BooleanOperationFilterInput
+  finsaProfPrivateToBe: BooleanOperationFilterInput
+  finsaProfClientStatusConfirmation: BooleanOperationFilterInput
+  dynamicClientCategory: StringOperationFilterInput
+  dynamicClientSubCategory: StringOperationFilterInput
+  dynamicRoles: StringOperationFilterInput
+  dynamicServiceTypes: StringOperationFilterInput
+  dynamicSuitabilityRequired: StringOperationFilterInput
+  kycComplete: BooleanOperationFilterInput
+  dynamicUserRoles: StringOperationFilterInput
+  userTeams: StringOperationFilterInput
+  contactID: StringOperationFilterInput
+  suitabilityReviewLookup: StringOperationFilterInput
+  lastSRCCompleted: StringOperationFilterInput
+  currentSRC: StringOperationFilterInput
+  detailsUpdated: BooleanOperationFilterInput
+  suitabilityreviewid: StringOperationFilterInput
+  isonboardingclient: StringOperationFilterInput
+  allMandatoryDocumentsAttached: BooleanOperationFilterInput
+  hasexistingactiveclients: StringOperationFilterInput
+  wdxcontactid: StringOperationFilterInput
+  jurisdiction: StringOperationFilterInput
+  cdmRefProductClass: StringOperationFilterInput
+  cdmRefProductClassId: StringOperationFilterInput
+  cdmRefKnowledge: StringOperationFilterInput
+  cdmRefExperience: StringOperationFilterInput
+  cdmRefServiceProductClass: StringOperationFilterInput
+  serviceProductClassId: StringOperationFilterInput
+  cdmRefServiceExperience: StringOperationFilterInput
+  deathCertificateLinkedDocId: ListDeathCertificateLinkedDocIdFilterInput
+  dtta: ListDttaFilterInput
+  identification: ListIdentificationFilterInput
+  income: ListIncomeFilterInput
+  insiderDetails: ListInsiderDetailsFilterInput
+  insiderDetailsPartner: ListInsiderDetailsPartnerFilterInput
+  insiderDetailsShareholder: ListInsiderDetailsShareholderFilterInput
+  otherNames: ListOtherNamesFilterInput
+  pepDetails: ListPepDetailsFilterInput
+  screening: ListScreeningFilterInput
+  id: UuidOperationFilterInput
+  personId: StringOperationFilterInput
+  address: ListAddressFilterInput
+  addressCorroboratingEvidence: ListAddressCorroboratingEvidenceFilterInput
+  amlInformation: ListAmlInformationFilterInput
+  assets: ListAssetsFilterInput
+  eBankingUserId: ListEBankingUserIdFilterInput
+  electronicConnectionAgreementId: ListElectronicConnectionAgreementIdFilterInput
+  emailAddresses: ListEmailAddressesFilterInput
+  liabilities: ListLiabilitiesFilterInput
+  mailingInstructions: ListFilterInputTypeOfMailingInstructionFilterInput
+  personOrigin: ListPersonOriginFilterInput
+  phoneNumbers: ListPhoneNumbersFilterInput
+  taxIdentification: ListTaxIdentificationFilterInput
+  additionalProperties: ListFilterInputTypeOfKeyValuePairOfStringAndObjectFilterInput
+}
+
+input IndividualPersonSortInput {
+  idTiersActorAnonym: SortEnumType @cost(weight: "10")
+  cdmRefBusinessArea: SortEnumType @cost(weight: "10")
+  cdmRefTitle: SortEnumType @cost(weight: "10")
+  firstName: SortEnumType @cost(weight: "10")
+  lastName: SortEnumType @cost(weight: "10")
+  middleName: SortEnumType @cost(weight: "10")
+  birthDate: SortEnumType @cost(weight: "10")
+  refCountryOfBirth: SortEnumType @cost(weight: "10")
+  placeOfBirth: SortEnumType @cost(weight: "10")
+  cdmRefGender: SortEnumType @cost(weight: "10")
+  potentialFATCAIndiciaPlaceofbirthisUS: SortEnumType @cost(weight: "10")
+  relationshipManagerId: SortEnumType @cost(weight: "10")
+  cdmRefMaritalStatus: SortEnumType @cost(weight: "10")
+  cdmRefMatrimonialRegime: SortEnumType @cost(weight: "10")
+  maritalStatusExplanation: SortEnumType @cost(weight: "10")
+  numberOfChildren: SortEnumType @cost(weight: "10")
+  additionalInfoFamilySituation: SortEnumType @cost(weight: "10")
+  underGuardianship: SortEnumType @cost(weight: "10")
+  underCuratorship: SortEnumType @cost(weight: "10")
+  vulnerableClient: SortEnumType @cost(weight: "10")
+  cdmRefProfession: SortEnumType @cost(weight: "10")
+  businessActivityDetails: SortEnumType @cost(weight: "10")
+  educationAndQualification: SortEnumType @cost(weight: "10")
+  amlComments: SortEnumType @cost(weight: "10")
+  uuid: SortEnumType @cost(weight: "10")
+  clientHasResidenceRights: SortEnumType @cost(weight: "10")
+  clientHasResidentRightsOtherJurisdictions: SortEnumType @cost(weight: "10")
+  clientResidentRightsOtherJurisdictionsDetails: SortEnumType @cost(weight: "10")
+  clientSpentMoreDaysOtherJurisdictions: SortEnumType @cost(weight: "10")
+  clientSpentMoreDaysOtherJurisdictionsDetails: SortEnumType @cost(weight: "10")
+  clientCentreOfLife: SortEnumType @cost(weight: "10")
+  estimationDate: SortEnumType @cost(weight: "10")
+  wealthCompositionDescription: SortEnumType @cost(weight: "10")
+  cdmRefSourceOfWealthCurrency: SortEnumType @cost(weight: "10")
+  percentOfTotalWealthToBeInvested: SortEnumType @cost(weight: "10")
+  expectedAggregatedUBPAccountBalance: SortEnumType @cost(weight: "10")
+  consolidatedTotalAssets: SortEnumType @cost(weight: "10")
+  cdmRefAnnualIncome: SortEnumType @cost(weight: "10")
+  additionalInformation: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_01Jurisdiction: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_01_productClass: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_01_productClassId: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_01Knowledge: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_01Experience: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_02Jurisdiction: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_02_productClass: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_02_productClassId: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_02Knowledge: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_02Experience: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_03Jurisdiction: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_03_productClass: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_03_productClassId: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_03Knowledge: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_03Experience: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_04Jurisdiction: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_04_productClass: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_04_productClassId: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_04Knowledge: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_04Experience: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_05Jurisdiction: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_05_productClass: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_05_productClassId: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_05Knowledge: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_05Experience: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_06Jurisdiction: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_06_productClass: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_06_productClassId: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_06Knowledge: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_06Experience: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_07Jurisdiction: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_07_productClass: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_07_productClassId: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_07Knowledge: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_07Experience: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_08Jurisdiction: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_08_productClass: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_08_productClassId: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_08Knowledge: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_08Experience: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_09Jurisdiction: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_09_productClass: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_09_productClassId: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_09Knowledge: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_09Experience: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_10Jurisdiction: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_10_productClass: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_10_productClassId: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_10Knowledge: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_10Experience: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_11Jurisdiction: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_11_productClass: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_11_productClassId: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_11Knowledge: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_11Experience: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_12Jurisdiction: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_12_productClass: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_12_productClassId: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_12Knowledge: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_12Experience: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_13Jurisdiction: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_13_productClass: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_13_productClassId: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_13Knowledge: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_13Experience: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_14Jurisdiction: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_14_productClass: SortEnumType @cost(weight: "10")
+  keSubform_KEWdx_productclassidPRODUCTCLASS_14_productClassId: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_14Knowledge: SortEnumType @cost(weight: "10")
+  cdmRefKeSubform_KEWdx_productclassidPRODUCTCLASS_14Experience: SortEnumType @cost(weight: "10")
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_01Jurisdiction: SortEnumType @cost(weight: "10")
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_01ServiceProductClass: SortEnumType @cost(weight: "10")
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_01ServiceProductClassId: SortEnumType @cost(weight: "10")
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_01ServiceExperience: SortEnumType @cost(weight: "10")
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_02Jurisdiction: SortEnumType @cost(weight: "10")
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_02ServiceProductClass: SortEnumType @cost(weight: "10")
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_02ServiceProductClassId: SortEnumType @cost(weight: "10")
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_02ServiceExperience: SortEnumType @cost(weight: "10")
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_03Jurisdiction: SortEnumType @cost(weight: "10")
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_03ServiceProductClass: SortEnumType @cost(weight: "10")
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_03ServiceProductClassId: SortEnumType @cost(weight: "10")
+  ke2Subform_KE_2Wdx_productclassidMGMTTYPE_03ServiceExperience: SortEnumType @cost(weight: "10")
+  contactComment: SortEnumType @cost(weight: "10")
+  originOfContact: SortEnumType @cost(weight: "10")
+  potentialFATCAIndiciaAddressisUS: SortEnumType @cost(weight: "10")
+  preferredContactMethod: SortEnumType @cost(weight: "10")
+  noMarketing: SortEnumType @cost(weight: "10")
+  noEmails: SortEnumType @cost(weight: "10")
+  noPhoneCalls: SortEnumType @cost(weight: "10")
+  noMail: SortEnumType @cost(weight: "10")
+  noFax: SortEnumType @cost(weight: "10")
+  noBulkEmail: SortEnumType @cost(weight: "10")
+  noEBanking: SortEnumType @cost(weight: "10")
+  cdmRefHowPartyWasIntroduced: SortEnumType @cost(weight: "10")
+  clientAccountNumber: SortEnumType @cost(weight: "10")
+  thirdParty: SortEnumType @cost(weight: "10")
+  introducerCode: SortEnumType @cost(weight: "10")
+  externalManagerCode: SortEnumType @cost(weight: "10")
+  activeAccountNumbers: SortEnumType @cost(weight: "10")
+  activeRoles: SortEnumType @cost(weight: "10")
+  cdmRefRelationWithBank: SortEnumType @cost(weight: "10")
+  accountOpenedWithAnotherRM: SortEnumType @cost(weight: "10")
+  introductionComment: SortEnumType @cost(weight: "10")
+  cdmRefMeetingWithParty: SortEnumType @cost(weight: "10")
+  reasonForNotMeeting: SortEnumType @cost(weight: "10")
+  reasonforChoosingEntity: SortEnumType @cost(weight: "10")
+  cdmRefPersonStatus: SortEnumType @cost(weight: "10")
+  isDeceased: SortEnumType @cost(weight: "10")
+  cdmRefStatus: SortEnumType @cost(weight: "10")
+  dateOfDeath: SortEnumType @cost(weight: "10")
+  statecode: SortEnumType @cost(weight: "10")
+  creationDate: SortEnumType @cost(weight: "10")
+  closeDate: SortEnumType @cost(weight: "10")
+  modificationDate: SortEnumType @cost(weight: "10")
+  isAssociatedPerson: SortEnumType @cost(weight: "10")
+  cdmRefPepType: SortEnumType @cost(weight: "10")
+  pepAffiliateName: SortEnumType @cost(weight: "10")
+  isDomecticPEP: SortEnumType @cost(weight: "10")
+  hasPublicFunction: SortEnumType @cost(weight: "10")
+  publicFunctionEndDate: SortEnumType @cost(weight: "10")
+  pepExplanation: SortEnumType @cost(weight: "10")
+  cdmRefCalculatedPepStatus: SortEnumType @cost(weight: "10")
+  cdmRefValidatedPepStatus: SortEnumType @cost(weight: "10")
+  pepComplianceComment: SortEnumType @cost(weight: "10")
+  isInsider: SortEnumType @cost(weight: "10")
+  isClosePartnerOfInsider: SortEnumType @cost(weight: "10")
+  isMajorShareholder: SortEnumType @cost(weight: "10")
+  isTrader: SortEnumType @cost(weight: "10")
+  insiderTraderDetails: SortEnumType @cost(weight: "10")
+  isAdvancedInvestor: SortEnumType @cost(weight: "10")
+  insiderInvestorDetails: SortEnumType @cost(weight: "10")
+  cdmRefDormantStatus: SortEnumType @cost(weight: "10")
+  lastDateOfContact: SortEnumType @cost(weight: "10")
+  cdmRefLastDateOfContactReason: SortEnumType @cost(weight: "10")
+  mifidFullRetailClient: SortEnumType @cost(weight: "10")
+  mifidFullOptupProfessional: SortEnumType @cost(weight: "10")
+  mifidFullRequestsOptupProfessional: SortEnumType @cost(weight: "10")
+  mifidFull10TransactionsPerQuarter: SortEnumType @cost(weight: "10")
+  mifidFullClientPortfolioExceeds500K: SortEnumType @cost(weight: "10")
+  mifidFull1YearProfessionalExperience: SortEnumType @cost(weight: "10")
+  mifidFullIsPerSeProfessional: SortEnumType @cost(weight: "10")
+  mifidFullHasNetTurnoverAbove40mil: SortEnumType @cost(weight: "10")
+  mifidFullHasBalanceSheetTotalAbove20mil: SortEnumType @cost(weight: "10")
+  mifidFullHasShareholdersEquityAbove2mil: SortEnumType @cost(weight: "10")
+  mifidFullIsEligibleCounterparty: SortEnumType @cost(weight: "10")
+  mifidFullHasEquities: SortEnumType @cost(weight: "10")
+  mifidFullHasBonds: SortEnumType @cost(weight: "10")
+  mifidFullHasMoneyMarketInstruments: SortEnumType @cost(weight: "10")
+  mifidFullHasPreciousMetals: SortEnumType @cost(weight: "10")
+  mifidFullHasForeignExchange: SortEnumType @cost(weight: "10")
+  mifidFullHasNonComplexInvestmentFunds: SortEnumType @cost(weight: "10")
+  mifidFullHasComplexInvestmentFunds: SortEnumType @cost(weight: "10")
+  mifidFullHasHedgeFunds: SortEnumType @cost(weight: "10")
+  mifidFullHasPrivateEquityOrVentureCapital: SortEnumType @cost(weight: "10")
+  mifidFullHasStructuredProducts: SortEnumType @cost(weight: "10")
+  mifidFullHasOptionsAndWarrants: SortEnumType @cost(weight: "10")
+  mifidFullHasFutures: SortEnumType @cost(weight: "10")
+  mifidFullHasCommodities: SortEnumType @cost(weight: "10")
+  mifidFullHasConvertibleBonds: SortEnumType @cost(weight: "10")
+  mifidFullHasNetTotalTurnoverMin40mil: SortEnumType @cost(weight: "10")
+  mifidFullHasBalanceSheetTotalMin20mil: SortEnumType @cost(weight: "10")
+  mifidFullHasCapitalMin2mil: SortEnumType @cost(weight: "10")
+  mifidFullWaivedOptupProfessionalStatus: SortEnumType @cost(weight: "10")
+  mifidFullWaivedPerSeProfessionalStatus: SortEnumType @cost(weight: "10")
+  mifidFullWaivedEcpForPerSe: SortEnumType @cost(weight: "10")
+  mifidFullWaivedEcpForRetail: SortEnumType @cost(weight: "10")
+  cdmRefMifidFullClientCategoryId: SortEnumType @cost(weight: "10")
+  mifidLightClientPortfolioExceeds1mil: SortEnumType @cost(weight: "10")
+  mifidLight1YearProfessionalExperience: SortEnumType @cost(weight: "10")
+  mifidLightHasNetTotalTurnoverMin40mil: SortEnumType @cost(weight: "10")
+  mifidLightHasBalanceSheetTotalMin20mil: SortEnumType @cost(weight: "10")
+  mifidLightHasEquityMin2mil: SortEnumType @cost(weight: "10")
+  cdmRefMifidLightClientCategoryId: SortEnumType @cost(weight: "10")
+  cdmRefFinsaClientCategory: SortEnumType @cost(weight: "10")
+  finsaOptOutAum500k: SortEnumType @cost(weight: "10")
+  finsaOptOutAum2mil: SortEnumType @cost(weight: "10")
+  finsaInstitProfessionalOnRequestToBe: SortEnumType @cost(weight: "10")
+  finsaInstitProfessionalToBe: SortEnumType @cost(weight: "10")
+  finsaSwissOptOut: SortEnumType @cost(weight: "10")
+  finsaProfClientOptOut: SortEnumType @cost(weight: "10")
+  finsaInstitProfessionalToBeOptIn: SortEnumType @cost(weight: "10")
+  finsaProfPrivateToBe: SortEnumType @cost(weight: "10")
+  finsaProfClientStatusConfirmation: SortEnumType @cost(weight: "10")
+  dynamicClientCategory: SortEnumType @cost(weight: "10")
+  dynamicClientSubCategory: SortEnumType @cost(weight: "10")
+  dynamicRoles: SortEnumType @cost(weight: "10")
+  dynamicServiceTypes: SortEnumType @cost(weight: "10")
+  dynamicSuitabilityRequired: SortEnumType @cost(weight: "10")
+  kycComplete: SortEnumType @cost(weight: "10")
+  dynamicUserRoles: SortEnumType @cost(weight: "10")
+  userTeams: SortEnumType @cost(weight: "10")
+  contactID: SortEnumType @cost(weight: "10")
+  suitabilityReviewLookup: SortEnumType @cost(weight: "10")
+  lastSRCCompleted: SortEnumType @cost(weight: "10")
+  currentSRC: SortEnumType @cost(weight: "10")
+  detailsUpdated: SortEnumType @cost(weight: "10")
+  suitabilityreviewid: SortEnumType @cost(weight: "10")
+  isonboardingclient: SortEnumType @cost(weight: "10")
+  allMandatoryDocumentsAttached: SortEnumType @cost(weight: "10")
+  hasexistingactiveclients: SortEnumType @cost(weight: "10")
+  wdxcontactid: SortEnumType @cost(weight: "10")
+  jurisdiction: SortEnumType @cost(weight: "10")
+  cdmRefProductClass: SortEnumType @cost(weight: "10")
+  cdmRefProductClassId: SortEnumType @cost(weight: "10")
+  cdmRefKnowledge: SortEnumType @cost(weight: "10")
+  cdmRefExperience: SortEnumType @cost(weight: "10")
+  cdmRefServiceProductClass: SortEnumType @cost(weight: "10")
+  serviceProductClassId: SortEnumType @cost(weight: "10")
+  cdmRefServiceExperience: SortEnumType @cost(weight: "10")
+  id: SortEnumType @cost(weight: "10")
+  personId: SortEnumType @cost(weight: "10")
+}
+
+input InsiderDetailsFilterInput {
+  and: [InsiderDetailsFilterInput!]
+  or: [InsiderDetailsFilterInput!]
+  insiderId: StringOperationFilterInput
+  insiderCompanyName: StringOperationFilterInput
+  insiderCompanyLEI: StringOperationFilterInput
+  insiderCompanyIssuerId: StringOperationFilterInput
+  cdmRefInsiderCompanyRole: StringOperationFilterInput
+  stateCode: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+  cdmRefInsiderType: StringOperationFilterInput
+}
+
+input InsiderDetailsPartnerFilterInput {
+  and: [InsiderDetailsPartnerFilterInput!]
+  or: [InsiderDetailsPartnerFilterInput!]
+  insiderId: StringOperationFilterInput
+  insiderName: StringOperationFilterInput
+  insiderCompanyName: StringOperationFilterInput
+  insiderCompanyLEI: StringOperationFilterInput
+  insiderCompanyIssuerId: StringOperationFilterInput
+  cdmRefInsiderCompanyRole: StringOperationFilterInput
+  cdmRefInsiderPartnerClientRelation: StringOperationFilterInput
+  status: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+  cdmRefInsiderType: StringOperationFilterInput
+  statuscode: StringOperationFilterInput
+}
+
+input InsiderDetailsShareholderFilterInput {
+  and: [InsiderDetailsShareholderFilterInput!]
+  or: [InsiderDetailsShareholderFilterInput!]
+  insiderId: StringOperationFilterInput
+  insiderCompanyName: StringOperationFilterInput
+  insiderCompanyLEI: StringOperationFilterInput
+  insiderCompanyIssuerId: StringOperationFilterInput
+  insiderPercentageShareholding: FloatOperationFilterInput
+  status: StringOperationFilterInput
+  statecode: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+  cdmRefInsiderType: StringOperationFilterInput
+}
+
+input IntOperationFilterInput {
+  eq: Int @cost(weight: "10")
+  neq: Int @cost(weight: "10")
+  in: [Int] @cost(weight: "10")
+  nin: [Int] @cost(weight: "10")
+  gt: Int @cost(weight: "10")
+  ngt: Int @cost(weight: "10")
+  gte: Int @cost(weight: "10")
+  ngte: Int @cost(weight: "10")
+  lt: Int @cost(weight: "10")
+  nlt: Int @cost(weight: "10")
+  lte: Int @cost(weight: "10")
+  nlte: Int @cost(weight: "10")
+}
+
+input KeyValuePairOfStringAndObjectFilterInput {
+  and: [KeyValuePairOfStringAndObjectFilterInput!]
+  or: [KeyValuePairOfStringAndObjectFilterInput!]
+  key: StringOperationFilterInput
+}
+
+input LegalEntityFilterInput {
+  and: [LegalEntityFilterInput!]
+  or: [LegalEntityFilterInput!]
+  idTiersActorAnonym: StringOperationFilterInput
+  companyName: StringOperationFilterInput
+  dateOfIncorporation: DateTimeOperationFilterInput
+  cdmRefCompanyPartnershipActivityType: StringOperationFilterInput
+  charitablePurpose: BooleanOperationFilterInput
+  isRelatedToRiskCountry: BooleanOperationFilterInput
+  purposeOfTheEntity: StringOperationFilterInput
+  cdmRefTypeOfFoundationTrust: StringOperationFilterInput
+  cdmRefRevocability: StringOperationFilterInput
+  cdmRefLegalEntityActivity: StringOperationFilterInput
+  hasCorpSignatoryException: BooleanOperationFilterInput
+  isSupervised: BooleanOperationFilterInput
+  cdmRefCountryOfIncorporation: StringOperationFilterInput
+  cdmRefLegalForm: StringOperationFilterInput
+  listedQuotedStockExchange: BooleanOperationFilterInput
+  relationshipManagerId: StringOperationFilterInput
+  cdmRefCurrentBusinessActivityLevel1: ListStringOperationFilterInput
+  cdmRefCurrentBusinessActivityLevel2: ListStringOperationFilterInput
+  cdmRefCurrentBusinessActivityLevel3: ListStringOperationFilterInput
+  connectionBetweenAccountHolderPOA: StringOperationFilterInput
+  countryOfActivity: ListStringOperationFilterInput
+  cdmRefAssociatedRisks: ListStringOperationFilterInput
+  amlCommitteeComments: StringOperationFilterInput
+  entityBelongsToGroup: BooleanOperationFilterInput
+  groupChartProvided: BooleanOperationFilterInput
+  groupStructureExplanation: StringOperationFilterInput
+  shareCapital: StringOperationFilterInput
+  netProfit: StringOperationFilterInput
+  annualTurnover: StringOperationFilterInput
+  cdmRefEmployeesRange: StringOperationFilterInput
+  numberOfEmployees: IntOperationFilterInput
+  hasHighRiskOwnership: BooleanOperationFilterInput
+  cdmRefTypeOfHighRiskEntity: StringOperationFilterInput
+  issuesBearerShares: BooleanOperationFilterInput
+  uuid: StringOperationFilterInput
+  emirDelegatedReporting: BooleanOperationFilterInput
+  cdmRefEmirUkClassification: StringOperationFilterInput
+  cdmRefClearingThresholdParty2: StringOperationFilterInput
+  linkedToCommercialOrTreasuryFinancing: BooleanOperationFilterInput
+  cdmRefEmirEuClassification: StringOperationFilterInput
+  cdmRefFmiaClassification: StringOperationFilterInput
+  cdmRefEmirCorporateSector: StringOperationFilterInput
+  mifidDelegatedReporting: BooleanOperationFilterInput
+  cdmRefSourceOfWealthCurrency: StringOperationFilterInput
+  percentOfTotalWealthToBeInvested: FloatOperationFilterInput
+  expectedAggregatedUBPAccountBalance: StringOperationFilterInput
+  howPartyEstablishedWealth: StringOperationFilterInput
+  sowCountry: ListStringOperationFilterInput
+  businessActivitySOWLevel1: ListStringOperationFilterInput
+  businessActivitySOWLevel2: ListStringOperationFilterInput
+  businessActivitySOWLevel3: ListStringOperationFilterInput
+  estimationDate: DateTimeOperationFilterInput
+  contactComment: StringOperationFilterInput
+  originOfContact: StringOperationFilterInput
+  preferredContactMethod: StringOperationFilterInput
+  noMarketing: BooleanOperationFilterInput
+  noEmails: BooleanOperationFilterInput
+  noPhoneCalls: BooleanOperationFilterInput
+  noMail: BooleanOperationFilterInput
+  noFax: BooleanOperationFilterInput
+  noBulkEmail: BooleanOperationFilterInput
+  noEBanking: BooleanOperationFilterInput
+  contactID: StringOperationFilterInput
+  cdmRefHowPartyWasIntroduced: StringOperationFilterInput
+  introductionDate: DateTimeOperationFilterInput
+  cdmRefLocalEAMRegulator: StringOperationFilterInput
+  clientAccountNumber: StringOperationFilterInput
+  thirdParty: StringOperationFilterInput
+  introducerCode: StringOperationFilterInput
+  externalManagerCode: StringOperationFilterInput
+  activeAccountNumbers: StringOperationFilterInput
+  activeRoles: StringOperationFilterInput
+  cdmRefRelationWithBank: StringOperationFilterInput
+  accountOpenedWithAnotherRM: BooleanOperationFilterInput
+  introductionComment: StringOperationFilterInput
+  cdmRefMeetingWithParty: StringOperationFilterInput
+  reasonForNotMeeting: StringOperationFilterInput
+  reasonforChoosingEntity: StringOperationFilterInput
+  isMandateSignedWithUBP: BooleanOperationFilterInput
+  isMandateSignedWithEAM: BooleanOperationFilterInput
+  isMandateSignedWithAnotherInstitution: BooleanOperationFilterInput
+  isDirectorManagingFinancialAssets: BooleanOperationFilterInput
+  isEntityFinancialInstitutionForOtherReason: BooleanOperationFilterInput
+  cdmRefPersonStatus: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  creationDate: DateTimeOperationFilterInput
+  closeDate: DateTimeOperationFilterInput
+  modificationDate: DateTimeOperationFilterInput
+  isAssociatedPerson: BooleanOperationFilterInput
+  cdmRefDormantStatus: StringOperationFilterInput
+  lastDateOfContact: DateTimeOperationFilterInput
+  cdmRefLastDateOfContactReason: StringOperationFilterInput
+  mifidFullRetailClient: BooleanOperationFilterInput
+  mifidFullOptupProfessional: BooleanOperationFilterInput
+  mifidFullRequestsOptupProfessional: BooleanOperationFilterInput
+  mifidFull10TransactionsPerQuarter: BooleanOperationFilterInput
+  mifidFullClientPortfolioExceeds500K: BooleanOperationFilterInput
+  mifidFull1YearProfessionalExperience: BooleanOperationFilterInput
+  mifidFullIsPerSeProfessional: BooleanOperationFilterInput
+  mifidFullHasNetTurnoverAbove40mil: BooleanOperationFilterInput
+  mifidFullHasBalanceSheetTotalAbove20mil: BooleanOperationFilterInput
+  mifidFullHasShareholdersEquityAbove2mil: BooleanOperationFilterInput
+  mifidFullIsEligibleCounterparty: BooleanOperationFilterInput
+  eligibleCounterparties: ListStringOperationFilterInput
+  mifidFullHasEquities: BooleanOperationFilterInput
+  mifidFullHasBonds: BooleanOperationFilterInput
+  mifidFullHasMoneyMarketInstruments: BooleanOperationFilterInput
+  mifidFullHasPreciousMetals: BooleanOperationFilterInput
+  mifidFullHasForeignExchange: BooleanOperationFilterInput
+  mifidFullHasNonComplexInvestmentFunds: BooleanOperationFilterInput
+  mifidFullHasComplexInvestmentFunds: BooleanOperationFilterInput
+  mifidFullHasHedgeFunds: BooleanOperationFilterInput
+  mifidFullHasPrivateEquityOrVentureCapital: BooleanOperationFilterInput
+  mifidFullHasStructuredProducts: BooleanOperationFilterInput
+  mifidFullHasOptionsAndWarrants: BooleanOperationFilterInput
+  mifidFullHasFutures: BooleanOperationFilterInput
+  mifidFullHasCommodities: BooleanOperationFilterInput
+  mifidFullHasConvertibleBonds: BooleanOperationFilterInput
+  mifidFullHasNetTotalTurnoverMin40mil: BooleanOperationFilterInput
+  mifidFullHasBalanceSheetTotalMin20mil: BooleanOperationFilterInput
+  mifidFullHasCapitalMin2mil: BooleanOperationFilterInput
+  mifidFullWaivedOptupProfessionalStatus: BooleanOperationFilterInput
+  mifidFullWaivedPerSeProfessionalStatus: BooleanOperationFilterInput
+  mifidFullWaivedEcpForPerSe: BooleanOperationFilterInput
+  mifidFullWaivedEcpForRetail: BooleanOperationFilterInput
+  cdmRefMifidFullClientCategoryId: StringOperationFilterInput
+  mifidLightClientPortfolioExceeds1mil: BooleanOperationFilterInput
+  mifidLight1YearProfessionalExperience: BooleanOperationFilterInput
+  mifidLightHasNetTotalTurnoverMin40mil: BooleanOperationFilterInput
+  mifidLightHasBalanceSheetTotalMin20mil: BooleanOperationFilterInput
+  mifidLightHasEquityMin2mil: BooleanOperationFilterInput
+  cdmRefMifidLightClientCategoryId: StringOperationFilterInput
+  cdmRefFinsaClientCategory: StringOperationFilterInput
+  finsaOptOutAum500k: BooleanOperationFilterInput
+  finsaOptOutAum2mil: BooleanOperationFilterInput
+  finsaInstitProfessionalOnRequestToBe: BooleanOperationFilterInput
+  finsaInstitProfessionalToBe: BooleanOperationFilterInput
+  finsaSwissOptOut: BooleanOperationFilterInput
+  finsaProfClientOptOut: BooleanOperationFilterInput
+  finsaInstitProfessionalToBeOptIn: BooleanOperationFilterInput
+  finsaProfPrivateToBe: BooleanOperationFilterInput
+  finsaProfClientStatusConfirmation: BooleanOperationFilterInput
+  dynamicClientCategory: StringOperationFilterInput
+  dynamicClientSubCategory: StringOperationFilterInput
+  dynamicRoles: StringOperationFilterInput
+  dynamicServiceTypes: StringOperationFilterInput
+  dynamicSuitabilityRequired: StringOperationFilterInput
+  kycComplete: BooleanOperationFilterInput
+  dynamicUserRoles: StringOperationFilterInput
+  userTeams: StringOperationFilterInput
+  cdmRefContactCategory: StringOperationFilterInput
+  suitabilityReviewLookup: StringOperationFilterInput
+  lastSRCCompleted: StringOperationFilterInput
+  currentSRC: StringOperationFilterInput
+  detailsUpdated: BooleanOperationFilterInput
+  suitabilityreviewid: StringOperationFilterInput
+  isonboardingclient: StringOperationFilterInput
+  allMandatoryDocumentsAttached: BooleanOperationFilterInput
+  hasexistingactiveclients: StringOperationFilterInput
+  wdxcontactid: StringOperationFilterInput
+  id: UuidOperationFilterInput
+  personId: StringOperationFilterInput
+  address: ListAddressFilterInput
+  addressCorroboratingEvidence: ListAddressCorroboratingEvidenceFilterInput
+  amlInformation: ListAmlInformationFilterInput
+  assets: ListAssetsFilterInput
+  eBankingUserId: ListEBankingUserIdFilterInput
+  electronicConnectionAgreementId: ListElectronicConnectionAgreementIdFilterInput
+  emailAddresses: ListEmailAddressesFilterInput
+  liabilities: ListLiabilitiesFilterInput
+  mailingInstructions: ListFilterInputTypeOfMailingInstructionFilterInput
+  personOrigin: ListPersonOriginFilterInput
+  phoneNumbers: ListPhoneNumbersFilterInput
+  taxIdentification: ListTaxIdentificationFilterInput
+  additionalProperties: ListFilterInputTypeOfKeyValuePairOfStringAndObjectFilterInput
+}
+
+input LegalEntitySortInput {
+  idTiersActorAnonym: SortEnumType @cost(weight: "10")
+  companyName: SortEnumType @cost(weight: "10")
+  dateOfIncorporation: SortEnumType @cost(weight: "10")
+  cdmRefCompanyPartnershipActivityType: SortEnumType @cost(weight: "10")
+  charitablePurpose: SortEnumType @cost(weight: "10")
+  isRelatedToRiskCountry: SortEnumType @cost(weight: "10")
+  purposeOfTheEntity: SortEnumType @cost(weight: "10")
+  cdmRefTypeOfFoundationTrust: SortEnumType @cost(weight: "10")
+  cdmRefRevocability: SortEnumType @cost(weight: "10")
+  cdmRefLegalEntityActivity: SortEnumType @cost(weight: "10")
+  hasCorpSignatoryException: SortEnumType @cost(weight: "10")
+  isSupervised: SortEnumType @cost(weight: "10")
+  cdmRefCountryOfIncorporation: SortEnumType @cost(weight: "10")
+  cdmRefLegalForm: SortEnumType @cost(weight: "10")
+  listedQuotedStockExchange: SortEnumType @cost(weight: "10")
+  relationshipManagerId: SortEnumType @cost(weight: "10")
+  connectionBetweenAccountHolderPOA: SortEnumType @cost(weight: "10")
+  amlCommitteeComments: SortEnumType @cost(weight: "10")
+  entityBelongsToGroup: SortEnumType @cost(weight: "10")
+  groupChartProvided: SortEnumType @cost(weight: "10")
+  groupStructureExplanation: SortEnumType @cost(weight: "10")
+  shareCapital: SortEnumType @cost(weight: "10")
+  netProfit: SortEnumType @cost(weight: "10")
+  annualTurnover: SortEnumType @cost(weight: "10")
+  cdmRefEmployeesRange: SortEnumType @cost(weight: "10")
+  numberOfEmployees: SortEnumType @cost(weight: "10")
+  hasHighRiskOwnership: SortEnumType @cost(weight: "10")
+  cdmRefTypeOfHighRiskEntity: SortEnumType @cost(weight: "10")
+  issuesBearerShares: SortEnumType @cost(weight: "10")
+  uuid: SortEnumType @cost(weight: "10")
+  emirDelegatedReporting: SortEnumType @cost(weight: "10")
+  cdmRefEmirUkClassification: SortEnumType @cost(weight: "10")
+  cdmRefClearingThresholdParty2: SortEnumType @cost(weight: "10")
+  linkedToCommercialOrTreasuryFinancing: SortEnumType @cost(weight: "10")
+  cdmRefEmirEuClassification: SortEnumType @cost(weight: "10")
+  cdmRefFmiaClassification: SortEnumType @cost(weight: "10")
+  cdmRefEmirCorporateSector: SortEnumType @cost(weight: "10")
+  mifidDelegatedReporting: SortEnumType @cost(weight: "10")
+  cdmRefSourceOfWealthCurrency: SortEnumType @cost(weight: "10")
+  percentOfTotalWealthToBeInvested: SortEnumType @cost(weight: "10")
+  expectedAggregatedUBPAccountBalance: SortEnumType @cost(weight: "10")
+  howPartyEstablishedWealth: SortEnumType @cost(weight: "10")
+  estimationDate: SortEnumType @cost(weight: "10")
+  contactComment: SortEnumType @cost(weight: "10")
+  originOfContact: SortEnumType @cost(weight: "10")
+  preferredContactMethod: SortEnumType @cost(weight: "10")
+  noMarketing: SortEnumType @cost(weight: "10")
+  noEmails: SortEnumType @cost(weight: "10")
+  noPhoneCalls: SortEnumType @cost(weight: "10")
+  noMail: SortEnumType @cost(weight: "10")
+  noFax: SortEnumType @cost(weight: "10")
+  noBulkEmail: SortEnumType @cost(weight: "10")
+  noEBanking: SortEnumType @cost(weight: "10")
+  contactID: SortEnumType @cost(weight: "10")
+  cdmRefHowPartyWasIntroduced: SortEnumType @cost(weight: "10")
+  introductionDate: SortEnumType @cost(weight: "10")
+  cdmRefLocalEAMRegulator: SortEnumType @cost(weight: "10")
+  clientAccountNumber: SortEnumType @cost(weight: "10")
+  thirdParty: SortEnumType @cost(weight: "10")
+  introducerCode: SortEnumType @cost(weight: "10")
+  externalManagerCode: SortEnumType @cost(weight: "10")
+  activeAccountNumbers: SortEnumType @cost(weight: "10")
+  activeRoles: SortEnumType @cost(weight: "10")
+  cdmRefRelationWithBank: SortEnumType @cost(weight: "10")
+  accountOpenedWithAnotherRM: SortEnumType @cost(weight: "10")
+  introductionComment: SortEnumType @cost(weight: "10")
+  cdmRefMeetingWithParty: SortEnumType @cost(weight: "10")
+  reasonForNotMeeting: SortEnumType @cost(weight: "10")
+  reasonforChoosingEntity: SortEnumType @cost(weight: "10")
+  isMandateSignedWithUBP: SortEnumType @cost(weight: "10")
+  isMandateSignedWithEAM: SortEnumType @cost(weight: "10")
+  isMandateSignedWithAnotherInstitution: SortEnumType @cost(weight: "10")
+  isDirectorManagingFinancialAssets: SortEnumType @cost(weight: "10")
+  isEntityFinancialInstitutionForOtherReason: SortEnumType @cost(weight: "10")
+  cdmRefPersonStatus: SortEnumType @cost(weight: "10")
+  cdmRefStatus: SortEnumType @cost(weight: "10")
+  creationDate: SortEnumType @cost(weight: "10")
+  closeDate: SortEnumType @cost(weight: "10")
+  modificationDate: SortEnumType @cost(weight: "10")
+  isAssociatedPerson: SortEnumType @cost(weight: "10")
+  cdmRefDormantStatus: SortEnumType @cost(weight: "10")
+  lastDateOfContact: SortEnumType @cost(weight: "10")
+  cdmRefLastDateOfContactReason: SortEnumType @cost(weight: "10")
+  mifidFullRetailClient: SortEnumType @cost(weight: "10")
+  mifidFullOptupProfessional: SortEnumType @cost(weight: "10")
+  mifidFullRequestsOptupProfessional: SortEnumType @cost(weight: "10")
+  mifidFull10TransactionsPerQuarter: SortEnumType @cost(weight: "10")
+  mifidFullClientPortfolioExceeds500K: SortEnumType @cost(weight: "10")
+  mifidFull1YearProfessionalExperience: SortEnumType @cost(weight: "10")
+  mifidFullIsPerSeProfessional: SortEnumType @cost(weight: "10")
+  mifidFullHasNetTurnoverAbove40mil: SortEnumType @cost(weight: "10")
+  mifidFullHasBalanceSheetTotalAbove20mil: SortEnumType @cost(weight: "10")
+  mifidFullHasShareholdersEquityAbove2mil: SortEnumType @cost(weight: "10")
+  mifidFullIsEligibleCounterparty: SortEnumType @cost(weight: "10")
+  mifidFullHasEquities: SortEnumType @cost(weight: "10")
+  mifidFullHasBonds: SortEnumType @cost(weight: "10")
+  mifidFullHasMoneyMarketInstruments: SortEnumType @cost(weight: "10")
+  mifidFullHasPreciousMetals: SortEnumType @cost(weight: "10")
+  mifidFullHasForeignExchange: SortEnumType @cost(weight: "10")
+  mifidFullHasNonComplexInvestmentFunds: SortEnumType @cost(weight: "10")
+  mifidFullHasComplexInvestmentFunds: SortEnumType @cost(weight: "10")
+  mifidFullHasHedgeFunds: SortEnumType @cost(weight: "10")
+  mifidFullHasPrivateEquityOrVentureCapital: SortEnumType @cost(weight: "10")
+  mifidFullHasStructuredProducts: SortEnumType @cost(weight: "10")
+  mifidFullHasOptionsAndWarrants: SortEnumType @cost(weight: "10")
+  mifidFullHasFutures: SortEnumType @cost(weight: "10")
+  mifidFullHasCommodities: SortEnumType @cost(weight: "10")
+  mifidFullHasConvertibleBonds: SortEnumType @cost(weight: "10")
+  mifidFullHasNetTotalTurnoverMin40mil: SortEnumType @cost(weight: "10")
+  mifidFullHasBalanceSheetTotalMin20mil: SortEnumType @cost(weight: "10")
+  mifidFullHasCapitalMin2mil: SortEnumType @cost(weight: "10")
+  mifidFullWaivedOptupProfessionalStatus: SortEnumType @cost(weight: "10")
+  mifidFullWaivedPerSeProfessionalStatus: SortEnumType @cost(weight: "10")
+  mifidFullWaivedEcpForPerSe: SortEnumType @cost(weight: "10")
+  mifidFullWaivedEcpForRetail: SortEnumType @cost(weight: "10")
+  cdmRefMifidFullClientCategoryId: SortEnumType @cost(weight: "10")
+  mifidLightClientPortfolioExceeds1mil: SortEnumType @cost(weight: "10")
+  mifidLight1YearProfessionalExperience: SortEnumType @cost(weight: "10")
+  mifidLightHasNetTotalTurnoverMin40mil: SortEnumType @cost(weight: "10")
+  mifidLightHasBalanceSheetTotalMin20mil: SortEnumType @cost(weight: "10")
+  mifidLightHasEquityMin2mil: SortEnumType @cost(weight: "10")
+  cdmRefMifidLightClientCategoryId: SortEnumType @cost(weight: "10")
+  cdmRefFinsaClientCategory: SortEnumType @cost(weight: "10")
+  finsaOptOutAum500k: SortEnumType @cost(weight: "10")
+  finsaOptOutAum2mil: SortEnumType @cost(weight: "10")
+  finsaInstitProfessionalOnRequestToBe: SortEnumType @cost(weight: "10")
+  finsaInstitProfessionalToBe: SortEnumType @cost(weight: "10")
+  finsaSwissOptOut: SortEnumType @cost(weight: "10")
+  finsaProfClientOptOut: SortEnumType @cost(weight: "10")
+  finsaInstitProfessionalToBeOptIn: SortEnumType @cost(weight: "10")
+  finsaProfPrivateToBe: SortEnumType @cost(weight: "10")
+  finsaProfClientStatusConfirmation: SortEnumType @cost(weight: "10")
+  dynamicClientCategory: SortEnumType @cost(weight: "10")
+  dynamicClientSubCategory: SortEnumType @cost(weight: "10")
+  dynamicRoles: SortEnumType @cost(weight: "10")
+  dynamicServiceTypes: SortEnumType @cost(weight: "10")
+  dynamicSuitabilityRequired: SortEnumType @cost(weight: "10")
+  kycComplete: SortEnumType @cost(weight: "10")
+  dynamicUserRoles: SortEnumType @cost(weight: "10")
+  userTeams: SortEnumType @cost(weight: "10")
+  cdmRefContactCategory: SortEnumType @cost(weight: "10")
+  suitabilityReviewLookup: SortEnumType @cost(weight: "10")
+  lastSRCCompleted: SortEnumType @cost(weight: "10")
+  currentSRC: SortEnumType @cost(weight: "10")
+  detailsUpdated: SortEnumType @cost(weight: "10")
+  suitabilityreviewid: SortEnumType @cost(weight: "10")
+  isonboardingclient: SortEnumType @cost(weight: "10")
+  allMandatoryDocumentsAttached: SortEnumType @cost(weight: "10")
+  hasexistingactiveclients: SortEnumType @cost(weight: "10")
+  wdxcontactid: SortEnumType @cost(weight: "10")
+  id: SortEnumType @cost(weight: "10")
+  personId: SortEnumType @cost(weight: "10")
+}
+
+input LiabilitiesFilterInput {
+  and: [LiabilitiesFilterInput!]
+  or: [LiabilitiesFilterInput!]
+  refCurrency: StringOperationFilterInput
+  financialId: StringOperationFilterInput
+  cdmRefType: StringOperationFilterInput
+  amount: StringOperationFilterInput
+  bankName: StringOperationFilterInput
+  refCountryId: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+  cdmRefFinancialType: StringOperationFilterInput
+}
+
+input ListAccountLifecycleAUMFilterInput {
+  all: AccountLifecycleAUMFilterInput @cost(weight: "10")
+  none: AccountLifecycleAUMFilterInput @cost(weight: "10")
+  some: AccountLifecycleAUMFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListAccountOpeningAUMFilterInput {
+  all: AccountOpeningAUMFilterInput @cost(weight: "10")
+  none: AccountOpeningAUMFilterInput @cost(weight: "10")
+  some: AccountOpeningAUMFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListAddressCorroboratingEvidenceFilterInput {
+  all: AddressCorroboratingEvidenceFilterInput @cost(weight: "10")
+  none: AddressCorroboratingEvidenceFilterInput @cost(weight: "10")
+  some: AddressCorroboratingEvidenceFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListAddressFilterInput {
+  all: AddressFilterInput @cost(weight: "10")
+  none: AddressFilterInput @cost(weight: "10")
+  some: AddressFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListAddressLinkedDocumentFilterInput {
+  all: AddressLinkedDocumentFilterInput @cost(weight: "10")
+  none: AddressLinkedDocumentFilterInput @cost(weight: "10")
+  some: AddressLinkedDocumentFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListAdvisoryPortfolioReviewFilterInput {
+  all: AdvisoryPortfolioReviewFilterInput @cost(weight: "10")
+  none: AdvisoryPortfolioReviewFilterInput @cost(weight: "10")
+  some: AdvisoryPortfolioReviewFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListAmlInformationFilterInput {
+  all: AmlInformationFilterInput @cost(weight: "10")
+  none: AmlInformationFilterInput @cost(weight: "10")
+  some: AmlInformationFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListAssetsFilterInput {
+  all: AssetsFilterInput @cost(weight: "10")
+  none: AssetsFilterInput @cost(weight: "10")
+  some: AssetsFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListBlockingRecordsFilterInput {
+  all: BlockingRecordsFilterInput @cost(weight: "10")
+  none: BlockingRecordsFilterInput @cost(weight: "10")
+  some: BlockingRecordsFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListDeathCertificateLinkedDocIdFilterInput {
+  all: DeathCertificateLinkedDocIdFilterInput @cost(weight: "10")
+  none: DeathCertificateLinkedDocIdFilterInput @cost(weight: "10")
+  some: DeathCertificateLinkedDocIdFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListDttaFilterInput {
+  all: DttaFilterInput @cost(weight: "10")
+  none: DttaFilterInput @cost(weight: "10")
+  some: DttaFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListEBankingUserIdFilterInput {
+  all: EBankingUserIdFilterInput @cost(weight: "10")
+  none: EBankingUserIdFilterInput @cost(weight: "10")
+  some: EBankingUserIdFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListElectronicConnectionAgreementIdFilterInput {
+  all: ElectronicConnectionAgreementIdFilterInput @cost(weight: "10")
+  none: ElectronicConnectionAgreementIdFilterInput @cost(weight: "10")
+  some: ElectronicConnectionAgreementIdFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListEmailAddressesFilterInput {
+  all: EmailAddressesFilterInput @cost(weight: "10")
+  none: EmailAddressesFilterInput @cost(weight: "10")
+  some: EmailAddressesFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListExpectedIncomingTransactionsFilterInput {
+  all: ExpectedIncomingTransactionsFilterInput @cost(weight: "10")
+  none: ExpectedIncomingTransactionsFilterInput @cost(weight: "10")
+  some: ExpectedIncomingTransactionsFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListExpectedOutgoingTransactionsFilterInput {
+  all: ExpectedOutgoingTransactionsFilterInput @cost(weight: "10")
+  none: ExpectedOutgoingTransactionsFilterInput @cost(weight: "10")
+  some: ExpectedOutgoingTransactionsFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListFilterInputTypeOfAccountFilterInput {
+  all: AccountFilterInput @cost(weight: "10")
+  none: AccountFilterInput @cost(weight: "10")
+  some: AccountFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListFilterInputTypeOfKeyValuePairOfStringAndObjectFilterInput {
+  all: KeyValuePairOfStringAndObjectFilterInput @cost(weight: "10")
+  none: KeyValuePairOfStringAndObjectFilterInput @cost(weight: "10")
+  some: KeyValuePairOfStringAndObjectFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListFilterInputTypeOfMailingInstructionFilterInput {
+  all: MailingInstructionFilterInput @cost(weight: "10")
+  none: MailingInstructionFilterInput @cost(weight: "10")
+  some: MailingInstructionFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListFilterInputTypeOfPartyToAccountRoleFilterInput {
+  all: PartyToAccountRoleFilterInput @cost(weight: "10")
+  none: PartyToAccountRoleFilterInput @cost(weight: "10")
+  some: PartyToAccountRoleFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListFilterInputTypeOfPartyToAccountRoleSystemIdentifiersFilterInput {
+  all: PartyToAccountRoleSystemIdentifiersFilterInput @cost(weight: "10")
+  none: PartyToAccountRoleSystemIdentifiersFilterInput @cost(weight: "10")
+  some: PartyToAccountRoleSystemIdentifiersFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListFilterInputTypeOfPartyToContractualRelationshipRoleFilterInput {
+  all: PartyToContractualRelationshipRoleFilterInput @cost(weight: "10")
+  none: PartyToContractualRelationshipRoleFilterInput @cost(weight: "10")
+  some: PartyToContractualRelationshipRoleFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListFilterInputTypeOfRoleSystemIdentifiersFilterInput {
+  all: RoleSystemIdentifiersFilterInput @cost(weight: "10")
+  none: RoleSystemIdentifiersFilterInput @cost(weight: "10")
+  some: RoleSystemIdentifiersFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListFilterInputTypeOfValidityYearDtoFilterInput {
+  all: ValidityYearDtoFilterInput @cost(weight: "10")
+  none: ValidityYearDtoFilterInput @cost(weight: "10")
+  some: ValidityYearDtoFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListFiscalReportingFilterInput {
+  all: FiscalReportingFilterInput @cost(weight: "10")
+  none: FiscalReportingFilterInput @cost(weight: "10")
+  some: FiscalReportingFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListIdentificationFilterInput {
+  all: IdentificationFilterInput @cost(weight: "10")
+  none: IdentificationFilterInput @cost(weight: "10")
+  some: IdentificationFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListIncomeFilterInput {
+  all: IncomeFilterInput @cost(weight: "10")
+  none: IncomeFilterInput @cost(weight: "10")
+  some: IncomeFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListInsiderDetailsFilterInput {
+  all: InsiderDetailsFilterInput @cost(weight: "10")
+  none: InsiderDetailsFilterInput @cost(weight: "10")
+  some: InsiderDetailsFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListInsiderDetailsPartnerFilterInput {
+  all: InsiderDetailsPartnerFilterInput @cost(weight: "10")
+  none: InsiderDetailsPartnerFilterInput @cost(weight: "10")
+  some: InsiderDetailsPartnerFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListInsiderDetailsShareholderFilterInput {
+  all: InsiderDetailsShareholderFilterInput @cost(weight: "10")
+  none: InsiderDetailsShareholderFilterInput @cost(weight: "10")
+  some: InsiderDetailsShareholderFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListLiabilitiesFilterInput {
+  all: LiabilitiesFilterInput @cost(weight: "10")
+  none: LiabilitiesFilterInput @cost(weight: "10")
+  some: LiabilitiesFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListOtherNamesFilterInput {
+  all: OtherNamesFilterInput @cost(weight: "10")
+  none: OtherNamesFilterInput @cost(weight: "10")
+  some: OtherNamesFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListPepDetailsFilterInput {
+  all: PepDetailsFilterInput @cost(weight: "10")
+  none: PepDetailsFilterInput @cost(weight: "10")
+  some: PepDetailsFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListPersonOriginFilterInput {
+  all: PersonOriginFilterInput @cost(weight: "10")
+  none: PersonOriginFilterInput @cost(weight: "10")
+  some: PersonOriginFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListPhoneNumbersFilterInput {
+  all: PhoneNumbersFilterInput @cost(weight: "10")
+  none: PhoneNumbersFilterInput @cost(weight: "10")
+  some: PhoneNumbersFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListPledgeAgreementsIdFilterInput {
+  all: PledgeAgreementsIdFilterInput @cost(weight: "10")
+  none: PledgeAgreementsIdFilterInput @cost(weight: "10")
+  some: PledgeAgreementsIdFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListScreeningFilterInput {
+  all: ScreeningFilterInput @cost(weight: "10")
+  none: ScreeningFilterInput @cost(weight: "10")
+  some: ScreeningFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListStringOperationFilterInput {
+  all: StringOperationFilterInput @cost(weight: "10")
+  none: StringOperationFilterInput @cost(weight: "10")
+  some: StringOperationFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input ListTaxIdentificationFilterInput {
+  all: TaxIdentificationFilterInput @cost(weight: "10")
+  none: TaxIdentificationFilterInput @cost(weight: "10")
+  some: TaxIdentificationFilterInput @cost(weight: "10")
+  any: Boolean @cost(weight: "10")
+}
+
+input MailingInstructionFilterInput {
+  and: [MailingInstructionFilterInput!]
+  or: [MailingInstructionFilterInput!]
+  personId: StringOperationFilterInput
+  name: StringOperationFilterInput
+  miId: StringOperationFilterInput
+  cdmRefInstructionType: StringOperationFilterInput
+  cdmRefScopeOfDocument: StringOperationFilterInput
+  linkedPerson: StringOperationFilterInput
+  crName: StringOperationFilterInput
+  crId: StringOperationFilterInput
+  crGUID: StringOperationFilterInput
+  accountName: StringOperationFilterInput
+  accountId: StringOperationFilterInput
+  accountGUID: StringOperationFilterInput
+  cdmRefAddressType: StringOperationFilterInput
+  correspondenceAddress: StringOperationFilterInput
+  mailingRecipient: StringOperationFilterInput
+  statecode: StringOperationFilterInput
+  status: StringOperationFilterInput
+  numberOfCopiesIssued: IntOperationFilterInput
+  periodicity: StringOperationFilterInput
+}
+
+input OtherNamesFilterInput {
+  and: [OtherNamesFilterInput!]
+  or: [OtherNamesFilterInput!]
+  cdmRefNameType: StringOperationFilterInput
+  name: StringOperationFilterInput
+  nameStatecode: StringOperationFilterInput
+  nameStatus: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+}
+
+input PartyToAccountRoleFilterInput {
+  and: [PartyToAccountRoleFilterInput!]
+  or: [PartyToAccountRoleFilterInput!]
+  account: AccountFilterInput
+  associatedSystemIdentifiers: ListFilterInputTypeOfPartyToAccountRoleSystemIdentifiersFilterInput
+  accountId: StringOperationFilterInput
+  comments: StringOperationFilterInput
+  eBankingComment: StringOperationFilterInput
+  eBankingEndDate: DateTimeOperationFilterInput
+  cdmRefEBankingFlag: StringOperationFilterInput
+  cdmRefEBankingPowerOnly: StringOperationFilterInput
+  eBankingStartDate: DateTimeOperationFilterInput
+  cdmRefEBankingUseRight: StringOperationFilterInput
+  endDate: DateTimeOperationFilterInput
+  number: IntOperationFilterInput
+  personFromId: StringOperationFilterInput
+  roleId: StringOperationFilterInput
+  roleTypeId: StringOperationFilterInput
+  selectPeople: ListStringOperationFilterInput
+  cdmRefSignatureRights: StringOperationFilterInput
+  startDate: DateTimeOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  cdmRefStatusReason: StringOperationFilterInput
+}
+
+input PartyToAccountRoleSortInput {
+  account: AccountSortInput @cost(weight: "10")
+  accountId: SortEnumType @cost(weight: "10")
+  comments: SortEnumType @cost(weight: "10")
+  eBankingComment: SortEnumType @cost(weight: "10")
+  eBankingEndDate: SortEnumType @cost(weight: "10")
+  cdmRefEBankingFlag: SortEnumType @cost(weight: "10")
+  cdmRefEBankingPowerOnly: SortEnumType @cost(weight: "10")
+  eBankingStartDate: SortEnumType @cost(weight: "10")
+  cdmRefEBankingUseRight: SortEnumType @cost(weight: "10")
+  endDate: SortEnumType @cost(weight: "10")
+  number: SortEnumType @cost(weight: "10")
+  personFromId: SortEnumType @cost(weight: "10")
+  roleId: SortEnumType @cost(weight: "10")
+  roleTypeId: SortEnumType @cost(weight: "10")
+  cdmRefSignatureRights: SortEnumType @cost(weight: "10")
+  startDate: SortEnumType @cost(weight: "10")
+  cdmRefStatus: SortEnumType @cost(weight: "10")
+  cdmRefStatusReason: SortEnumType @cost(weight: "10")
+}
+
+input PartyToAccountRoleSystemIdentifiersFilterInput {
+  and: [PartyToAccountRoleSystemIdentifiersFilterInput!]
+  or: [PartyToAccountRoleSystemIdentifiersFilterInput!]
+  systemId: StringOperationFilterInput
+  identifiers: ListStringOperationFilterInput
+}
+
+input PartyToContractualRelationshipRoleFilterInput {
+  and: [PartyToContractualRelationshipRoleFilterInput!]
+  or: [PartyToContractualRelationshipRoleFilterInput!]
+  contractualRelationship: ContractualRelationshipFilterInput
+  accountRestriction: ListStringOperationFilterInput
+  associatedSystemIdentifiers: ListFilterInputTypeOfRoleSystemIdentifiersFilterInput
+  comments: StringOperationFilterInput
+  crId: StringOperationFilterInput
+  eBankingComment: StringOperationFilterInput
+  eBankingEndDate: DateTimeOperationFilterInput
+  cdmRefEBankingFlag: StringOperationFilterInput
+  eBankingStartDate: DateTimeOperationFilterInput
+  cdmRefEBankingUseRight: StringOperationFilterInput
+  cdmRefEconomicSettlor: StringOperationFilterInput
+  endDate: DateTimeOperationFilterInput
+  numberOfSignatureRights: IntOperationFilterInput
+  personFromId: StringOperationFilterInput
+  cdmRefRightToClaimDistribution: StringOperationFilterInput
+  cdmRefRightToRevoke: StringOperationFilterInput
+  roleId: StringOperationFilterInput
+  roleTypeId: StringOperationFilterInput
+  selectPeople: ListStringOperationFilterInput
+  cdmRefSignatureRights: StringOperationFilterInput
+  startDate: DateTimeOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  validityYear: ListFilterInputTypeOfValidityYearDtoFilterInput
+}
+
+input PartyToContractualRelationshipRoleSortInput {
+  contractualRelationship: ContractualRelationshipSortInput @cost(weight: "10")
+  comments: SortEnumType @cost(weight: "10")
+  crId: SortEnumType @cost(weight: "10")
+  eBankingComment: SortEnumType @cost(weight: "10")
+  eBankingEndDate: SortEnumType @cost(weight: "10")
+  cdmRefEBankingFlag: SortEnumType @cost(weight: "10")
+  eBankingStartDate: SortEnumType @cost(weight: "10")
+  cdmRefEBankingUseRight: SortEnumType @cost(weight: "10")
+  cdmRefEconomicSettlor: SortEnumType @cost(weight: "10")
+  endDate: SortEnumType @cost(weight: "10")
+  numberOfSignatureRights: SortEnumType @cost(weight: "10")
+  personFromId: SortEnumType @cost(weight: "10")
+  cdmRefRightToClaimDistribution: SortEnumType @cost(weight: "10")
+  cdmRefRightToRevoke: SortEnumType @cost(weight: "10")
+  roleId: SortEnumType @cost(weight: "10")
+  roleTypeId: SortEnumType @cost(weight: "10")
+  cdmRefSignatureRights: SortEnumType @cost(weight: "10")
+  startDate: SortEnumType @cost(weight: "10")
+  cdmRefStatus: SortEnumType @cost(weight: "10")
+}
+
+input PartyToPartyRoleFilterInput {
+  and: [PartyToPartyRoleFilterInput!]
+  or: [PartyToPartyRoleFilterInput!]
+  accountRestriction: ListStringOperationFilterInput
+  associatedSystemIdentifiers: ListFilterInputTypeOfRoleSystemIdentifiersFilterInput
+  cdmRefBearerShares: StringOperationFilterInput
+  comments: StringOperationFilterInput
+  cdmRefCrsReportable: StringOperationFilterInput
+  cdmRefCrsType: StringOperationFilterInput
+  eBankingComment: StringOperationFilterInput
+  eBankingEndDate: DateTimeOperationFilterInput
+  cdmRefEBankingFlag: StringOperationFilterInput
+  eBankingStartDate: DateTimeOperationFilterInput
+  cdmRefEBankingUseRight: StringOperationFilterInput
+  cdmRefEconomicSettlor: StringOperationFilterInput
+  endDate: DateTimeOperationFilterInput
+  cdmRefFirstBeneficiary: StringOperationFilterInput
+  cdmRefNominee: StringOperationFilterInput
+  numberOfSignatureRights: IntOperationFilterInput
+  percentageBareOwnership: FloatOperationFilterInput
+  percentageInvestment: FloatOperationFilterInput
+  percentageOfUsufructuary: FloatOperationFilterInput
+  percentagePartnership: FloatOperationFilterInput
+  percentageShareholding: FloatOperationFilterInput
+  personFromId: StringOperationFilterInput
+  personToId: StringOperationFilterInput
+  cdmRefRightToAppoint: StringOperationFilterInput
+  cdmRefRightToClaimDistribution: StringOperationFilterInput
+  cdmRefRightToRevoke: StringOperationFilterInput
+  roleId: StringOperationFilterInput
+  roleTypeId: StringOperationFilterInput
+  selectPeople: ListStringOperationFilterInput
+  cdmRefSignatureRights: StringOperationFilterInput
+  startDate: DateTimeOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  validityYear: ListFilterInputTypeOfValidityYearDtoFilterInput
+}
+
+input PartyToPartyRoleSortInput {
+  cdmRefBearerShares: SortEnumType @cost(weight: "10")
+  comments: SortEnumType @cost(weight: "10")
+  cdmRefCrsReportable: SortEnumType @cost(weight: "10")
+  cdmRefCrsType: SortEnumType @cost(weight: "10")
+  eBankingComment: SortEnumType @cost(weight: "10")
+  eBankingEndDate: SortEnumType @cost(weight: "10")
+  cdmRefEBankingFlag: SortEnumType @cost(weight: "10")
+  eBankingStartDate: SortEnumType @cost(weight: "10")
+  cdmRefEBankingUseRight: SortEnumType @cost(weight: "10")
+  cdmRefEconomicSettlor: SortEnumType @cost(weight: "10")
+  endDate: SortEnumType @cost(weight: "10")
+  cdmRefFirstBeneficiary: SortEnumType @cost(weight: "10")
+  cdmRefNominee: SortEnumType @cost(weight: "10")
+  numberOfSignatureRights: SortEnumType @cost(weight: "10")
+  percentageBareOwnership: SortEnumType @cost(weight: "10")
+  percentageInvestment: SortEnumType @cost(weight: "10")
+  percentageOfUsufructuary: SortEnumType @cost(weight: "10")
+  percentagePartnership: SortEnumType @cost(weight: "10")
+  percentageShareholding: SortEnumType @cost(weight: "10")
+  personFromId: SortEnumType @cost(weight: "10")
+  personToId: SortEnumType @cost(weight: "10")
+  cdmRefRightToAppoint: SortEnumType @cost(weight: "10")
+  cdmRefRightToClaimDistribution: SortEnumType @cost(weight: "10")
+  cdmRefRightToRevoke: SortEnumType @cost(weight: "10")
+  roleId: SortEnumType @cost(weight: "10")
+  roleTypeId: SortEnumType @cost(weight: "10")
+  cdmRefSignatureRights: SortEnumType @cost(weight: "10")
+  startDate: SortEnumType @cost(weight: "10")
+  cdmRefStatus: SortEnumType @cost(weight: "10")
+}
+
+input PepDetailsFilterInput {
+  and: [PepDetailsFilterInput!]
+  or: [PepDetailsFilterInput!]
+  cdmRefPepFunctionType: StringOperationFilterInput
+  cdmRefPepFunctionCountry: StringOperationFilterInput
+  primaryId: StringOperationFilterInput
+  pepId: StringOperationFilterInput
+  internalId: IntOperationFilterInput
+  personId: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  stateCode: StringOperationFilterInput
+}
+
+input PersonOriginFilterInput {
+  and: [PersonOriginFilterInput!]
+  or: [PersonOriginFilterInput!]
+  systemId: StringOperationFilterInput
+  originId: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  stateCode: StringOperationFilterInput
+}
+
+input PhoneNumbersFilterInput {
+  and: [PhoneNumbersFilterInput!]
+  or: [PhoneNumbersFilterInput!]
+  order: IntOperationFilterInput
+  phoneId: StringOperationFilterInput
+  correspondenceType: StringOperationFilterInput
+  cdmRefPhoneType: StringOperationFilterInput
+  refCountryCode: StringOperationFilterInput
+  phoneNumber: StringOperationFilterInput
+  comment: StringOperationFilterInput
+  isPrimary: BooleanOperationFilterInput
+  eBankingFlag: BooleanOperationFilterInput
+  communicationLeapXpertFlag: BooleanOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  validFrom: DateTimeOperationFilterInput
+  validTo: DateTimeOperationFilterInput
+  phoneStatecode: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+}
+
+input PledgeAgreementsIdFilterInput {
+  and: [PledgeAgreementsIdFilterInput!]
+  or: [PledgeAgreementsIdFilterInput!]
+  pledgeId: StringOperationFilterInput
+  name: StringOperationFilterInput
+  cdmRefPledgeTypeId: StringOperationFilterInput
+  accountId: StringOperationFilterInput
+  accountGUID: StringOperationFilterInput
+  pledgedToId: StringOperationFilterInput
+  reciprocalId: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  stateCode: StringOperationFilterInput
+}
+
+input RoleSystemIdentifiersFilterInput {
+  and: [RoleSystemIdentifiersFilterInput!]
+  or: [RoleSystemIdentifiersFilterInput!]
+  systemId: StringOperationFilterInput
+  identifiers: ListStringOperationFilterInput
+}
+
+input ScreeningFilterInput {
+  and: [ScreeningFilterInput!]
+  or: [ScreeningFilterInput!]
+  screeningId: StringOperationFilterInput
+  screeningDate: DateTimeOperationFilterInput
+  hasNegativeMediaInfo: BooleanOperationFilterInput
+  isRiskMitigated: BooleanOperationFilterInput
+  screeningDetails: StringOperationFilterInput
+  cdmRefStatus: StringOperationFilterInput
+  statecode: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+}
+
+input StringOperationFilterInput {
+  and: [StringOperationFilterInput!]
+  or: [StringOperationFilterInput!]
+  eq: String @cost(weight: "10")
+  neq: String @cost(weight: "10")
+  contains: String @cost(weight: "20")
+  ncontains: String @cost(weight: "20")
+  in: [String] @cost(weight: "10")
+  nin: [String] @cost(weight: "10")
+  startsWith: String @cost(weight: "20")
+  nstartsWith: String @cost(weight: "20")
+  endsWith: String @cost(weight: "20")
+  nendsWith: String @cost(weight: "20")
+}
+
+input TaxIdentificationFilterInput {
+  and: [TaxIdentificationFilterInput!]
+  or: [TaxIdentificationFilterInput!]
+  taxIdentifierId: StringOperationFilterInput
+  refTaxIdentificationCountry: StringOperationFilterInput
+  taxIdentificationHasTIN: BooleanOperationFilterInput
+  cdmRefTaxIdentificationSubType: StringOperationFilterInput
+  taxIdentificationNumber: StringOperationFilterInput
+  cdmRefTaxIdentificationReasonForNoTin: StringOperationFilterInput
+  taxIdentificationValidFrom: DateTimeOperationFilterInput
+  taxIdentificationEndDate: DateTimeOperationFilterInput
+  cdmRefTaxIdentificationAttachDocument: StringOperationFilterInput
+  cdmRefTaxIdentificationRecordType: StringOperationFilterInput
+  personId: StringOperationFilterInput
+  personGUID: StringOperationFilterInput
+}
+
+input UuidOperationFilterInput {
+  eq: UUID @cost(weight: "10")
+  neq: UUID @cost(weight: "10")
+  in: [UUID] @cost(weight: "10")
+  nin: [UUID] @cost(weight: "10")
+  gt: UUID @cost(weight: "10")
+  ngt: UUID @cost(weight: "10")
+  gte: UUID @cost(weight: "10")
+  ngte: UUID @cost(weight: "10")
+  lt: UUID @cost(weight: "10")
+  nlt: UUID @cost(weight: "10")
+  lte: UUID @cost(weight: "10")
+  nlte: UUID @cost(weight: "10")
+}
+
+input ValidityYearDtoFilterInput {
+  and: [ValidityYearDtoFilterInput!]
+  or: [ValidityYearDtoFilterInput!]
+  validityYear: StringOperationFilterInput
+  distributionReceived: BooleanOperationFilterInput
+}
+
+enum SortEnumType {
+  ASC
+  DESC
+}
+
+"The purpose of the `cost` directive is to define a `weight` for GraphQL types, fields, and arguments. Static analysis can use these weights when calculating the overall cost of a query or response."
+directive @cost("The `weight` argument defines what value to add to the overall cost for every appearance, or possible appearance, of a type, field, argument, etc." weight: String!) on SCALAR | OBJECT | FIELD_DEFINITION | ARGUMENT_DEFINITION | ENUM | INPUT_FIELD_DEFINITION
+
+"The `@defer` directive may be provided for fragment spreads and inline fragments to inform the executor to delay the execution of the current fragment to indicate deprioritization of the current fragment. A query with `@defer` directive will cause the request to potentially return multiple responses, where non-deferred data is delivered in the initial response and data deferred is delivered in a subsequent response. `@include` and `@skip` take precedence over `@defer`."
+directive @defer("If this argument label has a value other than null, it will be passed on to the result of this defer directive. This label is intended to give client applications a way to identify to which fragment a deferred result belongs to." label: String "Deferred when true." if: Boolean) on FRAGMENT_SPREAD | INLINE_FRAGMENT
+
+"Links definitions within the document to external schemas."
+directive @link("Gets imported specification url." url: String! "Gets optional list of imported element names." import: [String!]) repeatable on SCHEMA
+
+"The purpose of the `@listSize` directive is to either inform the static analysis about the size of returned lists (if that information is statically available), or to point the analysis to where to find that information."
+directive @listSize("The `assumedSize` argument can be used to statically define the maximum length of a list returned by a field." assumedSize: Int "The `slicingArguments` argument can be used to define which of the field's arguments with numeric type are slicing arguments, so that their value determines the size of the list returned by that field. It may specify a list of multiple slicing arguments." slicingArguments: [String!] "The `slicingArgumentDefaultValue` argument can be used to define a default value for a slicing argument, which is used if the argument is not present in a query." slicingArgumentDefaultValue: Int "The `sizedFields` argument can be used to define that the value of the `assumedSize` argument or of a slicing argument does not affect the size of a list returned by a field itself, but that of a list returned by one of its sub-fields." sizedFields: [String!] "The `requireOneSlicingArgument` argument can be used to inform the static analysis that it should expect that exactly one of the defined slicing arguments is present in a query. If that is not the case (i.e., if none or multiple slicing arguments are present), the static analysis may throw an error." requireOneSlicingArgument: Boolean! = true) on FIELD_DEFINITION
+
+"Indicates that given object and\/or field can be resolved by multiple subgraphs."
+directive @shareable repeatable on OBJECT | FIELD_DEFINITION
+
+"The `@specifiedBy` directive is used within the type system definition language to provide a URL for specifying the behavior of custom scalar definitions."
+directive @specifiedBy("The specifiedBy URL points to a human-readable specification. This field will only read a result for scalar types." url: String!) on SCALAR
+
+"The `@stream` directive may be provided for a field of `List` type so that the backend can leverage technology such as asynchronous iterators to provide a partial list in the initial response, and additional list items in subsequent responses. `@include` and `@skip` take precedence over `@stream`."
+directive @stream("If this argument label has a value other than null, it will be passed on to the result of this stream directive. This label is intended to give client applications a way to identify to which fragment a streamed result belongs to." label: String "The initial elements that shall be send down to the consumer." initialCount: Int! = 0 "Streamed when true." if: Boolean) on FIELD
+
+"The `DateTime` scalar represents an ISO-8601 compliant date time type."
+scalar DateTime @specifiedBy(url: "https:\/\/www.graphql-scalars.com\/date-time")
+
+"Scalar representing a set of fields."
+scalar FieldSet
+
+scalar UUID @specifiedBy(url: "https:\/\/tools.ietf.org\/html\/rfc4122")
+
+"The _Any scalar is used to pass representations of entities from external services into the root _entities field for execution. Validation of the _Any scalar is done by matching the __typename and @external fields defined in the schema."
+scalar _Any
