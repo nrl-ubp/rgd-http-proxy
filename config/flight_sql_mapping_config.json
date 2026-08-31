@@ -1,0 +1,37 @@
+{
+  "right-context": {
+    "Target": "WDX1",
+    "Module": "RoseGarden",
+    "Right": "Transform"
+  },
+  "processing-context": {
+    "Action": "Unprotect",
+    "Target": "WDX1"
+  },
+  "column-mappings": [
+    {
+      "table": "PERSON",
+      "column": "FIRST_NAME",
+      "rps-class-name": "Person",
+      "rps-property-name": "shortString"
+    },
+    {
+      "table": "PERSON",
+      "column": "LAST_NAME",
+      "rps-class-name": "Person",
+      "rps-property-name": "shortString"
+    },
+    {
+      "table": "PERSON",
+      "column": "BIRTH_DATE",
+      "rps-class-name": "Person",
+      "rps-property-name": "birthDate"
+    },
+    {
+      "table": "*",
+      "column": "EMAIL",
+      "rps-class-name": "Person",
+      "rps-property-name": "email"
+    }
+  ]
+}
