@@ -7,13 +7,15 @@
 
     <groupId>com.ubp.rgd.proxy</groupId>
     <artifactId>rgd-http-proxy</artifactId>
-    <version>1.4.0</version>
+    <version>1.5.0</version>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <quarkus.platform.version>3.25.0</quarkus.platform.version>
+        <arrow.version>19.0.0</arrow.version>
+        <protobuf.version>4.33.4</protobuf.version>
 
         <quarkus.package.jar.type>uber-jar</quarkus.package.jar.type>
     </properties>
@@ -27,10 +29,62 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- Arrow Flight 19 is built against protobuf 4.x, override the Quarkus BOM 3.25.x -->
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+                <version>${protobuf.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java-util</artifactId>
+                <version>${protobuf.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
+        <!-- Apache Flight SQL Server -->
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>flight-core</artifactId>
+            <version>${arrow.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>flight-sql</artifactId>
+            <version>${arrow.version}</version>
+        </dependency>
+        <!-- JDBC ResultSet to Arrow conversion for the Flight SQL server -->
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-jdbc</artifactId>
+            <version>${arrow.version}</version>
+        </dependency>
+        <!-- Off-heap allocator required at runtime by Arrow -->
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-memory-netty</artifactId>
+            <version>${arrow.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- JDBC driver of the proxied database -->
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>12.8.1.jre11</version>
+        </dependency>
+
+        <!-- In-memory database used by the Flight SQL server tests -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>2.3.232</version>
+            <scope>test</scope>
+        </dependency>
+
+
         <!-- WDX1 transliteration lib for CONCAT service-->
         <dependency>
             <groupId>com.ibm.icu</groupId>
@@ -206,6 +260,8 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.0.0</version>
                 <configuration>
+                    <!-- Apache Arrow needs access to java.nio internals for its off-heap allocator -->
+                    <argLine>--add-opens=java.base/java.nio=ALL-UNNAMED</argLine>
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
