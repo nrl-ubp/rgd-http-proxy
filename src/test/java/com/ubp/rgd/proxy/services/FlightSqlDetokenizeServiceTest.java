@@ -1,8 +1,9 @@
 package com.ubp.rgd.proxy.services;
 
 import ch.regdata.rps.engine.client.mapping.RPSMapping;
-import ch.regdata.rps.engine.client.model.api.value.RPSValue;
+import com.ubp.rgd.proxy.services.FlightSqlDetokenizeService.Segment;
 import com.ubp.rgd.proxy.transform.config.FlightSqlColumnMapping;
+import com.ubp.rgd.proxy.transform.config.FlightSqlDataMapping;
 import com.ubp.rgd.proxy.transform.config.FlightSqlMappingConfig;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
@@ -53,13 +54,15 @@ class FlightSqlDetokenizeServiceTest {
 
     @Test
     void shouldExtractEveryTokenOfAValue() {
-        List<RPSValue> tokens =
-                FlightSqlDetokenizeService.extractTokens("RG{abc} de RG{xyz}", MAPPING);
+        List<Segment> segments =
+                FlightSqlDetokenizeService.extractTokens("RG{AB12345678aa} de RG{CD87654321bb}", MAPPING);
 
-        assertEquals(2, tokens.size());
-        assertEquals("RG{abc}", tokens.get(0).getOriginal());
-        assertEquals("RG{xyz}", tokens.get(1).getOriginal());
-        assertEquals("Person", tokens.get(0).getMapping().getClassName());
+        assertEquals(2, segments.size());
+        assertEquals("RG{AB12345678aa}", segments.get(0).rpsValue().getOriginal());
+        assertEquals("RG{CD87654321bb}", segments.get(1).rpsValue().getOriginal());
+        assertEquals(0, segments.get(0).start());
+        assertEquals(16, segments.get(0).end());
+        assertEquals("Person", segments.get(0).rpsValue().getMapping().getClassName());
     }
 
     @Test
@@ -70,22 +73,102 @@ class FlightSqlDetokenizeServiceTest {
 
     @Test
     void shouldRebuildAValuePreservingItsFormat() {
-        String rebuilt = FlightSqlDetokenizeService.rebuild(
-                "Mr RG{aaa} RG{bbb} (Geneva)", List.of("John", "Doe"));
+        String original = "Mr RG{AB12345678aa} RG{CD87654321bb} (Geneva)";
+        String rebuilt = FlightSqlDetokenizeService.rebuild(original,
+                FlightSqlDetokenizeService.extractTokens(original, MAPPING), List.of("John", "Doe"));
 
         assertEquals("Mr John Doe (Geneva)", rebuilt);
     }
 
     @Test
     void shouldRebuildAValueWithRegexSpecialCharactersInTheClearValue() {
-        String rebuilt = FlightSqlDetokenizeService.rebuild("RG{aaa}", List.of("a\\b$c"));
+        String original = "RG{AB12345678aa}";
+        String rebuilt = FlightSqlDetokenizeService.rebuild(original,
+                FlightSqlDetokenizeService.extractTokens(original, MAPPING), List.of("a\\b$c"));
 
         assertEquals("a\\b$c", rebuilt);
     }
 
     @Test
     void shouldLeaveTheValueUnchangedWhenNoClearValueIsAvailable() {
-        assertEquals("RG{aaa}", FlightSqlDetokenizeService.rebuild("RG{aaa}", List.of()));
+        String original = "RG{AB12345678aa}";
+        assertEquals(original, FlightSqlDetokenizeService.rebuild(original,
+                FlightSqlDetokenizeService.extractTokens(original, MAPPING), List.of()));
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Implicit detokenization (data mappings)
+    // ---------------------------------------------------------------------------------------------
+
+    @Test
+    void shouldLocateASegmentWithItsOwnDataMappingClassAndProperty() {
+        List<Segment> segments = FlightSqlDetokenizeService.extractDataMappedSegments(
+                "born 3011-04-05 in Geneva",
+                List.of(dataMapping("\\d{4}-\\d{2}-\\d{2}", "Person", "birthDate")));
+
+        assertEquals(1, segments.size());
+        assertEquals("3011-04-05", segments.get(0).rpsValue().getOriginal());
+        assertEquals("Person", segments.get(0).rpsValue().getMapping().getClassName());
+        assertEquals("birthDate", segments.get(0).rpsValue().getMapping().getPropertyName());
+    }
+
+    @Test
+    void shouldExtractTheWholeMatchAndNotACapturingGroup() {
+        List<Segment> segments = FlightSqlDetokenizeService.extractDataMappedSegments(
+                "3011-04-05",
+                List.of(dataMapping("(?<Year>\\d{4})-(?<Month>\\d{2})-(?<Day>\\d{2})", "Person", "birthDate")));
+
+        assertEquals(1, segments.size());
+        assertEquals("3011-04-05", segments.get(0).rpsValue().getOriginal());
+    }
+
+    @Test
+    void shouldApplyEveryDataMappingAndOrderTheSegmentsByPosition() {
+        List<Segment> segments = FlightSqlDetokenizeService.extractDataMappedSegments(
+                "date 3011-04-05 mail RG{AB12345678aa}",
+                List.of(dataMapping("RG\\{[^}]+\\}", "Person", "email"),
+                        dataMapping("\\d{4}-\\d{2}-\\d{2}", "Person", "birthDate")));
+
+        assertEquals(2, segments.size());
+        assertEquals("3011-04-05", segments.get(0).rpsValue().getOriginal());
+        assertEquals("RG{AB12345678aa}", segments.get(1).rpsValue().getOriginal());
+    }
+
+    @Test
+    void shouldDiscardAMatchOverlappingASegmentKeptByAnEarlierDataMapping() {
+        List<Segment> segments = FlightSqlDetokenizeService.extractDataMappedSegments(
+                "3011-04-05",
+                List.of(dataMapping("\\d{4}-\\d{2}-\\d{2}", "Person", "birthDate"),
+                        dataMapping("\\d{4}", "Other", "number")));
+
+        assertEquals(1, segments.size());
+        assertEquals("3011-04-05", segments.get(0).rpsValue().getOriginal());
+        assertEquals("birthDate", segments.get(0).rpsValue().getMapping().getPropertyName());
+    }
+
+    @Test
+    void shouldLeaveAValueMatchingNoDataMappingUntouched() {
+        assertTrue(FlightSqlDetokenizeService.extractDataMappedSegments("John Doe",
+                List.of(dataMapping("\\d{4}-\\d{2}-\\d{2}", "Person", "birthDate"))).isEmpty());
+        assertTrue(FlightSqlDetokenizeService.extractDataMappedSegments("anything", List.of()).isEmpty());
+    }
+
+    @Test
+    void shouldIgnoreADataMappingWhoseRegexDoesNotCompile() {
+        FlightSqlMappingConfig config = new FlightSqlMappingConfig();
+        config.setDataMappings(List.of(dataMapping("[unclosed", "Person", "email"),
+                dataMapping("\\d{4}-\\d{2}-\\d{2}", "Person", "birthDate")));
+
+        List<FlightSqlDataMapping> usable = config.getUsableDataMappings();
+
+        assertEquals(1, usable.size());
+        assertEquals("birthDate", usable.get(0).getRpsPropertyName());
+    }
+
+    @Test
+    void shouldIgnoreADataMappingAbleToMatchAnEmptyString() {
+        assertTrue(FlightSqlDetokenizeService.extractDataMappedSegments("John",
+                List.of(dataMapping("\\d*", "Other", "number"))).isEmpty());
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -138,7 +221,7 @@ class FlightSqlDetokenizeServiceTest {
 
     @Test
     void shouldRewriteOnlyTheRequestedRowsOfAColumn() {
-        try (VectorSchemaRoot root = newRoot("RG{aaa}", null, "clear")) {
+        try (VectorSchemaRoot root = newRoot("RG{AB12345678aa}", null, "clear")) {
             FlightSqlDetokenizeService.rewriteColumn(root, 0, Map.of(0, "John"), allocator);
 
             assertEquals(3, root.getRowCount());
@@ -151,7 +234,7 @@ class FlightSqlDetokenizeServiceTest {
 
     @Test
     void shouldRewriteWithValuesLongerThanTheOriginalOnes() {
-        try (VectorSchemaRoot root = newRoot("RG{a}", "RG{b}")) {
+        try (VectorSchemaRoot root = newRoot("RG{AB12345678aa}", "RG{CD87654321bb}")) {
             FlightSqlDetokenizeService.rewriteColumn(root, 0,
                     Map.of(0, "a much much longer clear value", 1, "x"), allocator);
 
@@ -166,12 +249,13 @@ class FlightSqlDetokenizeServiceTest {
     // ---------------------------------------------------------------------------------------------
 
     @Test
-    void shouldNotCallTheEngineWhenNoColumnIsMapped() throws Exception {
-        try (VectorSchemaRoot root = newRoot("RG{aaa}", "RG{bbb}")) {
+    void shouldNotCallTheEngineWhenNoColumnIsMappedAndNoDataMappingIsConfigured() throws Exception {
+        service.setMappingConfig(new FlightSqlMappingConfig());
+        try (VectorSchemaRoot root = newRoot("RG{AB12345678aa}", "RG{CD87654321bb}")) {
             // The engine provider is not injected: any engine call would raise a NullPointerException.
             service.detokenize(root, java.util.Collections.singletonList(null), allocator);
 
-            assertEquals("RG{aaa}", readString((VarCharVector) root.getVector(0), 0));
+            assertEquals("RG{AB12345678aa}", readString((VarCharVector) root.getVector(0), 0));
         }
     }
 
@@ -181,6 +265,19 @@ class FlightSqlDetokenizeServiceTest {
             service.detokenize(root,
                     List.of(new FlightSqlColumnMapping("PERSON", "NAME", "Person", "shortString")),
                     allocator);
+
+            assertEquals("John", readString((VarCharVector) root.getVector(0), 0));
+        }
+    }
+
+    @Test
+    void shouldNotCallTheEngineWhenNoValueMatchesADataMapping() throws Exception {
+        FlightSqlMappingConfig config = new FlightSqlMappingConfig();
+        config.setDataMappings(List.of(dataMapping("\\d{4}-\\d{2}-\\d{2}", "Person", "birthDate")));
+        service.setMappingConfig(config);
+
+        try (VectorSchemaRoot root = newRoot("John", "Doe")) {
+            service.detokenize(root, java.util.Collections.singletonList(null), allocator);
 
             assertEquals("John", readString((VarCharVector) root.getVector(0), 0));
         }
@@ -214,6 +311,10 @@ class FlightSqlDetokenizeServiceTest {
         vector.setValueCount(values.length);
         root.setRowCount(values.length);
         return root;
+    }
+
+    private static FlightSqlDataMapping dataMapping(String regex, String className, String propertyName) {
+        return new FlightSqlDataMapping(regex, className, propertyName);
     }
 
     private static String readString(VarCharVector vector, int row) {

@@ -54,8 +54,8 @@ The test is doing 2 calls and compare clear and protected data.
 
 The proxy can also expose an **Apache Arrow Flight SQL** server that proxies a whole JDBC datasource.
 Every statement is executed on the proxied database, and each value of the result sets matching an
-RPS token (`RG{...}`) is detokenized through the RegData engine before being streamed back to the
-client.
+RPS token (`RG{...}`) — or any pattern declared in the mapping file — is detokenized through the
+RegData engine before being streamed back to the client.
 
 Configuration (see `config/application.properties`):
 
@@ -65,7 +65,7 @@ Configuration (see `config/application.properties`):
 | `proxy.flight-sql.host` / `proxy.flight-sql.port` | Listening address of the gRPC server (default `0.0.0.0:32010`). |
 | `proxy.flight-sql.jdbc-url` | JDBC URL of the proxied database. |
 | `proxy.flight-sql.batch-size` | Rows per Arrow record batch, i.e. per detokenization call. |
-| `proxy.flight-sql.mapping-config-file` | Table/column to RPS class/property mapping file. |
+| `proxy.flight-sql.mapping-config-file` | Column and data to RPS class/property mapping file. |
 
 Clients authenticate with **basic credentials that are forwarded to the proxied database**: the
 credentials are validated by opening a real connection, then every query runs under the caller's own
@@ -79,6 +79,10 @@ processing-context evidences sent to the engine:
 {
   "right-context": { "Target": "WDX1", "Module": "RoseGarden", "Right": "Transform" },
   "processing-context": { "Action": "Unprotect", "Target": "WDX1" },
+  "data-mappings": [
+    { "regex": "RG\\{[A-Z2-7x]{2}[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+\\}@example\\.com",
+      "rps-class-name": "Person", "rps-property-name": "email" }
+  ],
   "column-mappings": [
     { "table": "PERSON", "column": "FIRST_NAME",
       "rps-class-name": "Person", "rps-property-name": "shortString" },
@@ -88,8 +92,34 @@ processing-context evidences sent to the engine:
 }
 ```
 
-A `table` set to `*` (or omitted) makes the mapping apply to any table exposing that column. Columns
-without a mapping are returned untouched.
+### Resolution order
+
+Each string column of a result set is resolved in this order:
+
+1. **`column-mappings` — explicit detokenization.** When the table and column of the result-set
+   column are mapped, every `RG{...}` token of its values is detokenized with that RPS class and
+   property. A `table` set to `*` (or omitted) makes the mapping apply to any table exposing that
+   column, and an exact match always wins over a `*` one. Data mappings are **never** applied to a
+   column that has a column mapping.
+2. **`data-mappings` — implicit detokenization.** For the columns without a column mapping, each
+   regex locates **its own** segments inside the values and supplies their RPS class and property.
+   This makes it possible to detokenize columns that were never declared, and to recognize formats
+   that are not plain `RG{...}` tokens.
+
+The segment sent to the engine is the **whole match**, not a capturing group, so a regex may use
+capturing or named groups freely for readability.
+
+Data mappings are applied in **declaration order, which is their priority order**: a match
+overlapping a segment already kept by an earlier mapping is discarded. Order the array from the most
+specific pattern to the most generic one.
+
+A value matching neither a token (explicit mode) nor any data mapping (implicit mode) is returned
+untouched, and a column is only rewritten when at least one of its values holds a segment. With an
+empty or absent `data-mappings` array, only the mapped columns are detokenized.
+
+> Implicit mode runs every data-mapping regex over every value of every unmapped string column, so
+> keeping the list short and the patterns anchored matters on large result sets. A regex that fails
+> to compile is logged and ignored, the rest of the configuration stays active.
 
 Apache Arrow needs access to the `java.nio` internals of the JDK, so the server **must** be started
 with `--add-opens=java.base/java.nio=ALL-UNNAMED` (see the launch commands below).

@@ -8,26 +8,23 @@
     "Action": "Unprotect",
     "Target": "WDX1"
   },
-  "DataMappings": [
+  "data-mappings": [
     {
-      "Regex": "(RG\\{[A-Z2-7x]{2}[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+\\})"
+      "regex": "(^RG\\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@example\\.com$)",
+      "rps-class-name": "Person",
+      "rps-property-name": "Email"
     },
     {
-      "Regex": "(^RG\\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@example\\.com$)",
-      "ClassName": "Person",
-      "PropertyName": "Email"
+      "regex": "-888\\d{12}\\.8888",
+      "rps-class-name": "Other",
+      "rps-property-name": "Number"
     },
     {
-      "Regex": "-888\\d{12}\\.8888",
-      "ClassName": "Other",
-      "PropertyName": "Number"
-    },
-    {
-      "Regex": "\\b(?<Year>[3-9][0-9]{3})-(?<Month>0[1-9]|1[0-2])-(?<Day>0[1-9]|[12][0-9]|3[01])\\b",
-      "ClassName": "Person",
-      "PropertyName": "Date"
+      "regex": "\\b(?<Year>[3-9][0-9]{3})-(?<Month>0[1-9]|1[0-2])-(?<Day>0[1-9]|[12][0-9]|3[01])\\b",
+      "rps-class-name": "Person",
+      "rps-property-name": "Date"
     }
-  ]
+  ],
   "column-mappings": [
     {
       "table": "PERSON",
