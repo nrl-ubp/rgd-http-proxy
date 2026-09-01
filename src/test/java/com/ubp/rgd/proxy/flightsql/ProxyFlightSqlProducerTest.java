@@ -61,12 +61,13 @@ class ProxyFlightSqlProducerTest {
         keepAlive = DriverManager.getConnection(JDBC_URL, USER, PASSWORD);
         try (Statement statement = keepAlive.createStatement()) {
             statement.execute("CREATE TABLE PERSON (ID INT, FIRST_NAME VARCHAR(255),"
-                    + " CITY VARCHAR(255), NOTES VARCHAR(255))");
+                    + " CITY VARCHAR(255), NOTES VARCHAR(255), NICKNAME VARCHAR(255))");
             statement.execute("INSERT INTO PERSON VALUES (1, 'RG{AB12345678aa}', 'Geneva',"
-                    + " 'born 3011-04-05')");
+                    + " 'born 3011-04-05', 'RG{Bx12345678aa}')");
             statement.execute("INSERT INTO PERSON VALUES (2, 'Mr RG{AB12345678aa} RG{CD87654321bb}',"
-                    + " 'Zurich', 'nothing sensitive')");
-            statement.execute("INSERT INTO PERSON VALUES (3, NULL, 'RG{EF11111111cc}', NULL)");
+                    + " 'Zurich', 'nothing sensitive', 'Mr RG{Bx99999999zz} at home')");
+            statement.execute("INSERT INTO PERSON VALUES (3, NULL, 'RG{EF11111111cc}', NULL,"
+                    + " 'RG{AB12345678aa}')");
         }
 
         FlightSqlMappingConfig config = new FlightSqlMappingConfig();
@@ -74,8 +75,7 @@ class ProxyFlightSqlProducerTest {
                 new FlightSqlColumnMapping("PERSON", "FIRST_NAME", "Person", "shortString")));
         // CITY and NOTES have no column mapping: they are detokenized implicitly.
         config.setDataMappings(List.of(
-                new FlightSqlDataMapping("RG\\{[A-Z2-7x]{2}[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+\\}",
-                        "Person", "city"),
+                new FlightSqlDataMapping("RG\\{EF[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+\\}", "Person", "city"),
                 new FlightSqlDataMapping("\\d{4}-\\d{2}-\\d{2}", "Person", "birthDate")));
 
         FlightSqlDetokenizeService detokenizeService = new LocalDetokenizeService();
@@ -130,14 +130,15 @@ class ProxyFlightSqlProducerTest {
         List<List<String>> rows = query("SELECT FIRST_NAME, CITY FROM PERSON ORDER BY ID");
 
         assertEquals(3, rows.size());
-        // FIRST_NAME is mapped: its tokens are detokenized, surrounding text is preserved.
-        assertEquals("clear-AB12345678aa", rows.get(0).get(0));
-        assertEquals("Mr clear-AB12345678aa clear-CD87654321bb", rows.get(1).get(0));
+        // FIRST_NAME is mapped: every token uses the column mapping, surrounding text is preserved.
+        assertEquals("Person.shortString=RG{AB12345678aa}", rows.get(0).get(0));
+        assertEquals("Mr Person.shortString=RG{AB12345678aa}"
+                + " Person.shortString=RG{CD87654321bb}", rows.get(1).get(0));
         assertNull(rows.get(2).get(0));
         // CITY has no column mapping: only the values matching a data mapping are detokenized.
         assertEquals("Geneva", rows.get(0).get(1));
         assertEquals("Zurich", rows.get(1).get(1));
-        assertEquals("clear-EF11111111cc", rows.get(2).get(1));
+        assertEquals("Person.city=RG{EF11111111cc}", rows.get(2).get(1));
     }
 
     @Test
@@ -150,6 +151,18 @@ class ProxyFlightSqlProducerTest {
         // Nothing matches any data mapping: the value is left untouched.
         assertEquals("nothing sensitive", rows.get(1).get(0));
         assertNull(rows.get(2).get(0));
+    }
+
+    @Test
+    void shouldDetokenizeAnUnmappedColumnFromTheTokenMappingIndex() throws Exception {
+        List<List<String>> rows = query("SELECT NICKNAME FROM PERSON ORDER BY ID");
+
+        assertEquals(3, rows.size());
+        // NICKNAME has no column mapping and matches no data mapping: the Bx index resolves it.
+        assertEquals("Person.ShortString=RG{Bx12345678aa}", rows.get(0).get(0));
+        assertEquals("Mr Person.ShortString=RG{Bx99999999zz} at home", rows.get(1).get(0));
+        // AB does not follow the mapping index encoding: the token is returned untouched.
+        assertEquals("RG{AB12345678aa}", rows.get(2).get(0));
     }
 
     @Test
@@ -223,20 +236,19 @@ class ProxyFlightSqlProducerTest {
     }
 
     /**
-     * Detokenizer replacing an {@code RG{x}} segment by {@code clear-x}, and any other segment by
-     * {@code <class>.<property>=<value>}, instead of calling the RPS engine. Everything else — the
-     * column / data mapping resolution, the segment location and the reassembly — is the real code.
+     * Detokenizer replacing every located segment by {@code <class>.<property>=<value>} instead of
+     * calling the RPS engine, so that the assertions can tell which mapping resolved each segment.
+     * Everything else — the column, data and mapping-index resolution, the segment location and the
+     * reassembly — is the real code.
      */
     private static class LocalDetokenizeService extends FlightSqlDetokenizeService {
 
         @Override
         protected void transformValues(List<RPSValue> values) {
             for (RPSValue value : values) {
-                String original = value.getOriginal();
                 RPSMapping mapping = value.getMapping();
-                value.setTransformed(original.startsWith("RG{")
-                        ? "clear-" + original.substring(3, original.length() - 1)
-                        : mapping.getClassName() + "." + mapping.getPropertyName() + "=" + original);
+                value.setTransformed(mapping.getClassName() + "." + mapping.getPropertyName()
+                        + "=" + value.getOriginal());
             }
         }
     }

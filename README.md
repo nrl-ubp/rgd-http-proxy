@@ -55,7 +55,8 @@ The test is doing 2 calls and compare clear and protected data.
 The proxy can also expose an **Apache Arrow Flight SQL** server that proxies a whole JDBC datasource.
 Every statement is executed on the proxied database, and each value of the result sets matching an
 RPS token (`RG{...}`) — or any pattern declared in the mapping file — is detokenized through the
-RegData engine before being streamed back to the client.
+RegData engine before being streamed back to the client. A token can be resolved from its column,
+from a configured regex, or from the mapping index it carries in its own value.
 
 Configuration (see `config/application.properties`):
 
@@ -105,6 +106,9 @@ Each string column of a result set is resolved in this order:
    regex locates **its own** segments inside the values and supplies their RPS class and property.
    This makes it possible to detokenize columns that were never declared, and to recognize formats
    that are not plain `RG{...}` tokens.
+3. **Token mapping index — last resort.** The `RG{...}` tokens that no data mapping claimed are
+   resolved from the **mapping index they carry in their own value**, so a token can be detokenized
+   even when nothing at all was configured for it.
 
 The segment sent to the engine is the **whole match**, not a capturing group, so a regex may use
 capturing or named groups freely for readability.
@@ -113,9 +117,28 @@ Data mappings are applied in **declaration order, which is their priority order*
 overlapping a segment already kept by an earlier mapping is discarded. Order the array from the most
 specific pattern to the most generic one.
 
-A value matching neither a token (explicit mode) nor any data mapping (implicit mode) is returned
-untouched, and a column is only rewritten when at least one of its values holds a segment. With an
-empty or absent `data-mappings` array, only the mapped columns are detokenized.
+A value that no tier resolves is returned untouched, and a column is only rewritten when at least one
+of its values holds a resolved segment.
+
+### Token mapping index
+
+The first two characters of a token value, right after `RG{`, carry its **mapping index**: a fixed
+width of 2 characters holding an uppercase base26 number, left-aligned and padded with a lowercase
+`x` filler.
+
+| Symbol | Index | Rule |
+| --- | --- | --- |
+| `Ax` … `Zx` | 0 … 25 | one letter followed by the `x` filler |
+| `ZA` … `ZZ` | 26 … 51 | `Z` is an escape prefix, the second letter carries the value |
+
+The filler being lowercase, `Zx` (25) and `ZA` (26) never collide. Any other shape — `BA`, `A3`,
+`2x` — resolves to nothing.
+
+The index → `ClassName.PropertyName` table is **hardcoded** in
+`FlightSqlTokenIndexResolver`, since it describes the tokens themselves rather than a deployment. Add
+the missing indexes to its `INDEX_MAPPINGS` block; an entry may be declared padded (`"Bx"`) or not
+(`"B"`), both being the same index. A token whose index is not declared is returned untouched and
+logs a warning, once per unknown symbol.
 
 > Implicit mode runs every data-mapping regex over every value of every unmapped string column, so
 > keeping the list short and the patterns anchored matters on large result sets. A regex that fails
