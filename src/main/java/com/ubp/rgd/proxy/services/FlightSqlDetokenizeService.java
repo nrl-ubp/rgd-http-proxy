@@ -53,6 +53,9 @@ import java.util.regex.Pattern;
  *     {@code RG{...}} tokens (see {@link #TOKEN_PATTERN}) are all detokenized with that mapping.</li>
  *     <li><b>Data mappings</b> — otherwise the column is detokenized implicitly: each configured
  *     regex locates its own segments in the values and supplies their class / property names.</li>
+ *     <li><b>Token mapping index</b> — the tokens no data mapping claimed are finally resolved from
+ *     the mapping index they carry in their first two characters, see
+ *     {@link FlightSqlTokenIndexResolver}.</li>
  * </ol>
  * Only the variable-width (string) columns are scanned, and all the tokens of a record batch are
  * batched into a single engine call.
@@ -105,17 +108,16 @@ public class FlightSqlDetokenizeService {
      * Resolve, once per query, the RPS mapping of every result-set column.
      * <p>
      * Only the explicit {@code column-mappings} can be resolved from the metadata: the data mappings
-     * driving the implicit detokenization depend on the values themselves and are therefore applied
-     * later, while scanning the record batches.
+     * and the token mapping indexes driving the implicit detokenization depend on the values
+     * themselves and are therefore applied later, while scanning the record batches.
      *
      * @param metaData the JDBC result-set metadata
      * @return a list aligned on the column indexes (0-based); an entry is {@code null} when the column
      *         has no explicit mapping, in which case it is detokenized implicitly through the
-     *         configured data mappings (and left untouched when there is none)
+     *         configured data mappings, then through the mapping index carried by its tokens
      * @throws SQLException when the metadata cannot be read
      */
     public List<FlightSqlColumnMapping> resolveMappings(ResultSetMetaData metaData) throws SQLException {
-        boolean implicitEnabled = !mappingConfig.getUsableDataMappings().isEmpty();
         List<FlightSqlColumnMapping> mappings = new ArrayList<>();
         for (int i = 1; i <= metaData.getColumnCount(); i++) {
             String table = metaData.getTableName(i);
@@ -127,11 +129,8 @@ public class FlightSqlDetokenizeService {
             if (mapping != null) {
                 LOG.debugf("Column %s.%s will be detokenized as %s",
                         table, metaData.getColumnLabel(i), mapping);
-            } else if (implicitEnabled) {
-                LOG.debugf("Column %s.%s has no column mapping and will be detokenized implicitly.",
-                        table, metaData.getColumnLabel(i));
             } else {
-                LOG.debugf("Column %s.%s has no mapping and will be returned untouched.",
+                LOG.debugf("Column %s.%s has no column mapping and will be detokenized implicitly.",
                         table, metaData.getColumnLabel(i));
             }
             mappings.add(mapping);
@@ -142,7 +141,8 @@ public class FlightSqlDetokenizeService {
     /**
      * Detokenize, in place, the string columns of the given record batch. A column having an explicit
      * {@link FlightSqlColumnMapping} has its {@code RG{...}} tokens detokenized with that mapping; any
-     * other column falls back to the implicit mode driven by the configured data mappings. Values
+     * other column falls back to the implicit mode driven by the configured data mappings, then by the
+     * mapping index carried by the remaining tokens. Values
      * without any recognized segment are left untouched, and the vectors of the batch are replaced
      * only when at least one segment was found.
      *
@@ -158,7 +158,6 @@ public class FlightSqlDetokenizeService {
             return;
         }
 
-        boolean implicitEnabled = !mappingConfig.getUsableDataMappings().isEmpty();
         List<ColumnPlan> plans = new ArrayList<>();
         List<RPSValue> flatValues = new ArrayList<>();
 
@@ -166,10 +165,6 @@ public class FlightSqlDetokenizeService {
             FlightSqlColumnMapping mapping = mappings.get(col);
             FieldVector vector = root.getVector(col);
             if (!(vector instanceof VariableWidthFieldVector textVector)) {
-                continue;
-            }
-            // Without a column mapping the column is only scanned when data mappings are configured.
-            if (mapping == null && !implicitEnabled) {
                 continue;
             }
             ColumnPlan plan = buildColumnPlan(col, textVector, mapping, root.getRowCount());
@@ -229,7 +224,7 @@ public class FlightSqlDetokenizeService {
             String value = new String(vector.get(row), StandardCharsets.UTF_8);
             List<Segment> segments = rpsMapping != null
                     ? extractTokens(value, rpsMapping)
-                    : extractDataMappedSegments(value, dataMappings);
+                    : extractImplicitSegments(value, dataMappings);
             if (!segments.isEmpty()) {
                 cells.add(new CellPlan(row, value, segments));
             }
@@ -249,6 +244,50 @@ public class FlightSqlDetokenizeService {
         while (matcher.find()) {
             segments.add(new Segment(matcher.start(), matcher.end(),
                     new RPSValue(mapping, matcher.group())));
+        }
+        return segments;
+    }
+
+    /**
+     * Locate the segments of a value in implicit mode, i.e. for the columns without an explicit
+     * {@link FlightSqlColumnMapping}. The data mappings are applied first, then the tokens they left
+     * unclaimed are resolved from the mapping index they carry.
+     *
+     * @param value the value to scan
+     * @param dataMappings the usable data mappings, in declaration order
+     * @return the segments to detokenize, ordered by position (empty when nothing was resolved)
+     */
+    static List<Segment> extractImplicitSegments(String value, List<FlightSqlDataMapping> dataMappings) {
+        List<Segment> segments = new ArrayList<>(extractDataMappedSegments(value, dataMappings));
+        segments.addAll(extractIndexMappedSegments(value, segments));
+        segments.sort(Comparator.comparingInt(Segment::start));
+        return segments;
+    }
+
+    /**
+     * Locate the {@code RG{...}} tokens of a value whose RPS class / property is resolved from the
+     * mapping index they carry — the last resort, applied to the tokens that neither a column mapping
+     * nor a data mapping could resolve.
+     *
+     * @param value the value to scan
+     * @param claimed the segments already located by the data mappings; an overlapping token is skipped
+     * @return the resolved segments (empty when no token carries a declared mapping index)
+     * @see FlightSqlTokenIndexResolver
+     */
+    static List<Segment> extractIndexMappedSegments(String value, List<Segment> claimed) {
+        List<Segment> segments = new ArrayList<>();
+        Matcher matcher = TOKEN_PATTERN.matcher(value);
+        while (matcher.find()) {
+            Segment candidate = new Segment(matcher.start(), matcher.end(), null);
+            if (claimed.stream().anyMatch(candidate::overlaps)) {
+                continue;
+            }
+            String token = matcher.group();
+            RPSMapping mapping = FlightSqlTokenIndexResolver.resolveMapping(token);
+            if (mapping == null) {
+                continue;
+            }
+            segments.add(new Segment(matcher.start(), matcher.end(), new RPSValue(mapping, token)));
         }
         return segments;
     }

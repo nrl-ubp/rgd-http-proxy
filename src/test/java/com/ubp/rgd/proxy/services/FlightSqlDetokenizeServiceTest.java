@@ -172,6 +172,59 @@ class FlightSqlDetokenizeServiceTest {
     }
 
     // ---------------------------------------------------------------------------------------------
+    // Token mapping index (last resort)
+    // ---------------------------------------------------------------------------------------------
+
+    @Test
+    void shouldResolveATokenFromItsMappingIndexWhenNoDataMappingMatches() {
+        List<Segment> segments = FlightSqlDetokenizeService.extractImplicitSegments(
+                "Mr RG{Bx12345678aa}", List.of());
+
+        assertEquals(1, segments.size());
+        assertEquals("RG{Bx12345678aa}", segments.get(0).rpsValue().getOriginal());
+        assertEquals("Person", segments.get(0).rpsValue().getMapping().getClassName());
+        assertEquals("ShortString", segments.get(0).rpsValue().getMapping().getPropertyName());
+    }
+
+    @Test
+    void shouldLeaveATokenCarryingAnUndeclaredMappingIndexUntouched() {
+        // AB does not follow the encoding, and Ax is not declared in the hardcoded table.
+        assertTrue(FlightSqlDetokenizeService.extractImplicitSegments(
+                "RG{AB12345678aa} RG{Ax12345678aa}", List.of()).isEmpty());
+    }
+
+    @Test
+    void shouldPreferTheDataMappingOverTheMappingIndexOfAToken() {
+        List<Segment> segments = FlightSqlDetokenizeService.extractImplicitSegments(
+                "RG{Bx12345678aa}",
+                List.of(dataMapping("RG\\{[^}]+\\}", "Other", "number")));
+
+        assertEquals(1, segments.size());
+        assertEquals("Other", segments.get(0).rpsValue().getMapping().getClassName());
+    }
+
+    @Test
+    void shouldCombineDataMappedAndIndexMappedSegmentsInOrder() {
+        List<Segment> segments = FlightSqlDetokenizeService.extractImplicitSegments(
+                "on 3011-04-05 for RG{Bx12345678aa}",
+                List.of(dataMapping("\\d{4}-\\d{2}-\\d{2}", "Person", "birthDate")));
+
+        assertEquals(2, segments.size());
+        assertEquals("3011-04-05", segments.get(0).rpsValue().getOriginal());
+        assertEquals("birthDate", segments.get(0).rpsValue().getMapping().getPropertyName());
+        assertEquals("RG{Bx12345678aa}", segments.get(1).rpsValue().getOriginal());
+        assertEquals("ShortString", segments.get(1).rpsValue().getMapping().getPropertyName());
+    }
+
+    @Test
+    void shouldSkipATokenOverlappingASegmentAlreadyClaimed() {
+        List<Segment> claimed = List.of(new Segment(0, 16, null));
+
+        assertTrue(FlightSqlDetokenizeService
+                .extractIndexMappedSegments("RG{Bx12345678aa}", claimed).isEmpty());
+    }
+
+    // ---------------------------------------------------------------------------------------------
     // Column mapping resolution
     // ---------------------------------------------------------------------------------------------
 
@@ -249,7 +302,8 @@ class FlightSqlDetokenizeServiceTest {
     // ---------------------------------------------------------------------------------------------
 
     @Test
-    void shouldNotCallTheEngineWhenNoColumnIsMappedAndNoDataMappingIsConfigured() throws Exception {
+    void shouldNotCallTheEngineWhenNothingResolvesTheTokensOfAnUnmappedColumn() throws Exception {
+        // No data mapping is configured, and the AB / CD mapping indexes are not declared either.
         service.setMappingConfig(new FlightSqlMappingConfig());
         try (VectorSchemaRoot root = newRoot("RG{AB12345678aa}", "RG{CD87654321bb}")) {
             // The engine provider is not injected: any engine call would raise a NullPointerException.
