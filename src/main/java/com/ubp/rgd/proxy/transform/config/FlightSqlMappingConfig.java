@@ -25,8 +25,14 @@ public class FlightSqlMappingConfig {
     @JsonProperty(value = "column-mappings")
     private List<FlightSqlColumnMapping> columnMappings = new ArrayList<>();
 
+    @JsonProperty(value = "data-mappings")
+    private List<FlightSqlDataMapping> dataMappings = new ArrayList<>();
+
     /** Lazily built lookup index: {@code table|column} (lower-case) -> mapping. */
     private transient Map<String, FlightSqlColumnMapping> index;
+
+    /** Lazily filtered list of the data mappings that can actually be used. */
+    private transient List<FlightSqlDataMapping> usableDataMappings;
 
     public Map<String, String> getRightContextEvidences() {
         return rightContextEvidences;
@@ -51,6 +57,31 @@ public class FlightSqlMappingConfig {
     public void setColumnMappings(List<FlightSqlColumnMapping> columnMappings) {
         this.columnMappings = columnMappings;
         this.index = null;
+    }
+
+    public List<FlightSqlDataMapping> getDataMappings() {
+        return dataMappings;
+    }
+
+    public void setDataMappings(List<FlightSqlDataMapping> dataMappings) {
+        this.dataMappings = dataMappings;
+        this.usableDataMappings = null;
+    }
+
+    /**
+     * The data mappings driving the implicit detokenization, in declaration order — which is also
+     * their priority order when several of them match overlapping segments of a same value. Mappings
+     * with an invalid regex or missing RPS names are filtered out.
+     *
+     * @return the usable data mappings, never null
+     */
+    public synchronized List<FlightSqlDataMapping> getUsableDataMappings() {
+        if (usableDataMappings == null) {
+            usableDataMappings = dataMappings == null
+                    ? List.of()
+                    : dataMappings.stream().filter(m -> m != null && m.isUsable()).toList();
+        }
+        return usableDataMappings;
     }
 
     /**

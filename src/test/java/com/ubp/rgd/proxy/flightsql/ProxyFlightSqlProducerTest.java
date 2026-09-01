@@ -1,8 +1,10 @@
 package com.ubp.rgd.proxy.flightsql;
 
+import ch.regdata.rps.engine.client.mapping.RPSMapping;
+import ch.regdata.rps.engine.client.model.api.value.RPSValue;
 import com.ubp.rgd.proxy.services.FlightSqlDetokenizeService;
-import com.ubp.rgd.proxy.transform.RPSTransformException;
 import com.ubp.rgd.proxy.transform.config.FlightSqlColumnMapping;
+import com.ubp.rgd.proxy.transform.config.FlightSqlDataMapping;
 import com.ubp.rgd.proxy.transform.config.FlightSqlMappingConfig;
 import org.apache.arrow.flight.CallOption;
 import org.apache.arrow.flight.FlightClient;
@@ -16,7 +18,6 @@ import org.apache.arrow.flight.grpc.CredentialCallOption;
 import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
-import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -24,12 +25,10 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -61,15 +60,23 @@ class ProxyFlightSqlProducerTest {
     static void startServer() throws Exception {
         keepAlive = DriverManager.getConnection(JDBC_URL, USER, PASSWORD);
         try (Statement statement = keepAlive.createStatement()) {
-            statement.execute("CREATE TABLE PERSON (ID INT, FIRST_NAME VARCHAR(255), CITY VARCHAR(255))");
-            statement.execute("INSERT INTO PERSON VALUES (1, 'RG{tok1}', 'Geneva')");
-            statement.execute("INSERT INTO PERSON VALUES (2, 'Mr RG{tok2} RG{tok3}', 'Zurich')");
-            statement.execute("INSERT INTO PERSON VALUES (3, NULL, 'RG{tok4}')");
+            statement.execute("CREATE TABLE PERSON (ID INT, FIRST_NAME VARCHAR(255),"
+                    + " CITY VARCHAR(255), NOTES VARCHAR(255))");
+            statement.execute("INSERT INTO PERSON VALUES (1, 'RG{AB12345678aa}', 'Geneva',"
+                    + " 'born 3011-04-05')");
+            statement.execute("INSERT INTO PERSON VALUES (2, 'Mr RG{AB12345678aa} RG{CD87654321bb}',"
+                    + " 'Zurich', 'nothing sensitive')");
+            statement.execute("INSERT INTO PERSON VALUES (3, NULL, 'RG{EF11111111cc}', NULL)");
         }
 
         FlightSqlMappingConfig config = new FlightSqlMappingConfig();
         config.setColumnMappings(List.of(
                 new FlightSqlColumnMapping("PERSON", "FIRST_NAME", "Person", "shortString")));
+        // CITY and NOTES have no column mapping: they are detokenized implicitly.
+        config.setDataMappings(List.of(
+                new FlightSqlDataMapping("RG\\{[A-Z2-7x]{2}[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+\\}",
+                        "Person", "city"),
+                new FlightSqlDataMapping("\\d{4}-\\d{2}-\\d{2}", "Person", "birthDate")));
 
         FlightSqlDetokenizeService detokenizeService = new LocalDetokenizeService();
         detokenizeService.setMappingConfig(config);
@@ -124,13 +131,25 @@ class ProxyFlightSqlProducerTest {
 
         assertEquals(3, rows.size());
         // FIRST_NAME is mapped: its tokens are detokenized, surrounding text is preserved.
-        assertEquals("clear-tok1", rows.get(0).get(0));
-        assertEquals("Mr clear-tok2 clear-tok3", rows.get(1).get(0));
+        assertEquals("clear-AB12345678aa", rows.get(0).get(0));
+        assertEquals("Mr clear-AB12345678aa clear-CD87654321bb", rows.get(1).get(0));
         assertNull(rows.get(2).get(0));
-        // CITY is not mapped: values are returned untouched, tokens included.
+        // CITY has no column mapping: only the values matching a data mapping are detokenized.
         assertEquals("Geneva", rows.get(0).get(1));
         assertEquals("Zurich", rows.get(1).get(1));
-        assertEquals("RG{tok4}", rows.get(2).get(1));
+        assertEquals("clear-EF11111111cc", rows.get(2).get(1));
+    }
+
+    @Test
+    void shouldDetokenizeAnUnmappedColumnFromTheDataMappings() throws Exception {
+        List<List<String>> rows = query("SELECT NOTES FROM PERSON ORDER BY ID");
+
+        assertEquals(3, rows.size());
+        // The date data mapping locates its own segment and supplies its RPS class / property.
+        assertEquals("born Person.birthDate=3011-04-05", rows.get(0).get(0));
+        // Nothing matches any data mapping: the value is left untouched.
+        assertEquals("nothing sensitive", rows.get(1).get(0));
+        assertNull(rows.get(2).get(0));
     }
 
     @Test
@@ -203,35 +222,21 @@ class ProxyFlightSqlProducerTest {
         }
     }
 
-    /** Detokenizer replacing {@code RG{x}} by {@code clear-x} instead of calling the RPS engine. */
+    /**
+     * Detokenizer replacing an {@code RG{x}} segment by {@code clear-x}, and any other segment by
+     * {@code <class>.<property>=<value>}, instead of calling the RPS engine. Everything else — the
+     * column / data mapping resolution, the segment location and the reassembly — is the real code.
+     */
     private static class LocalDetokenizeService extends FlightSqlDetokenizeService {
 
         @Override
-        public void detokenize(VectorSchemaRoot root, List<FlightSqlColumnMapping> mappings,
-                               BufferAllocator allocator) throws RPSTransformException {
-            if (root == null || mappings == null || root.getRowCount() == 0) {
-                return;
-            }
-            for (int column = 0; column < root.getFieldVectors().size() && column < mappings.size();
-                 column++) {
-                if (mappings.get(column) == null
-                        || !(root.getVector(column) instanceof VarCharVector vector)) {
-                    continue;
-                }
-                Map<Integer, String> newValues = new HashMap<>();
-                for (int row = 0; row < root.getRowCount(); row++) {
-                    if (vector.isNull(row)) {
-                        continue;
-                    }
-                    String value = new String(vector.get(row), StandardCharsets.UTF_8);
-                    String rebuilt = value.replaceAll("RG\\{([^}]*)\\}", "clear-$1");
-                    if (!rebuilt.equals(value)) {
-                        newValues.put(row, rebuilt);
-                    }
-                }
-                if (!newValues.isEmpty()) {
-                    rewriteColumn(root, column, newValues, allocator);
-                }
+        protected void transformValues(List<RPSValue> values) {
+            for (RPSValue value : values) {
+                String original = value.getOriginal();
+                RPSMapping mapping = value.getMapping();
+                value.setTransformed(original.startsWith("RG{")
+                        ? "clear-" + original.substring(3, original.length() - 1)
+                        : mapping.getClassName() + "." + mapping.getPropertyName() + "=" + original);
             }
         }
     }
