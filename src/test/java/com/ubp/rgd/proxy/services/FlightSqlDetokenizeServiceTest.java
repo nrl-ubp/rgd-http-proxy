@@ -41,10 +41,13 @@ class FlightSqlDetokenizeServiceTest {
         allocator = new RootAllocator(Long.MAX_VALUE);
         service = new FlightSqlDetokenizeService();
         service.setMappingConfig(new FlightSqlMappingConfig());
+        // Built outside of CDI, so @PostConstruct never ran: populate the token index table by hand.
+        service.loadTokenIndexMappings();
     }
 
     @AfterEach
     void tearDown() {
+        FlightSqlTokenIndexResolver.clear();
         allocator.close();
     }
 
@@ -335,6 +338,28 @@ class FlightSqlDetokenizeServiceTest {
 
             assertEquals("John", readString((VarCharVector) root.getVector(0), 0));
         }
+    }
+
+    @Test
+    void shouldLoadTheTokenIndexTableFromTheConfiguredClientId() {
+        assertTrue(FlightSqlTokenIndexResolver.size() > 0);
+        assertEquals("Person.ShortString",
+                FlightSqlTokenIndexResolver.resolveMappingName("RG{Bx12345678aa}"));
+    }
+
+    @Test
+    void shouldLeaveTheTokenIndexTableEmptyWhenItsInitializationFails() {
+        FlightSqlDetokenizeService failing = new FlightSqlDetokenizeService() {
+            @Override
+            void initTokenIndexMappings(String clientId) {
+                FlightSqlTokenIndexResolver.register("C", "Person.BirthDate");
+                throw new IllegalStateException("RPS is unreachable");
+            }
+        };
+
+        failing.loadTokenIndexMappings();
+
+        assertEquals(0, FlightSqlTokenIndexResolver.size());
     }
 
     @Test

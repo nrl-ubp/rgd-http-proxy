@@ -54,20 +54,14 @@ public final class FlightSqlTokenIndexResolver {
     /**
      * Mapping index to {@code "ClassName.PropertyName"} table, keyed by the padded symbol.
      * <p>
-     * The table is hardcoded on purpose: it describes the tokens themselves, not a deployment. Add the
-     * missing indexes below, in either form — {@code "B"} and {@code "Bx"} are the same entry.
+     * The table starts empty and is populated at startup by
+     * {@link FlightSqlDetokenizeService#loadTokenIndexMappings()}, since its content depends on the RPS
+     * client the proxy is configured for. While it is empty, this last resolution tier simply resolves
+     * nothing and the tokens are returned untouched.
+     * <p>
+     * Being static, the table is JVM-wide: a test populating it must clear it afterwards.
      */
     private static final Map<String, String> INDEX_MAPPINGS = new LinkedHashMap<>();
-
-    static {
-        register("B", "Person.ShortString");
-        // ---------------------------------------------------------------------------------------
-        // TODO complete the table with the remaining mapping indexes, for example:
-        // register("A", "Person.LongString");
-        // register("C", "Person.BirthDate");
-        // register("ZA", "Account.Number");   // index 26, escaped form
-        // ---------------------------------------------------------------------------------------
-    }
 
     /** Symbols already reported as unresolvable, so that each one is only warned about once. */
     private static final Set<String> WARNED_SYMBOLS = ConcurrentHashMap.newKeySet();
@@ -88,6 +82,21 @@ public final class FlightSqlTokenIndexResolver {
     /** Withdraw a declared mapping index. Used by the tests. */
     static void unregister(String symbol) {
         INDEX_MAPPINGS.remove(normalize(symbol));
+    }
+
+    /**
+     * Withdraw every declared mapping index, so that the table can be repopulated from scratch. The
+     * symbols already warned about are forgotten too: after a reload an unknown symbol is worth
+     * reporting again.
+     */
+    static void clear() {
+        INDEX_MAPPINGS.clear();
+        resetWarnings();
+    }
+
+    /** @return the number of declared mapping indexes */
+    static int size() {
+        return INDEX_MAPPINGS.size();
     }
 
     /**
@@ -213,8 +222,8 @@ public final class FlightSqlTokenIndexResolver {
         return new RPSMapping(mappingName.substring(0, separator), mappingName.substring(separator + 1));
     }
 
-    /** Forget the symbols already warned about. Used by the tests. */
-    static void resetWarnings() {
+    /** Forget the symbols already warned about, so that they are reported again. */
+    private static void resetWarnings() {
         WARNED_SYMBOLS.clear();
     }
 }

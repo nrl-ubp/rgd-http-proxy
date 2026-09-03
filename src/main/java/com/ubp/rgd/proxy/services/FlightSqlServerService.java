@@ -56,6 +56,10 @@ public class FlightSqlServerService {
             return;
         }
         try {
+            // The detokenizer is lazy: touch it so its mappings are loaded before the first query
+            // rather than during it.
+            LOG.infof("Flight SQL detokenizer ready with %d column mapping(s)",
+                    detokenizeService.getMappingConfig().getColumnMappings().size());
             allocator = new RootAllocator(Long.MAX_VALUE);
             producer = new ProxyFlightSqlProducer(allocator, connectionManager, detokenizeService, batchSize);
             server = FlightServer.builder(allocator, Location.forGrpcInsecure(host, port), producer)

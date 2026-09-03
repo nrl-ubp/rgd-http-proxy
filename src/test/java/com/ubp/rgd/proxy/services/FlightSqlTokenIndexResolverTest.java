@@ -13,14 +13,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class FlightSqlTokenIndexResolverTest {
 
     @BeforeEach
-    void reset() {
-        FlightSqlTokenIndexResolver.resetWarnings();
+    void seedTheTable() {
+        // The table is JVM-wide and populated at startup by the service, so seed it explicitly here.
+        FlightSqlTokenIndexResolver.clear();
+        FlightSqlTokenIndexResolver.register("B", "Person.ShortString");
     }
 
     @AfterEach
     void cleanUp() {
-        FlightSqlTokenIndexResolver.unregister("ZA");
-        FlightSqlTokenIndexResolver.unregister("Cx");
+        FlightSqlTokenIndexResolver.clear();
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -134,6 +135,16 @@ class FlightSqlTokenIndexResolverTest {
         assertNull(FlightSqlTokenIndexResolver.resolveMappingName("RG{ZZ12345678aa}"));
         assertNull(FlightSqlTokenIndexResolver.resolveMappingName("RG{2x12345678aa}"));
         assertNull(FlightSqlTokenIndexResolver.resolveMappingName("John Doe"));
+    }
+
+    @Test
+    void shouldForgetEveryDeclarationWhenTheTableIsCleared() {
+        assertEquals(1, FlightSqlTokenIndexResolver.size());
+
+        FlightSqlTokenIndexResolver.clear();
+
+        assertEquals(0, FlightSqlTokenIndexResolver.size());
+        assertNull(FlightSqlTokenIndexResolver.resolveMappingName("RG{Bx12345678aa}"));
     }
 
     @Test

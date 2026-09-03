@@ -50,6 +50,7 @@ class ProxyFlightSqlProducerTest {
     private static BufferAllocator allocator;
     private static FlightServer server;
     private static ProxyFlightSqlProducer producer;
+    private static FlightSqlDetokenizeService detokenizeService;
     private static Connection keepAlive;
 
     private FlightClient flightClient;
@@ -78,7 +79,7 @@ class ProxyFlightSqlProducerTest {
                 new FlightSqlDataMapping("RG\\{EF[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+\\}", "Person", "city"),
                 new FlightSqlDataMapping("\\d{4}-\\d{2}-\\d{2}", "Person", "birthDate")));
 
-        FlightSqlDetokenizeService detokenizeService = new LocalDetokenizeService();
+        detokenizeService = new LocalDetokenizeService();
         detokenizeService.setMappingConfig(config);
 
         FlightSqlConnectionManager connectionManager = new FlightSqlConnectionManager();
@@ -118,6 +119,12 @@ class ProxyFlightSqlProducerTest {
                 .build();
         credentials = flightClient.authenticateBasicToken(USER, PASSWORD).orElseThrow();
         sqlClient = new FlightSqlClient(flightClient);
+    }
+
+    @BeforeEach
+    void seedTheTokenIndexTable() {
+        // The table is JVM-wide and this service is built outside of CDI, so @PostConstruct never ran.
+        detokenizeService.loadTokenIndexMappings();
     }
 
     @AfterEach
