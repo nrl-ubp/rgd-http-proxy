@@ -78,4 +78,14 @@ public class ProxyResource {
         Objects.requireNonNull(metricsRegistry.counter("ubp_proxy_counter", Tags.of("name", "delete"))).increment();
         return proxyService.forwardRequest("DELETE", path, null, uriInfo, headers);
     }
+
+    @PATCH
+    @Path("/{path:.*}")
+    public Response proxyPatch(@PathParam("path") String path,
+                                @Context UriInfo uriInfo,
+                                @Context HttpHeaders headers) {
+        LOG.infof("Proxy PATCH request for path: %s", path);
+        Objects.requireNonNull(metricsRegistry.counter("ubp_proxy_counter", Tags.of("name", "patch"))).increment();
+        return proxyService.forwardRequest("PATCH", path, null, uriInfo, headers);
+    }
 }
