@@ -76,10 +76,19 @@ public class FlightSqlDetokenizeService {
             defaultValue = "./config/flight_sql_mapping_config.json")
     String mappingConfigFile;
 
+    @ConfigProperty(name = "proxy.transform.client-id")
+    String transformClientId;
+
     private FlightSqlMappingConfig mappingConfig = new FlightSqlMappingConfig();
 
     @PostConstruct
     void init() {
+        loadMappingConfig();
+        loadTokenIndexMappings();
+    }
+
+    /** Read the column and data mappings from {@code proxy.flight-sql.mapping-config-file}. */
+    private void loadMappingConfig() {
         File configFile = new File(mappingConfigFile);
         if (!configFile.exists()) {
             LOG.warnf("Flight SQL mapping config file not found: %s. No column will be detokenized.",
@@ -94,6 +103,57 @@ public class FlightSqlDetokenizeService {
             LOG.errorf(e, "Failed to load the Flight SQL mapping configuration from %s", mappingConfigFile);
             mappingConfig = new FlightSqlMappingConfig();
         }
+    }
+
+    /**
+     * (Re)build the token mapping index table of {@link FlightSqlTokenIndexResolver} for the RPS client
+     * the proxy is configured for.
+     * <p>
+     * The table is cleared first, so a reload can never leave a stale index behind. A failure is logged
+     * and leaves the table empty rather than preventing the proxy from starting: the mapping index is
+     * only the last detokenization tier, and without it the tokens are simply returned untouched.
+     * <p>
+     * Public and re-runnable so that the table can be refreshed at any time.
+     */
+    public void loadTokenIndexMappings() {
+        FlightSqlTokenIndexResolver.clear();
+        try {
+            initTokenIndexMappings(transformClientId);
+            LOG.infof("Loaded %d token mapping index(es) for the RPS client %s",
+                    FlightSqlTokenIndexResolver.size(), transformClientId);
+        } catch (Exception e) {
+            LOG.errorf(e, "Failed to load the token mapping indexes for the RPS client %s."
+                    + " The tokens resolved by their mapping index will be returned untouched.",
+                    transformClientId);
+            FlightSqlTokenIndexResolver.clear();
+        }
+    }
+
+    /**
+     * Declare the mapping indexes of an RPS client, by calling
+     * {@link FlightSqlTokenIndexResolver#register(String, String)} for each of them with the index
+     * symbol and its {@code "ClassName.PropertyName"}.
+     * <p>
+     * A symbol may be declared padded ({@code "Bx"}) or not ({@code "B"}), both being the same index —
+     * see {@link FlightSqlTokenIndexResolver} for the encoding.
+     * <p>
+     * The implementation may query the RPS engine through {@link #rpsClientEngineProvider} to discover
+     * the catalogue of the client. It must tolerate a {@code null} client id, which happens when the
+     * service is built outside of CDI. Any exception it raises is caught by
+     * {@link #loadTokenIndexMappings()}.
+     *
+     * @param clientId the value of {@code proxy.transform.client-id}, may be {@code null}
+     */
+    void initTokenIndexMappings(String clientId) {
+        // -------------------------------------------------------------------------------------------
+        // TODO build the table for the given client id, for example by querying the RPS engine
+        //      through rpsClientEngineProvider.getClientEngineProvider().
+        //
+        //      FlightSqlTokenIndexResolver.register("A", "Person.LongString");
+        //      FlightSqlTokenIndexResolver.register("C", "Person.BirthDate");
+        //      FlightSqlTokenIndexResolver.register("ZA", "Account.Number");  // index 26, escaped form
+        // -------------------------------------------------------------------------------------------
+        FlightSqlTokenIndexResolver.register("B", "Person.ShortString");
     }
 
     FlightSqlMappingConfig getMappingConfig() {

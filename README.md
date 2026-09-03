@@ -134,11 +134,18 @@ width of 2 characters holding an uppercase base26 number, left-aligned and padde
 The filler being lowercase, `Zx` (25) and `ZA` (26) never collide. Any other shape — `BA`, `A3`,
 `2x` — resolves to nothing.
 
-The index → `ClassName.PropertyName` table is **hardcoded** in
-`FlightSqlTokenIndexResolver`, since it describes the tokens themselves rather than a deployment. Add
-the missing indexes to its `INDEX_MAPPINGS` block; an entry may be declared padded (`"Bx"`) or not
-(`"B"`), both being the same index. A token whose index is not declared is returned untouched and
-logs a warning, once per unknown symbol.
+The index → `ClassName.PropertyName` table depends on the RPS client the proxy is configured for, so
+it is **built at startup** by `FlightSqlDetokenizeService.initTokenIndexMappings(clientId)` from
+`proxy.transform.client-id` — the same API key used to reach the engine. That method declares each
+index with `FlightSqlTokenIndexResolver.register(symbol, "ClassName.PropertyName")`; a symbol may be
+given padded (`"Bx"`) or not (`"B"`), both being the same index.
+
+The table can be rebuilt at any time with `FlightSqlDetokenizeService.loadTokenIndexMappings()`, which
+clears it first so a reload never leaves a stale index behind. If the initialization fails, the error
+is logged and the table is left **empty** rather than preventing the proxy from starting — this is
+only the last resolution tier, so the affected tokens are simply returned untouched.
+
+A token whose index is not declared is returned untouched and logs a warning, once per unknown symbol.
 
 > Implicit mode runs every data-mapping regex over every value of every unmapped string column, so
 > keeping the list short and the patterns anchored matters on large result sets. A regex that fails
