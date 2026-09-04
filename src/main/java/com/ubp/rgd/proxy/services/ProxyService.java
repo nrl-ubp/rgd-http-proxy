@@ -309,6 +309,7 @@ public class ProxyService {
             case "DELETE" -> requestBuilder.delete();
             case "HEAD" -> requestBuilder.head();
             case "OPTIONS" -> requestBuilder.options();
+            case "PATCH" -> requestBuilder.method("PATCH", body != null ? Entity.json(body) : Entity.json(""));
             default -> throw new IllegalArgumentException("Unsupported HTTP method: " + method);
         };
     }
