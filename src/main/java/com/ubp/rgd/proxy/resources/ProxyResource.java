@@ -82,10 +82,11 @@ public class ProxyResource {
     @PATCH
     @Path("/{path:.*}")
     public Response proxyPatch(@PathParam("path") String path,
+                                String body,
                                 @Context UriInfo uriInfo,
                                 @Context HttpHeaders headers) {
         LOG.infof("Proxy PATCH request for path: %s", path);
         Objects.requireNonNull(metricsRegistry.counter("ubp_proxy_counter", Tags.of("name", "patch"))).increment();
-        return proxyService.forwardRequest("PATCH", path, null, uriInfo, headers);
+        return proxyService.forwardRequest("PATCH", path, body, uriInfo, headers);
     }
 }
