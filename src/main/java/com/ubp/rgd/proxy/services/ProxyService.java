@@ -1,5 +1,6 @@
 package com.ubp.rgd.proxy.services;
 
+import com.ubp.rgd.proxy.filters.TransformBypass;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -285,7 +286,8 @@ public class ProxyService {
         // Kerberos delegation, or pass-through).
         List<String> excludedHeaders = List.of(
                 "host", "content-length", "connection", "transfer-encoding",
-                "authorization", "x-proxy-processed", "x-proxy-timestamp"
+                "authorization", "x-proxy-processed", "x-proxy-timestamp",
+                TransformBypass.HEADER_NAME.toLowerCase()
         );
 
         for (Map.Entry<String, List<String>> header : headers.getRequestHeaders().entrySet()) {

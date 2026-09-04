@@ -37,6 +37,13 @@ public class PreFilter implements ContainerRequestFilter {
     @ConfigProperty(name = "proxy.prefilter.auth-enabled", defaultValue = "true")
     String preFilterAuthEnabled;
 
+    /**
+     * Whether a caller is allowed to skip the RPS transformation with the
+     * {@value TransformBypass#HEADER_NAME} header.
+     */
+    @ConfigProperty(name = "proxy.transform.allow-ignore-header", defaultValue = "true")
+    boolean allowIgnoreTransformHeader;
+
     @Inject
     SecurityContext securityContext;
 
@@ -90,6 +97,23 @@ public class PreFilter implements ContainerRequestFilter {
 
         // Personalized validation, eg authZ or any business related validation can occur in this method
         validateRequest(requestContext);
+
+        // a caller may ask for the payloads to be forwarded without any RPS transformation
+        if (!allowIgnoreTransformHeader && TransformBypass.isPresent(requestContext)) {
+            LOG.warnf("PRE-FILTER: %s was sent while the transform bypass is disabled by configuration."
+                    + " See the proxy.transform.allow-ignore-header property.", TransformBypass.HEADER_NAME);
+            requestContext.abortWith(Response.status(Response.Status.FORBIDDEN)
+                    .entity(String.format("The %s header is not allowed on this proxy.",
+                            TransformBypass.HEADER_NAME))
+                    .build());
+            return;
+        }
+
+        if (TransformBypass.isRequested(requestContext)) {
+            LOG.infof("PRE-FILTER: %s is set, forwarding %s > %s without any transformation.",
+                    TransformBypass.HEADER_NAME, requestContext.getMethod(), requestPath);
+            return;
+        }
 
         // now check if we should transform payload BEFORE invoking proxified target url
         String proxyUrlPath = requestContext.getUriInfo().getPath().substring("/proxy".length());
