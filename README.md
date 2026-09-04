@@ -24,6 +24,32 @@ For development, you can generate self signed certs using the maven command: `mv
 
 The `com.ubp.rgd.proxy.tools.ConfigGenerator` program can be used as a sample configuration generator.  
 
+## Bypassing the transformation
+
+A caller can ask the proxy to forward a request **without any RPS transformation**, whatever the
+endpoint transform configuration says, by sending:
+
+```
+X-Proxy-Ignore-Transform: true
+```
+
+The value is compared ignoring case and surrounding whitespace: only `true` activates the bypass, any
+other value — and a missing header — keeps the configured behaviour. The header is honoured by the
+pre and post filters, and it is **stripped** before the request reaches the proxied service, like the
+other `X-Proxy-*` control headers. It has no effect on the `/transform` endpoint nor on the Flight SQL
+server.
+
+When the bypass is honoured, the response echoes `X-Proxy-Ignore-Transform: true`, so a caller can
+tell that the payload was left untransformed — even when nothing was configured for that endpoint.
+
+The feature is gated by `proxy.transform.allow-ignore-header` (default `true`). Set it to `false` to
+refuse the bypass: a request carrying the header is then rejected with a **403**, rather than being
+transformed silently.
+
+> ⚠️ This is a plain request header, so while the property is enabled **any authenticated caller can
+> retrieve untransformed payloads**. It bypasses the tokenization, not the authentication or the
+> authorization.
+
 ## Monitoring 
 This anonymization proxy uses micrometer and prometheus endpoint is available.
 - Health endpoint : https://your-server-hostname/health

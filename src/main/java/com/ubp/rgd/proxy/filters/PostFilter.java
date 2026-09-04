@@ -12,6 +12,7 @@ import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import java.util.List;
@@ -36,6 +37,15 @@ public class PostFilter implements ContainerResponseFilter {
     @Inject
     RPSEndPointTransformer endPointTransformer;
 
+    /**
+     * Whether a caller is allowed to skip the RPS transformation with the
+     * {@value TransformBypass#HEADER_NAME} header. A request asking for a bypass while this is disabled
+     * has already been rejected by {@link PreFilter}; the property is read here as well so that both
+     * filters stay independently correct.
+     */
+    @ConfigProperty(name = "proxy.transform.allow-ignore-header", defaultValue = "true")
+    boolean allowIgnoreTransformHeader;
+
     @Override
     public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
         LOG.infof("POST-FILTER: %s %s",
@@ -59,6 +69,15 @@ public class PostFilter implements ContainerResponseFilter {
         }
 
         String proxyUrlPath = requestPath.substring(proxyBasePath.length());
+
+        // the caller may have asked for the payloads to be returned without any RPS transformation
+        if (allowIgnoreTransformHeader && TransformBypass.isRequested(requestContext)) {
+            LOG.infof("POST filter: %s is set, returning %s > %s without any transformation.",
+                    TransformBypass.HEADER_NAME, requestContext.getMethod(), requestPath);
+            // echo the header so that the caller can tell the payload was left untransformed
+            responseContext.getHeaders().putSingle(TransformBypass.HEADER_NAME, "true");
+            return;
+        }
 
         LOG.infof("POST filter: Comparing if we need to transform url path: AFTER: %s > %s", requestContext.getMethod(), proxyUrlPath);
         EndPointTransformConfig cfg = endPointTransformer.getEndpointTransformConfig(requestContext.getMethod(), proxyUrlPath, "AFTER");
