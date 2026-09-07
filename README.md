@@ -24,6 +24,23 @@ For development, you can generate self signed certs using the maven command: `mv
 
 The `com.ubp.rgd.proxy.tools.ConfigGenerator` program can be used as a sample configuration generator.  
 
+### JSON paths in the transform configuration
+
+The `json-path` of an attribute transform config is evaluated with
+[JsonPath](https://github.com/json-path/JsonPath), and both definite paths (`$.customer.name`) and
+indefinite ones (`$.persons[*].name`, `$..name`) are supported. Two behaviours are worth knowing:
+
+- **A path absent from the payload is simply skipped** (logged at `debug`), so a single transform
+  configuration can serve several payload shapes and optional fields cost nothing. The same applies
+  to a `null` value, which holds nothing to protect.
+- **Non-string values are tokenized as strings.** If a path points to a JSON number or boolean, the
+  value is converted to text before being sent to RPS, so `{"age": 42}` comes back as
+  `{"age": "<token>"}` — note that the JSON type changes from number to string. Only map a
+  non-string field when the target service accepts a string in return.
+
+Each match is written back to the exact location it was read from, so wildcards over arrays whose
+elements do not all carry the mapped field are handled correctly.
+
 ## Bypassing the transformation
 
 A caller can ask the proxy to forward a request **without any RPS transformation**, whatever the
