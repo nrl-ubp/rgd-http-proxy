@@ -164,6 +164,17 @@ public class RPSEndPointTransformer {
     }
 
     /**
+     * Get the RPS action of an endpoint configuration, taken from its {@code Action} processing
+     * context evidence.
+     *
+     * @param cfg the endpoint transformation configuration
+     * @return the action, or {@code null} when the configuration declares none
+     */
+    private static String getAction(EndPointTransformConfig cfg) {
+        return cfg.getProcessingContextEvidences().get("Action");
+    }
+
+    /**
      * Get the EndPointTransformConfig that matches the apiMethod and the apiPAth.
      * WARNING: If more that one config matches the apiPath then the FIRST matched config is returned.
      * Be sure to have one config per method, path and when (BEFORE, AFTER) triplet.
@@ -193,9 +204,13 @@ public class RPSEndPointTransformer {
      *
      * @param documentContext   the parsed JSON document
      * @param attributesConfigs the transformation configuration, keyed by configured JSON path
+     * @param action            the RPS action, driving how each value is split into segments
      * @return the RPS values to transform, keyed by concrete JSON path
+     * @throws RPSTransformException when an entity configuration carries an invalid extract regex
      */
-    protected Map<String, JsonPathValue> getRPSValuesFromBody(DocumentContext documentContext, Map<String, EntityTransformConfig> attributesConfigs) {
+    protected Map<String, JsonPathValue> getRPSValuesFromBody(DocumentContext documentContext,
+                                                             Map<String, EntityTransformConfig> attributesConfigs,
+                                                             String action) throws RPSTransformException {
         Map<String, JsonPathValue> rpsValuesByJsonPath = new HashMap<>();
 
         // Reuses the already parsed document, so the payload is not parsed a second time.
@@ -221,6 +236,10 @@ public class RPSEndPointTransformer {
             }
 
             EntityTransformConfig attrCfg = attributesConfigs.get(jsonPath);
+            RPSMapping mapping = new RPSMapping(attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName());
+            // Compiled once per configured path, not once per matched value.
+            Pattern extractionPattern = ValuePlan.extractionPattern(action, attrCfg.getExtractRegex());
+
             for (int i = 0; i < values.size(); i++) {
                 Object rawValue = values.get(i);
                 if (rawValue == null) {
@@ -228,10 +247,19 @@ public class RPSEndPointTransformer {
                     LOG.debug("Null value for json path {}, skipping it.", matchedPaths.get(i));
                     continue;
                 }
+                boolean numeric = rawValue instanceof Number;
                 String oldValue = String.valueOf(rawValue);
                 LOG.debug("RPSValue: {} = {} : {}", oldValue, attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName());
-                RPSValue rpsValue = new RPSValue(new RPSMapping(attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName()), oldValue);
-                rpsValuesByJsonPath.put(matchedPaths.get(i), new JsonPathValue(rpsValue, rawValue instanceof Number));
+
+                // A number carries neither separators nor RG{} tokens, so it is always transformed
+                // as a whole. Segmenting it would break the tokenization of numeric values.
+                ValuePlan plan = ValuePlan.of(mapping, oldValue, numeric ? null : extractionPattern);
+                if (plan.rpsValues().isEmpty()) {
+                    LOG.debug("Nothing to transform in the value of json path {}, leaving it untouched.",
+                            matchedPaths.get(i));
+                    continue;
+                }
+                rpsValuesByJsonPath.put(matchedPaths.get(i), new JsonPathValue(plan, numeric));
             }
         }
 
@@ -246,12 +274,16 @@ public class RPSEndPointTransformer {
      *
      * @param documentContext     the parsed JSON document to update
      * @param rpsValuesByJsonPath the transformed values, keyed by concrete JSON path
+     * @throws RPSTransformException when a segment was not transformed by the engine
      */
-    protected void setRPSValuesToBody(DocumentContext documentContext, Map<String, JsonPathValue> rpsValuesByJsonPath) {
-        rpsValuesByJsonPath.forEach((jsonPath, pathValue) -> {
-            Object newValue = toJsonValue(pathValue.rpsValue().getTransformed(), pathValue.numeric(), jsonPath);
+    protected void setRPSValuesToBody(DocumentContext documentContext, Map<String, JsonPathValue> rpsValuesByJsonPath)
+            throws RPSTransformException {
+        for (Map.Entry<String, JsonPathValue> entry : rpsValuesByJsonPath.entrySet()) {
+            String jsonPath = entry.getKey();
+            JsonPathValue pathValue = entry.getValue();
+            Object newValue = toJsonValue(pathValue.plan().reassemble(), pathValue.numeric(), jsonPath);
             documentContext.set(jsonPath, newValue); // Replace value
-        });
+        }
     }
 
     protected Map<String, RPSValue[]> getRPSValuesFromHeaders(MultivaluedMap<String, String> headers, Map<String, HeaderTransformConfig> configs) {
@@ -326,13 +358,13 @@ public class RPSEndPointTransformer {
         // Parse JSON as a document to read tags to protect and set the results after RPS transform.
         DocumentContext documentContext = JsonPath.parse(json);
 
-        Map<String, JsonPathValue> rpsValuesByJsonPath = getRPSValuesFromBody(documentContext, attributesConfigs);
+        Map<String, JsonPathValue> rpsValuesByJsonPath = getRPSValuesFromBody(documentContext, attributesConfigs, getAction(cfg));
         Map<String, RPSValue[]> rpsValuesByHeader = getRPSValuesFromHeaders(headers, headersTransformConfigs);
         Map<String, RPSValue[]> rpsValuesByQueryParameter = getRPSValuesFromQuery(queryParameters, urlQueryTransformConfigs);
 
         // create a flat list of RPS Values to optimize the call to tokenizer
         List<RPSValue> flatList = new ArrayList<>();
-        rpsValuesByJsonPath.values().forEach(pathValue -> flatList.add(pathValue.rpsValue()));
+        rpsValuesByJsonPath.values().forEach(pathValue -> flatList.addAll(pathValue.plan().rpsValues()));
         rpsValuesByHeader.values().forEach(rpsValues -> flatList.addAll(Arrays.asList(rpsValues)));
         rpsValuesByQueryParameter.values().forEach(rpsValues -> flatList.addAll(Arrays.asList(rpsValues)));
 

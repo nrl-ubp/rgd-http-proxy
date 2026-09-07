@@ -4,11 +4,14 @@ import ch.regdata.rps.engine.client.*;
 import ch.regdata.rps.engine.client.enginecontext.ProcessingContext;
 import ch.regdata.rps.engine.client.enginecontext.RPSEngineContextResolver;
 import ch.regdata.rps.engine.client.http.HttpClientEngineProvider;
+import ch.regdata.rps.engine.client.mapping.RPSMapping;
 import ch.regdata.rps.engine.client.model.api.value.IRPSValue;
 import ch.regdata.rps.engine.client.model.api.value.RPSValue;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ubp.rgd.proxy.transform.JsonPathValue;
+import com.ubp.rgd.proxy.transform.RPSTransformException;
+import com.ubp.rgd.proxy.transform.ValuePlan;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
@@ -349,11 +352,12 @@ public class FileTransformService {
         // Parse JSON as a document
         DocumentContext documentContext = JsonPath.parse(jsonContent);
 
-        Map<String, JsonPathValue> rpsValuesByJsonPath = getRPSValuesFromBody(documentContext, attributesConfigs);
+        Map<String, JsonPathValue> rpsValuesByJsonPath =
+                getRPSValuesFromBody(documentContext, attributesConfigs, getAction(config));
 
         // Create a flat list of RPS Values
         List<RPSValue> flatList = new ArrayList<>();
-        rpsValuesByJsonPath.values().forEach(pathValue -> flatList.add(pathValue.rpsValue()));
+        rpsValuesByJsonPath.values().forEach(pathValue -> flatList.addAll(pathValue.plan().rpsValues()));
 
         if (flatList.isEmpty()) {
             LOG.debug("No values to transform, returning original content");
@@ -414,8 +418,9 @@ public class FileTransformService {
      * @param attributesConfigs the transformation configuration, keyed by configured JSON path
      * @return the RPS values to transform, keyed by concrete JSON path
      */
-    protected Map<String, JsonPathValue> getRPSValuesFromBody(DocumentContext documentContext, 
-                                                            Map<String, EntityTransformConfig> attributesConfigs) {
+    protected Map<String, JsonPathValue> getRPSValuesFromBody(DocumentContext documentContext,
+                                                            Map<String, EntityTransformConfig> attributesConfigs,
+                                                            String action) throws RPSTransformException {
         Map<String, JsonPathValue> rpsValuesByJsonPath = new HashMap<>();
 
         // Reuses the already parsed document, so the file content is not parsed a second time.
@@ -440,6 +445,10 @@ public class FileTransformService {
             }
 
             EntityTransformConfig attrCfg = attributesConfigs.get(jsonPath);
+            RPSMapping mapping = new RPSMapping(attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName());
+            // Compiled once per configured path, not once per matched value.
+            Pattern extractionPattern = ValuePlan.extractionPattern(action, attrCfg.getExtractRegex());
+
             for (int i = 0; i < values.size(); i++) {
                 Object rawValue = values.get(i);
                 if (rawValue == null) {
@@ -447,10 +456,19 @@ public class FileTransformService {
                     LOG.debug("Null value for json path {}, skipping it.", matchedPaths.get(i));
                     continue;
                 }
+                boolean numeric = rawValue instanceof Number;
                 String oldValue = String.valueOf(rawValue);
                 LOG.debug("RPSValue: {} = {} : {}", oldValue, attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName());
-                rpsValuesByJsonPath.put(matchedPaths.get(i),
-                        new JsonPathValue(attrCfg.getRPSValue(oldValue), rawValue instanceof Number));
+
+                // A number carries neither separators nor RG{} tokens, so it is always transformed
+                // as a whole. Segmenting it would break the tokenization of numeric values.
+                ValuePlan plan = ValuePlan.of(mapping, oldValue, numeric ? null : extractionPattern);
+                if (plan.rpsValues().isEmpty()) {
+                    LOG.debug("Nothing to transform in the value of json path {}, leaving it untouched.",
+                            matchedPaths.get(i));
+                    continue;
+                }
+                rpsValuesByJsonPath.put(matchedPaths.get(i), new JsonPathValue(plan, numeric));
             }
         }
 
@@ -466,15 +484,25 @@ public class FileTransformService {
      * @param documentContext     the parsed JSON document to update
      * @param rpsValuesByJsonPath the transformed values, keyed by concrete JSON path
      */
-    protected void setRPSValuesToBody(DocumentContext documentContext, Map<String, JsonPathValue> rpsValuesByJsonPath) {
-        rpsValuesByJsonPath.forEach((jsonPath, pathValue) -> {
-            try {
-                Object newValue = toJsonValue(pathValue.rpsValue().getTransformed(), pathValue.numeric(), jsonPath);
-                documentContext.set(jsonPath, newValue);
-            } catch (Exception e) {
-                LOG.warn("Failed to set value for json path: {}", jsonPath, e);
-            }
-        });
+    protected void setRPSValuesToBody(DocumentContext documentContext, Map<String, JsonPathValue> rpsValuesByJsonPath)
+            throws RPSTransformException {
+        for (Map.Entry<String, JsonPathValue> entry : rpsValuesByJsonPath.entrySet()) {
+            String jsonPath = entry.getKey();
+            JsonPathValue pathValue = entry.getValue();
+            Object newValue = toJsonValue(pathValue.plan().reassemble(), pathValue.numeric(), jsonPath);
+            documentContext.set(jsonPath, newValue);
+        }
+    }
+
+    /**
+     * Get the RPS action of a file transformation configuration, taken from its {@code Action}
+     * processing context evidence.
+     *
+     * @param cfg the file transformation configuration
+     * @return the action, or {@code null} when the configuration declares none
+     */
+    private static String getAction(FileTransformConfig cfg) {
+        return cfg.getProcessingContextEvidences().get("Action");
     }
 
     private void transformData(HttpClientEngineProvider engineProvider, 
