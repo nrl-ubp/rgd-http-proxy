@@ -9,8 +9,11 @@ import ch.regdata.rps.engine.client.model.api.value.IRPSValue;
 import ch.regdata.rps.engine.client.model.api.value.RPSValue;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.Option;
+import com.jayway.jsonpath.PathNotFoundException;
 import com.ubp.rgd.proxy.transform.config.EntityTransformConfig;
 import com.ubp.rgd.proxy.transform.config.EndPointTransformConfig;
 import com.ubp.rgd.proxy.transform.config.HeaderTransformConfig;
@@ -32,6 +35,34 @@ import java.util.regex.Pattern;
 public class RPSEndPointTransformer {
 
     private static final Logger LOG = LoggerFactory.getLogger(RPSEndPointTransformer.class);
+
+    /**
+     * Makes {@code read()} return the concrete path of every match instead of its value.
+     */
+    private static final Configuration PATH_LIST_CONFIG = Configuration.builder()
+            .options(Option.AS_PATH_LIST)
+            .build();
+
+    /**
+     * Read a JSON path and always return a list of values.
+     * <p>
+     * {@link DocumentContext#read(String)} only returns a list for indefinite paths (containing a
+     * wildcard, a deep scan or a filter). A definite path such as {@code $.name} returns the raw
+     * value itself, which may be a String, a number, a boolean or {@code null}.
+     *
+     * @param documentContext the parsed JSON document
+     * @param jsonPath        the configured JSON path
+     * @return the matching values, never {@code null}
+     * @throws PathNotFoundException when the document does not carry the path
+     */
+    private static List<Object> readValues(DocumentContext documentContext, String jsonPath) {
+        Object result = documentContext.read(jsonPath);
+        if (result instanceof List) {
+            return (List<Object>) result;
+        }
+        // Definite path: a single value, possibly null.
+        return Collections.singletonList(result);
+    }
 
     @Inject
     RPSClientEngineProvider engineProvider;
@@ -104,33 +135,73 @@ public class RPSEndPointTransformer {
         return matched.isEmpty() ? null : matched.getFirst();
     }
 
+    /**
+     * Read every value matching the configured JSON paths and build the RPS values to transform.
+     * <p>
+     * The returned map is keyed by the <b>concrete</b> JSON path of each match (for instance
+     * {@code $['persons'][1]['name']}) so that the transformed value can later be written back
+     * exactly where it was read from.
+     *
+     * @param documentContext   the parsed JSON document
+     * @param attributesConfigs the transformation configuration, keyed by configured JSON path
+     * @return the RPS values to transform, keyed by concrete JSON path
+     */
     protected Map<String, RPSValue[]> getRPSValuesFromBody(DocumentContext documentContext, Map<String, EntityTransformConfig> attributesConfigs) {
         Map<String, RPSValue[]> rpsValuesByJsonPath = new HashMap<>();
 
+        // Reuses the already parsed document, so the payload is not parsed a second time.
+        DocumentContext pathContext = JsonPath.using(PATH_LIST_CONFIG).parse((Object) documentContext.json());
+
         // Iterate over JSON paths and create RPS Json path values
         for (String jsonPath : attributesConfigs.keySet()) {
-            List<String> values = documentContext.read(jsonPath); // Read all matching values
+            List<Object> values;
+            List<String> matchedPaths;
+            try {
+                values = readValues(documentContext, jsonPath);
+                matchedPaths = pathContext.read(jsonPath);
+            } catch (PathNotFoundException e) {
+                // The document simply does not carry this path: nothing to transform.
+                LOG.debug("Json path not found in the document, skipping it: {}", jsonPath);
+                continue;
+            }
+
+            if (values.size() != matchedPaths.size()) {
+                LOG.warn("Json path {} matched {} value(s) but {} path(s). Skipping it to avoid writing a value"
+                        + " to the wrong place.", jsonPath, values.size(), matchedPaths.size());
+                continue;
+            }
+
             EntityTransformConfig attrCfg = attributesConfigs.get(jsonPath);
-            RPSValue[] valuesForPath = new RPSValue[values.size()];
             for (int i = 0; i < values.size(); i++) {
-                String oldValue = values.get(i);
+                Object rawValue = values.get(i);
+                if (rawValue == null) {
+                    // A null value holds nothing to protect nor to unprotect.
+                    LOG.debug("Null value for json path {}, skipping it.", matchedPaths.get(i));
+                    continue;
+                }
+                String oldValue = String.valueOf(rawValue);
                 LOG.debug("RPSValue: {} = {} : {}", oldValue, attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName());
                 RPSValue rpsValue = new RPSValue(new RPSMapping(attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName()), oldValue);
-                valuesForPath[i] = rpsValue;
+                rpsValuesByJsonPath.put(matchedPaths.get(i), new RPSValue[]{rpsValue});
             }
-            rpsValuesByJsonPath.put(jsonPath, valuesForPath);
         }
 
         return rpsValuesByJsonPath;
     }
 
+    /**
+     * Write the transformed values back into the document.
+     * <p>
+     * Each entry is keyed by a concrete JSON path pointing to a single match, so the value is
+     * written exactly where it was read from and the document does not need to be read again.
+     *
+     * @param documentContext     the parsed JSON document to update
+     * @param rpsValuesByJsonPath the transformed values, keyed by concrete JSON path
+     */
     protected void setRPSValuesToBody(DocumentContext documentContext, Map<String, RPSValue[]> rpsValuesByJsonPath) {
         rpsValuesByJsonPath.forEach((jsonPath, rpsJsonValues) -> {
-            List<String> values = documentContext.read(jsonPath);
-            for (int i = 0; i < values.size(); i++) {
-                RPSValue rpsValue = rpsJsonValues[i];
-                String newValue = rpsValue.getTransformed();
-                documentContext.set(jsonPath.replace("*", String.valueOf(i)), newValue); // Replace value
+            for (RPSValue rpsValue : rpsJsonValues) {
+                documentContext.set(jsonPath, rpsValue.getTransformed()); // Replace value
             }
         });
     }
