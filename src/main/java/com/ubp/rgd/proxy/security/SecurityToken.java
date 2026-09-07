@@ -2,7 +2,8 @@ package com.ubp.rgd.proxy.security;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonRootName;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosTicket;
@@ -11,7 +12,7 @@ import java.util.Set;
 
 @JsonRootName("security-token")
 public abstract class SecurityToken {
-    private static final Logger LOGGER = Logger.getLogger(SecurityToken.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(SecurityToken.class);
 
     protected Subject userSubject;
 
@@ -42,7 +43,7 @@ public abstract class SecurityToken {
             }
         }
 
-        LOGGER.warn("Kerberos ticket not found for user: " + this.user);
+        LOG.warn("Kerberos ticket not found for user: " + this.user);
         return null;
     }
 

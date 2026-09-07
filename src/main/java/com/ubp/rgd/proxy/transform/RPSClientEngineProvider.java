@@ -1,12 +1,15 @@
 package com.ubp.rgd.proxy.transform;
 
 import ch.regdata.rps.engine.client.http.HttpClientEngineProvider;
-import io.quarkus.logging.Log;
 import jakarta.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Singleton
 public class RPSClientEngineProvider {
+
+    private static final Logger LOG = LoggerFactory.getLogger(RPSClientEngineProvider.class);
 
     @ConfigProperty(name = "proxy.transform.client-id")
     private String clientId;
@@ -24,9 +27,9 @@ public class RPSClientEngineProvider {
 
     public synchronized HttpClientEngineProvider getClientEngineProvider() {
         if (engineProvider == null) {
-            Log.infof("Creating RPS client connection with ID: %s", clientId);
-            Log.infof("Transform identity URL: %s", identityUrl);
-            Log.infof("Transform engine URL: %s", engineUrl);
+            LOG.info("Creating RPS client connection with ID: {}", clientId);
+            LOG.info("Transform identity URL: {}", identityUrl);
+            LOG.info("Transform engine URL: {}", engineUrl);
 
             engineProvider = new HttpClientEngineProvider();
             engineProvider.setApiKey(clientId);

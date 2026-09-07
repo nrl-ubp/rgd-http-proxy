@@ -30,7 +30,8 @@ import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.WriteChannel;
 import org.apache.arrow.vector.ipc.message.MessageSerializer;
 import org.apache.arrow.vector.types.pojo.Schema;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -56,7 +57,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
 
-    private static final Logger LOG = Logger.getLogger(ProxyFlightSqlProducer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ProxyFlightSqlProducer.class);
 
     private final BufferAllocator allocator;
     private final FlightSqlConnectionManager connectionManager;
@@ -336,7 +337,7 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
      * Execute the query on the proxied database and stream the detokenized Arrow batches back.
      */
     private void executeQuery(String peerIdentity, String query, ServerStreamListener listener) {
-        LOG.debugf("Flight SQL executing for %s: %s", peerIdentity, query);
+        LOG.debug("Flight SQL executing for {}: {}", peerIdentity, query);
         try (Connection connection = connectionManager.openConnection(peerIdentity);
              PreparedStatement statement = connection.prepareStatement(query);
              ResultSet resultSet = statement.executeQuery()) {
@@ -374,7 +375,7 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
             }
             listener.completed();
         } catch (Exception e) {
-            LOG.errorf(e, "Flight SQL query failed: %s", query);
+            LOG.error("Flight SQL query failed: {}", query, e);
             listener.error(CallStatus.INTERNAL
                     .withDescription(e.getMessage()).withCause(e).toRuntimeException());
         }
@@ -509,7 +510,7 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
                     .setCalendar(JdbcToArrowUtils.getUtcCalendar())
                     .build());
         } catch (SQLException e) {
-            LOG.debugf("Cannot describe table %s: %s", qualifiedName, e.getMessage());
+            LOG.debug("Cannot describe table {}: {}", qualifiedName, e.getMessage());
             return new Schema(List.of());
         }
     }

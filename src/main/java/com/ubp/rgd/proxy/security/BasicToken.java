@@ -8,7 +8,8 @@ import io.quarkus.cache.CaffeineCache;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.naming.directory.DirContext;
 import javax.security.auth.Subject;
@@ -20,7 +21,7 @@ import java.util.concurrent.CompletableFuture;
 @ApplicationScoped
 public class BasicToken extends SecurityToken {
 
-    private static final Logger LOGGER = Logger.getLogger(BasicToken.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(BasicToken.class);
 
     private static final String basic = "BASIC ";
 
@@ -54,7 +55,7 @@ public class BasicToken extends SecurityToken {
         String[] userPass = basicAuth.split(":");
 
         if (userPass.length != 2) {
-            LOGGER.error("Invalid basic auth provided. Cannot decode the user and password.");
+            LOG.error("Invalid basic auth provided. Cannot decode the user and password.");
             throw new Exception("Invalid basic auth token provided. Cannot decode user and password.");
         }
 
@@ -64,11 +65,11 @@ public class BasicToken extends SecurityToken {
             this.domainName = "CORP.UBP.CH";
             this.hostname = "localhost";
 
-            LOGGER.info("Now checking cache to get AD groups...");
+            LOG.info("Now checking cache to get AD groups...");
             // query the cache and populate if nothing found, otherwise use the cache
             CompletableFuture<List<String>> futUserAdGroups = userAdGroupsCache.as(CaffeineCache.class).getIfPresent(this.user);
             if (futUserAdGroups == null) {
-                LOGGER.infof("User AD groups not found in cache. Requesting LDAP / AD for user: %s", this.user);
+                LOG.info("User AD groups not found in cache. Requesting LDAP / AD for user: {}", this.user);
                 futUserAdGroups = getUserGroups(userPass[0], userPass[1]);
                 userAdGroupsCache.as(CaffeineCache.class).put(this.user, futUserAdGroups);
             }
@@ -95,28 +96,28 @@ public class BasicToken extends SecurityToken {
             krb5LoginModule.initialize(subject, callbackHandler, new HashMap<String, String>(), optionMap);
 
             if (!krb5LoginModule.login()) {
-                LOGGER.errorf("Could not login for user: %s", userPass[0]);
+                LOG.error("Could not login for user: {}", userPass[0]);
                 return null;
             }
 
             krb5LoginModule.commit();
 
             for(Object obj: subject.getPrivateCredentials()) {
-                LOGGER.debug("Private creds: " + obj.getClass().getName());
+                LOG.debug("Private creds: " + obj.getClass().getName());
                 if (obj instanceof KerberosTicket) {
                     this.kerbTicket = (KerberosTicket)obj;
-                    LOGGER.debug("Kerb ticket client principal: " + this.kerbTicket.getClient().getName());
-                    LOGGER.debug("Kerb ticket server principal: " + this.kerbTicket.getServer().getName());
+                    LOG.debug("Kerb ticket client principal: " + this.kerbTicket.getClient().getName());
+                    LOG.debug("Kerb ticket server principal: " + this.kerbTicket.getServer().getName());
                 }
             }
 
             for (Principal principal : subject.getPrincipals()) {
-                LOGGER.debug(principal.getClass().getName() + " = " + principal.getName());
+                LOG.debug(principal.getClass().getName() + " = " + principal.getName());
             }
 
             return subject;
         } catch (Exception ex) {
-            LOGGER.error("Cannot validate BASIC user/pass against active directory.", ex);
+            LOG.error("Cannot validate BASIC user/pass against active directory.", ex);
             return null;
         }
     }

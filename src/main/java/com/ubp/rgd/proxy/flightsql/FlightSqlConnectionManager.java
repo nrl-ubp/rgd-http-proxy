@@ -5,7 +5,8 @@ import org.apache.arrow.flight.CallStatus;
 import org.apache.arrow.flight.auth2.BasicCallHeaderAuthenticator;
 import org.apache.arrow.flight.auth2.CallHeaderAuthenticator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -24,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @ApplicationScoped
 public class FlightSqlConnectionManager implements BasicCallHeaderAuthenticator.CredentialValidator {
 
-    private static final Logger LOG = Logger.getLogger(FlightSqlConnectionManager.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FlightSqlConnectionManager.class);
 
     @ConfigProperty(name = "proxy.flight-sql.jdbc-url", defaultValue = "")
     String jdbcUrl;
@@ -50,13 +51,13 @@ public class FlightSqlConnectionManager implements BasicCallHeaderAuthenticator.
                         .withDescription("Could not validate the database connection.").toRuntimeException();
             }
         } catch (SQLException e) {
-            LOG.warnf("Flight SQL authentication failed for user %s: %s", username, e.getMessage());
+            LOG.warn("Flight SQL authentication failed for user {}: {}", username, e.getMessage());
             throw CallStatus.UNAUTHENTICATED
                     .withDescription("Database authentication failed: " + e.getMessage())
                     .toRuntimeException();
         }
         credentials.put(username, password == null ? "" : password);
-        LOG.infof("Flight SQL client authenticated as %s", username);
+        LOG.info("Flight SQL client authenticated as {}", username);
         return () -> username;
     }
 

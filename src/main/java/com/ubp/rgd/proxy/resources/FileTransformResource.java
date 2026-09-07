@@ -5,7 +5,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -18,7 +19,7 @@ import java.util.Map;
 @Produces(MediaType.APPLICATION_JSON)
 public class FileTransformResource {
 
-    private static final Logger LOG = Logger.getLogger(FileTransformResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FileTransformResource.class);
 
     @Inject
     FileTransformService fileTransformService;
@@ -50,7 +51,7 @@ public class FileTransformResource {
     @Path("/trigger/{configName}")
     public Response triggerProcessing(@PathParam("configName") String configName) {
         try {
-            LOG.infof("Triggering file transformation for configuration: %s", configName);
+            LOG.info("Triggering file transformation for configuration: {}", configName);
             int processedCount = fileTransformService.processConfigurationByName(configName);
             
             Map<String, Object> result = new HashMap<>();
@@ -60,12 +61,12 @@ public class FileTransformResource {
             
             return Response.ok(result).build();
         } catch (IllegalArgumentException e) {
-            LOG.warnf("Configuration not found: %s", configName);
+            LOG.warn("Configuration not found: {}", configName);
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(Map.of("error", "Configuration not found: " + configName))
                     .build();
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to process configuration: %s", configName);
+            LOG.error("Failed to process configuration: {}", configName, e);
             return Response.serverError()
                     .entity(Map.of("error", e.getMessage()))
                     .build();

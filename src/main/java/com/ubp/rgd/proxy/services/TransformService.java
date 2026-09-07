@@ -24,7 +24,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.ForbiddenException;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,7 +47,7 @@ import java.util.regex.Pattern;
 @ApplicationScoped
 public class TransformService {
 
-    private static final Logger LOG = Logger.getLogger(TransformService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TransformService.class);
 
     private static final String ACTION_PROTECT = "Protect";
     private static final String ACTION_UNPROTECT = "Unprotect";
@@ -134,12 +135,12 @@ public class TransformService {
 
         String userName = securityContext.getToken().getUser();
         if (!isAuthorized(userName, authorized)) {
-            LOG.errorf("User %s is not authorized to call the transform endpoint.", userName);
+            LOG.error("User {} is not authorized to call the transform endpoint.", userName);
             throw new ForbiddenException(
                     String.format("User %s is not authorized to call the transform endpoint.", userName));
         }
 
-        LOG.debugf("User %s is authorized to call the transform endpoint.", userName);
+        LOG.debug("User {} is authorized to call the transform endpoint.", userName);
     }
 
     /**
@@ -278,7 +279,7 @@ public class TransformService {
         addEvidence(processingContext, "Target", set.getTarget());
         addEvidence(processingContext, "Module", set.getModule());
         processingContext.getEvidences()
-                .forEach(e -> LOG.debugf("Processing context: %s = %s", e.getName(), e.getValue()));
+                .forEach(e -> LOG.debug("Processing context: {} = {}", e.getName(), e.getValue()));
         return processingContext;
     }
 

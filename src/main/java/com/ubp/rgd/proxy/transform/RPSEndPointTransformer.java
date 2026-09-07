@@ -20,7 +20,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MultivaluedMap;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,7 +31,7 @@ import java.util.regex.Pattern;
 @ApplicationScoped
 public class RPSEndPointTransformer {
 
-    private static final Logger LOG = Logger.getLogger(RPSEndPointTransformer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(RPSEndPointTransformer.class);
 
     @Inject
     RPSClientEngineProvider engineProvider;
@@ -45,7 +46,7 @@ public class RPSEndPointTransformer {
 
     @PostConstruct
     public void init() throws IOException {
-        LOG.infof("Now loading transform configuration from %s", transformConfigFile);
+        LOG.info("Now loading transform configuration from {}", transformConfigFile);
         ObjectMapper objectMapper = new ObjectMapper();
         endpointConfig = objectMapper.readValue(new File(transformConfigFile), new TypeReference<>() { } );
         if (endpointConfig == null) {
@@ -61,7 +62,7 @@ public class RPSEndPointTransformer {
             moduleEvidence.setName(key);
             moduleEvidence.setValue(value);
             rightContext.addEvidence(moduleEvidence);
-            LOG.debugf("Right context: %s = %s", key, value);
+            LOG.debug("Right context: {} = {}", key, value);
         });
 
         return rightContext;
@@ -76,7 +77,7 @@ public class RPSEndPointTransformer {
             evidence.setValue(value);
             processingContext.addEvidence(evidence);
 
-            LOG.debugf("Processing context: %s = %s", key, value);
+            LOG.debug("Processing context: {} = {}", key, value);
         });
 
         return processingContext;
@@ -96,8 +97,8 @@ public class RPSEndPointTransformer {
                 Pattern.matches(cfg.getEndpointPath(), apiPath) && cfg.getEndpointTransformWhen().equalsIgnoreCase(when)).toList();
 
         if (matched.size() > 1) {
-            LOG.warnf("DUPLICATE endpoint transformation configuration detected for %s > %s > %s ", apiMethod, when, apiPath);
-            LOG.warnf("Using first configuration encountered. You must fix the configuration file: %s", transformConfigFile);
+            LOG.warn("DUPLICATE endpoint transformation configuration detected for {} > {} > {} ", apiMethod, when, apiPath);
+            LOG.warn("Using first configuration encountered. You must fix the configuration file: {}", transformConfigFile);
         }
 
         return matched.isEmpty() ? null : matched.getFirst();
@@ -113,7 +114,7 @@ public class RPSEndPointTransformer {
             RPSValue[] valuesForPath = new RPSValue[values.size()];
             for (int i = 0; i < values.size(); i++) {
                 String oldValue = values.get(i);
-                LOG.debugf("RPSValue: %s = %s : %s", oldValue, attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName());
+                LOG.debug("RPSValue: {} = {} : {}", oldValue, attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName());
                 RPSValue rpsValue = new RPSValue(new RPSMapping(attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName()), oldValue);
                 valuesForPath[i] = rpsValue;
             }

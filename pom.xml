@@ -44,6 +44,12 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- Logging facade used by all our classes -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
         <!-- Apache Flight SQL Server -->
         <dependency>
             <groupId>org.apache.arrow</groupId>

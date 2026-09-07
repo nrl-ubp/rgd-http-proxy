@@ -3,7 +3,8 @@ package com.ubp.rgd.proxy.services;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -12,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public abstract class PersonServer {
-    private static final Logger LOG = Logger.getLogger(PersonServer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PersonServer.class);
 
     static class PersonHandler implements HttpHandler {
 
@@ -26,7 +27,7 @@ public abstract class PersonServer {
         private void sendJSONResponse(HttpExchange exchange, byte[] contents, Map<String, String> additionalHeaders) throws IOException {
             if (additionalHeaders != null) {
                 additionalHeaders.forEach((name, value) -> {
-                    LOG.infof("Adding header to response: %s : %s", name, value);
+                    LOG.info("Adding header to response: {} : {}", name, value);
                     exchange.getResponseHeaders().add(name, value);
                 });
             }
@@ -47,7 +48,7 @@ public abstract class PersonServer {
             LOG.info("GET person handler is invoked.");
             byte[] contents = Person.getPersonsFileContents();
 
-            LOG.infof("GET Person response: %s", new String(contents));
+            LOG.info("GET Person response: {}", new String(contents));
             Map<String, String> headers = new HashMap<>();
             headers.put("X-TRANSFORM-HEADER", "Theodore ROOSEVELT");
             headers.put("X-NO-TRANSFORM-HEADER", "Winston CHURCHILL");
@@ -63,7 +64,7 @@ public abstract class PersonServer {
         private void handlePOST(HttpExchange exchange) throws IOException {
             byte[] contents = exchange.getRequestBody().readAllBytes();
 
-            LOG.infof("POST Person response: %s", new String(contents));
+            LOG.info("POST Person response: {}", new String(contents));
 
             Map<String, String> headers = new HashMap<>();
             headers.put("X-TRANSFORM-HEADER", "Et les chadocks pompaient...");
@@ -82,7 +83,7 @@ public abstract class PersonServer {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
 
-            exchange.getRequestHeaders().forEach((name, value) -> LOG.infof("Request Header: %s = %s", name, value));
+            exchange.getRequestHeaders().forEach((name, value) -> LOG.info("Request Header: {} = {}", name, value));
 
             switch (exchange.getRequestMethod()) {
                 case "GET":

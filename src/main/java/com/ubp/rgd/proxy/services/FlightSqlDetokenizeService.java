@@ -27,7 +27,8 @@ import org.apache.arrow.vector.VariableWidthFieldVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.util.TransferPair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -63,7 +64,7 @@ import java.util.regex.Pattern;
 @ApplicationScoped
 public class FlightSqlDetokenizeService {
 
-    private static final Logger LOG = Logger.getLogger(FlightSqlDetokenizeService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FlightSqlDetokenizeService.class);
 
     /** Fixed delimiter pattern of an RPS token ({@code RG{...}}). */
     // static final Pattern TOKEN_PATTERN = Pattern.compile("RG\\{[^}]*\\}");
@@ -91,16 +92,16 @@ public class FlightSqlDetokenizeService {
     private void loadMappingConfig() {
         File configFile = new File(mappingConfigFile);
         if (!configFile.exists()) {
-            LOG.warnf("Flight SQL mapping config file not found: %s. No column will be detokenized.",
+            LOG.warn("Flight SQL mapping config file not found: {}. No column will be detokenized.",
                     mappingConfigFile);
             return;
         }
         try {
             mappingConfig = new ObjectMapper().readValue(configFile, FlightSqlMappingConfig.class);
-            LOG.infof("Loaded %d Flight SQL column mapping(s) from %s",
+            LOG.info("Loaded {} Flight SQL column mapping(s) from {}",
                     mappingConfig.getColumnMappings().size(), mappingConfigFile);
         } catch (IOException e) {
-            LOG.errorf(e, "Failed to load the Flight SQL mapping configuration from %s", mappingConfigFile);
+            LOG.error("Failed to load the Flight SQL mapping configuration from {}", mappingConfigFile, e);
             mappingConfig = new FlightSqlMappingConfig();
         }
     }
@@ -119,12 +120,12 @@ public class FlightSqlDetokenizeService {
         FlightSqlTokenIndexResolver.clear();
         try {
             initTokenIndexMappings(transformClientId);
-            LOG.infof("Loaded %d token mapping index(es) for the RPS client %s",
+            LOG.info("Loaded {} token mapping index(es) for the RPS client {}",
                     FlightSqlTokenIndexResolver.size(), transformClientId);
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to load the token mapping indexes for the RPS client %s."
+            LOG.error("Failed to load the token mapping indexes for the RPS client {}."
                     + " The tokens resolved by their mapping index will be returned untouched.",
-                    transformClientId);
+                    transformClientId, e);
             FlightSqlTokenIndexResolver.clear();
         }
     }
@@ -187,10 +188,10 @@ public class FlightSqlDetokenizeService {
                 mapping = mappingConfig.findMapping(table, metaData.getColumnName(i));
             }
             if (mapping != null) {
-                LOG.debugf("Column %s.%s will be detokenized as %s",
+                LOG.debug("Column {}.{} will be detokenized as {}",
                         table, metaData.getColumnLabel(i), mapping);
             } else {
-                LOG.debugf("Column %s.%s has no column mapping and will be detokenized implicitly.",
+                LOG.debug("Column {}.{} has no column mapping and will be detokenized implicitly.",
                         table, metaData.getColumnLabel(i));
             }
             mappings.add(mapping);
@@ -238,7 +239,7 @@ public class FlightSqlDetokenizeService {
             return;
         }
 
-        LOG.debugf("Detokenizing %d token(s) over %d column(s)", flatValues.size(), plans.size());
+        LOG.debug("Detokenizing {} token(s) over {} column(s)", flatValues.size(), plans.size());
         transformValues(flatValues);
 
         for (ColumnPlan plan : plans) {

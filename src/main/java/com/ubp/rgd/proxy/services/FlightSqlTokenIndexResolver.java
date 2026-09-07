@@ -1,7 +1,8 @@
 package com.ubp.rgd.proxy.services;
 
 import ch.regdata.rps.engine.client.mapping.RPSMapping;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -31,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class FlightSqlTokenIndexResolver {
 
-    private static final Logger LOG = Logger.getLogger(FlightSqlTokenIndexResolver.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FlightSqlTokenIndexResolver.class);
 
     /** Prefix introducing the mapping index inside a token. */
     private static final String TOKEN_PREFIX = "RG{";
@@ -193,7 +194,7 @@ public final class FlightSqlTokenIndexResolver {
             }
         }
         if (mappingName == null && WARNED_SYMBOLS.add(symbol)) {
-            LOG.warnf("No RPS mapping declared for the token mapping index '%s' (index %d);"
+            LOG.warn("No RPS mapping declared for the token mapping index '{}' (index {});"
                             + " the matching tokens are returned untouched.",
                     symbol, decodeMappingIndex(symbol));
         }
@@ -215,7 +216,7 @@ public final class FlightSqlTokenIndexResolver {
         // Split on the last separator so that a dotted class name keeps working.
         int separator = mappingName.lastIndexOf('.');
         if (separator <= 0 || separator == mappingName.length() - 1) {
-            LOG.warnf("Ignoring the malformed mapping '%s' declared for the token mapping index '%s':"
+            LOG.warn("Ignoring the malformed mapping '{}' declared for the token mapping index '{}':"
                     + " expected ClassName.PropertyName.", mappingName, mappingIndexOf(token));
             return null;
         }

@@ -13,7 +13,8 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -25,7 +26,7 @@ import java.util.List;
  */
 @Provider
 public class PostFilter implements ContainerResponseFilter {
-    private static final Logger LOG = Logger.getLogger(PostFilter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PostFilter.class);
 
     /**
      * Security context can be used to configure the authorizations for the transformers
@@ -48,7 +49,7 @@ public class PostFilter implements ContainerResponseFilter {
 
     @Override
     public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
-        LOG.infof("POST-FILTER: %s %s",
+        LOG.info("POST-FILTER: {} {}",
                 requestContext.getMethod(),
                 requestContext.getUriInfo().getPath());
 
@@ -64,7 +65,7 @@ public class PostFilter implements ContainerResponseFilter {
 
         // if request is not a sub path of the proxy path
         if (!requestPath.startsWith(proxyBasePath)) {
-            LOG.infof("POST-FILTER: Not the proxied path. Skipping filtering.");
+            LOG.info("POST-FILTER: Not the proxied path. Skipping filtering.");
             return;
         }
 
@@ -72,17 +73,17 @@ public class PostFilter implements ContainerResponseFilter {
 
         // the caller may have asked for the payloads to be returned without any RPS transformation
         if (allowIgnoreTransformHeader && TransformBypass.isRequested(requestContext)) {
-            LOG.infof("POST filter: %s is set, returning %s > %s without any transformation.",
+            LOG.info("POST filter: {} is set, returning {} > {} without any transformation.",
                     TransformBypass.HEADER_NAME, requestContext.getMethod(), requestPath);
             // echo the header so that the caller can tell the payload was left untransformed
             responseContext.getHeaders().putSingle(TransformBypass.HEADER_NAME, "true");
             return;
         }
 
-        LOG.infof("POST filter: Comparing if we need to transform url path: AFTER: %s > %s", requestContext.getMethod(), proxyUrlPath);
+        LOG.info("POST filter: Comparing if we need to transform url path: AFTER: {} > {}", requestContext.getMethod(), proxyUrlPath);
         EndPointTransformConfig cfg = endPointTransformer.getEndpointTransformConfig(requestContext.getMethod(), proxyUrlPath, "AFTER");
         if (cfg != null) {
-            LOG.infof("POST filter: Transforming %s > %s", requestContext.getMethod(), requestContext.getUriInfo().getPath());
+            LOG.info("POST filter: Transforming {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
 
             try {
                 // entity of the response can be transformed
@@ -113,7 +114,7 @@ public class PostFilter implements ContainerResponseFilter {
                 requestContext.abortWith(Response.status(500).entity(e.getMessage()).build());
             }
         } else {
-            LOG.infof("POST filter: No need to transform: %s > %s", requestContext.getMethod(), requestContext.getUriInfo().getPath());
+            LOG.info("POST filter: No need to transform: {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
         }
     }
 }

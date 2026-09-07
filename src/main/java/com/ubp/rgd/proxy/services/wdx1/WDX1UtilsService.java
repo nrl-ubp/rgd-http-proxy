@@ -20,7 +20,8 @@ import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,7 +34,7 @@ import java.util.regex.Pattern;
  */
 @ApplicationScoped
 public class WDX1UtilsService {
-    private static final Logger LOG = Logger.getLogger(WDX1UtilsService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(WDX1UtilsService.class);
 
     /**
      * A protected value is represented by one or more tokens. Each token is prefixed by the "RG"
@@ -70,7 +71,7 @@ public class WDX1UtilsService {
 
     @PostConstruct
     public void init() throws IOException {
-        LOG.infof("Now loading WDX1 concat configuration from %s", wdx1ConcatConfigFile);
+        LOG.info("Now loading WDX1 concat configuration from {}", wdx1ConcatConfigFile);
         ObjectMapper objectMapper = new ObjectMapper();
         concatConfig = objectMapper.readValue(new File(wdx1ConcatConfigFile), new TypeReference<>() { } );
         if (concatConfig == null) {
@@ -133,11 +134,11 @@ public class WDX1UtilsService {
 
         if (!userName.equalsIgnoreCase(wdx1AuthorizedSpn)) {
             String msg = "Username is not authorized to execute the WDX1 concat utils: %s";
-            LOG.errorf(msg, userName);
+            LOG.error(String.format(msg, userName));
             throw new RPSTransformException(String.format(msg, userName));
         }
 
-        LOG.debugf("User %s is authorized to execute WDX1 concat utils.");
+        LOG.debug("User {} is authorized to execute WDX1 concat utils.", userName);
     }
 
     private WDX1ConcatRequest sanitize(WDX1ConcatRequest request) {
@@ -227,7 +228,7 @@ public class WDX1UtilsService {
             rightContext.addEvidence(moduleEvidence);
         });
 
-        rightContext.getEvidences().forEach(e -> LOG.debugf("Processing context: %s = %s", e.getName(), e.getValue()));
+        rightContext.getEvidences().forEach(e -> LOG.debug("Processing context: {} = {}", e.getName(), e.getValue()));
 
         return rightContext;
     }
@@ -249,7 +250,7 @@ public class WDX1UtilsService {
         moduleEvidence.setValue(action);
         processingContext.addEvidence(moduleEvidence);
 
-        processingContext.getEvidences().forEach(e -> LOG.debugf("Processing context: %s = %s", e.getName(), e.getValue()));
+        processingContext.getEvidences().forEach(e -> LOG.debug("Processing context: {} = {}", e.getName(), e.getValue()));
 
         return processingContext;
     }

@@ -17,7 +17,8 @@ import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
@@ -27,7 +28,7 @@ import java.util.Objects;
 @Tag(name = "Transform Resource", description = "Protect / Unprotect data through the RPS engine.")
 public class TransformResource {
 
-    private static final Logger LOG = Logger.getLogger(TransformResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TransformResource.class);
 
     /**
      * The personalized security context containing user information from Kerberos (or Basic authz for local dev)
@@ -105,7 +106,7 @@ public class TransformResource {
         Objects.requireNonNull(metricsRegistry.counter("ubp_proxy_counter", Tags.of("name", "transform"))).increment();
 
         int setCount = body == null || body.getSets() == null ? 0 : body.getSets().size();
-        LOG.infof("Transform request with %d set(s)", setCount);
+        LOG.info("Transform request with {} set(s)", setCount);
 
         return transformService.transform(body);
     }

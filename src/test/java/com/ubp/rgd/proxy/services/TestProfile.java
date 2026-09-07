@@ -1,12 +1,13 @@
 package com.ubp.rgd.proxy.services;
 
 import io.quarkus.test.junit.QuarkusTestProfile;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 public class TestProfile implements QuarkusTestProfile {
-    private static final Logger LOG = Logger.getLogger(TestProfile.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TestProfile.class);
 
     public TestProfile() {
         LOG.debug("New test profile override loaded.");

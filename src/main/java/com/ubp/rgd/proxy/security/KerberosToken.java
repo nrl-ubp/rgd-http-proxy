@@ -9,7 +9,8 @@ import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSManager;
 import org.ietf.jgss.GSSName;
 import org.ietf.jgss.Oid;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.naming.directory.DirContext;
 import javax.security.auth.Subject;
@@ -21,7 +22,7 @@ import java.util.concurrent.Callable;
 
 @ApplicationScoped
 public class KerberosToken extends SecurityToken {
-    private static final Logger LOGGER = Logger.getLogger(KerberosToken.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(KerberosToken.class);
 
     private static final String NEGOTIATE = "NEGOTIATE ";
 
@@ -52,28 +53,28 @@ public class KerberosToken extends SecurityToken {
 
     @Override
     public void decode(String b64RawToken) throws Exception {
-        LOGGER.infof("Starting kerb token validation for service principal: %s and with keytab %s", servicePrincipalName, keytabFileName);
+        LOG.info("Starting kerb token validation for service principal: {} and with keytab {}", servicePrincipalName, keytabFileName);
 
         if (b64RawToken.toUpperCase().startsWith(NEGOTIATE)) {
             b64RawToken = b64RawToken.substring(NEGOTIATE.length());
         }
 
-        LOGGER.infof("Now decoding and verifying kerberos token: %s...", b64RawToken.substring(0, 16));
+        LOG.info("Now decoding and verifying kerberos token: {}...", b64RawToken.substring(0, 16));
 
         byte[] token = Base64.getDecoder().decode(b64RawToken);
 
         File keytablFile = new File(this.keytabFileName);
         if (!keytablFile.exists()) {
-            LOGGER.errorf("NOT FOUND KEY TAB FILE : %s", this.keytabFileName);
+            LOG.error("NOT FOUND KEY TAB FILE : {}", this.keytabFileName);
             return;
         }
 
-        LOGGER.info("Login service...");
+        LOG.info("Login service...");
         Subject serviceSubject = SecurityUtils.loginService(this.keytabFileName, servicePrincipalName);
         assert serviceSubject != null;
         this.serviceToken = SecurityUtils.getServiceTicket(serviceSubject);
 
-        LOGGER.infof("Decoding token (%d bytes)...", token.length);
+        LOG.info("Decoding token ({} bytes)...", token.length);
         GSSName gssName = Subject.callAs(serviceSubject, (Callable<? extends GSSName>) () -> {
             GSSManager manager = GSSManager.getInstance();
             try {
@@ -93,7 +94,7 @@ public class KerberosToken extends SecurityToken {
                 // client-to-service ticket as the user for the downstream API.
                 captureDelegatedCredential(context);
 
-                LOGGER.infof("Now loading AD groups for user: %s", this.user);
+                LOG.info("Now loading AD groups for user: {}", this.user);
                 DirContext ctx = ldapClient.login();
                 List<String> theRoles = ldapClient.listUserGroups(ctx, this.user);
                 assert theRoles != null;
@@ -101,16 +102,16 @@ public class KerberosToken extends SecurityToken {
 
                 return userGssName;
             } catch(Exception e) {
-                LOGGER.error("Error during ticket processing", e);
+                LOG.error("Error during ticket processing", e);
             }
             // Null if an error occurred.
             return null;
         });
 
         if (gssName == null) {
-            LOGGER.error("Error while decoding token.");
+            LOG.error("Error while decoding token.");
         } else {
-            LOGGER.infof("Decoded user info: %s", this.user);
+            LOG.info("Decoded user info: {}", this.user);
         }
     }
 
@@ -131,7 +132,7 @@ public class KerberosToken extends SecurityToken {
         try {
             GSSCredential delegatedCred = context.getDelegCred();
             if (delegatedCred == null) {
-                LOGGER.warnf("No delegated credential available for user %s; " +
+                LOG.warn("No delegated credential available for user {}; " +
                         "downstream call as this user will not be possible (credential delegation not negotiated).",
                         this.user);
                 return;
@@ -140,9 +141,9 @@ public class KerberosToken extends SecurityToken {
             Subject subject = new Subject();
             subject.getPrivateCredentials().add(delegatedCred);
             this.userSubject = subject;
-            LOGGER.infof("Captured delegated credential for user: %s", this.user);
+            LOG.info("Captured delegated credential for user: {}", this.user);
         } catch (Exception e) {
-            LOGGER.error("Could not capture the delegated credential from the SPNEGO context.", e);
+            LOG.error("Could not capture the delegated credential from the SPNEGO context.", e);
         }
     }
 

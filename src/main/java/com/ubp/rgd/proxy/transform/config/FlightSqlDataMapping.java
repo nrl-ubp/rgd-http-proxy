@@ -1,7 +1,8 @@
 package com.ubp.rgd.proxy.transform.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.regex.Pattern;
 
@@ -16,7 +17,7 @@ import java.util.regex.Pattern;
  */
 public class FlightSqlDataMapping {
 
-    private static final Logger LOG = Logger.getLogger(FlightSqlDataMapping.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FlightSqlDataMapping.class);
 
     @JsonProperty(value = "regex")
     private String regex;
@@ -76,13 +77,13 @@ public class FlightSqlDataMapping {
         if (!compiled) {
             compiled = true;
             if (regex == null || regex.isBlank()) {
-                LOG.warnf("Ignoring a Flight SQL data mapping without regex (%s/%s).",
+                LOG.warn("Ignoring a Flight SQL data mapping without regex ({}/{}).",
                         rpsClassName, rpsPropertyName);
             } else {
                 try {
                     pattern = Pattern.compile(regex);
                 } catch (Exception e) {
-                    LOG.errorf("Ignoring the Flight SQL data mapping with an invalid regex %s: %s",
+                    LOG.error("Ignoring the Flight SQL data mapping with an invalid regex {}: {}",
                             regex, e.getMessage());
                 }
             }

@@ -1,7 +1,8 @@
 package com.ubp.rgd.proxy.tools;
 
 import com.ubp.rgd.proxy.HttpProxyApplication;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Wrapper class to allow running the Quarkus application as a Windows Service using Apache Commons Procrun.
@@ -10,7 +11,7 @@ import org.jboss.logging.Logger;
  */
 public class WindowsServiceWrapper {
 
-    private static final Logger LOG = Logger.getLogger(WindowsServiceWrapper.class);
+    private static final Logger LOG = LoggerFactory.getLogger(WindowsServiceWrapper.class);
 
     public static void main(String[] args) {
         if (args.length == 0) {
@@ -19,7 +20,7 @@ public class WindowsServiceWrapper {
         }
 
         String command = args[0].toLowerCase();
-        LOG.infof("WindowsServiceWrapper received command: %s", command);
+        LOG.info("WindowsServiceWrapper received command: {}", command);
 
         switch (command) {
             case "start":
@@ -34,7 +35,7 @@ public class WindowsServiceWrapper {
                 System.exit(0);
                 break;
             default:
-                LOG.errorf("Unknown command: %s. Expected 'start' or 'stop'.", command);
+                LOG.error("Unknown command: {}. Expected 'start' or 'stop'.", command);
                 break;
         }
     }
