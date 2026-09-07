@@ -40,12 +40,9 @@ class RPSEndPointTransformerJsonPathTest {
      * Simulates the RPS engine: every value comes back prefixed, so we can tell in the resulting
      * document which values were actually transformed and where they landed.
      */
-    private static void fakeTransform(Map<String, RPSValue[]> rpsValues) {
-        rpsValues.values().forEach(values -> {
-            for (RPSValue value : values) {
-                value.setTransformed("TOK_" + value.getOriginal());
-            }
-        });
+    private static void fakeTransform(Map<String, JsonPathValue> rpsValues) {
+        rpsValues.values().forEach(value ->
+                value.rpsValue().setTransformed("TOK_" + value.rpsValue().getOriginal()));
     }
 
     /**
@@ -53,8 +50,19 @@ class RPSEndPointTransformerJsonPathTest {
      */
     private String roundTrip(String json, String... jsonPaths) {
         DocumentContext documentContext = JsonPath.parse(json);
-        Map<String, RPSValue[]> rpsValues = transformer.getRPSValuesFromBody(documentContext, config(jsonPaths));
+        Map<String, JsonPathValue> rpsValues = transformer.getRPSValuesFromBody(documentContext, config(jsonPaths));
         fakeTransform(rpsValues);
+        transformer.setRPSValuesToBody(documentContext, rpsValues);
+        return documentContext.jsonString();
+    }
+
+    /**
+     * Same round trip, but the engine returns the transformed value given by the caller.
+     */
+    private String roundTripReturning(String json, String jsonPath, String transformed) {
+        DocumentContext documentContext = JsonPath.parse(json);
+        Map<String, JsonPathValue> rpsValues = transformer.getRPSValuesFromBody(documentContext, config(jsonPath));
+        rpsValues.values().forEach(value -> value.rpsValue().setTransformed(transformed));
         transformer.setRPSValuesToBody(documentContext, rpsValues);
         return documentContext.jsonString();
     }
@@ -66,16 +74,85 @@ class RPSEndPointTransformerJsonPathTest {
     }
 
     @Test
-    @DisplayName("A definite path pointing to a number is tokenized as a String")
+    @DisplayName("A number is handed to RPS as text but flagged as numeric")
     void definiteNumericPath() {
-        Map<String, RPSValue[]> values = transformer.getRPSValuesFromBody(
+        Map<String, JsonPathValue> values = transformer.getRPSValuesFromBody(
                 JsonPath.parse("{\"age\":42}"), config("$.age"));
 
         assertEquals(1, values.size());
-        assertEquals("42", values.values().iterator().next()[0].getOriginal());
+        JsonPathValue value = values.values().iterator().next();
+        assertEquals("42", value.rpsValue().getOriginal());
+        assertTrue(value.numeric(), "a JSON number must be flagged as numeric");
+    }
 
-        // the value is written back as a JSON string: the type changes from number to string
+    @Test
+    @DisplayName("A tokenized number stays a JSON number, not a string")
+    void numericValueStaysANumber() {
+        assertEquals("{\"age\":8371}", roundTripReturning("{\"age\":42}", "$.age", "8371"));
+    }
+
+    @Test
+    @DisplayName("A decimal keeps its exact value, without floating point drift")
+    void decimalKeepsItsExactValue() {
+        assertEquals("{\"amount\":1234.5678}",
+                roundTripReturning("{\"amount\":4.25}", "$.amount", "1234.5678"));
+    }
+
+    @Test
+    @DisplayName("A decimal token keeps its trailing zeros")
+    void decimalKeepsTrailingZeros() {
+        assertEquals("{\"amount\":12.340}",
+                roundTripReturning("{\"amount\":4.25}", "$.amount", "12.340"));
+    }
+
+    @Test
+    @DisplayName("A value wider than a long is not truncated")
+    void veryLargeNumberIsNotTruncated() {
+        String huge = "123456789012345678901234567890";
+        assertEquals("{\"id\":" + huge + "}", roundTripReturning("{\"id\":42}", "$.id", huge));
+    }
+
+    @Test
+    @DisplayName("A negative token stays a negative JSON number")
+    void negativeNumber() {
+        assertEquals("{\"balance\":-99}", roundTripReturning("{\"balance\":7}", "$.balance", "-99"));
+    }
+
+    @Test
+    @DisplayName("A number read from a nested array is written back as a number")
+    void numbersInsideAnArray() {
+        DocumentContext documentContext = JsonPath.parse("{\"accounts\":[{\"no\":11},{\"no\":22}]}");
+        Map<String, JsonPathValue> values =
+                transformer.getRPSValuesFromBody(documentContext, config("$.accounts[*].no"));
+        values.values().forEach(v -> v.rpsValue().setTransformed("99" + v.rpsValue().getOriginal()));
+        transformer.setRPSValuesToBody(documentContext, values);
+
+        assertEquals("{\"accounts\":[{\"no\":9911},{\"no\":9922}]}", documentContext.jsonString());
+    }
+
+    @Test
+    @DisplayName("A token with leading zeros loses them: JSON numbers cannot carry a leading zero")
+    void leadingZerosAreDropped() {
+        assertEquals("{\"code\":7}", roundTripReturning("{\"code\":42}", "$.code", "007"));
+    }
+
+    @Test
+    @DisplayName("A non numeric token for a numeric field falls back to a JSON string")
+    void nonNumericTokenFallsBackToString() {
         assertEquals("{\"age\":\"TOK_42\"}", roundTrip("{\"age\":42}", "$.age"));
+    }
+
+    @Test
+    @DisplayName("Unprotect direction: a numeric token detokenizes back to a JSON number")
+    void unprotectKeepsTheNumber() {
+        // the payload holds a numeric token, the engine gives back the clear numeric value
+        assertEquals("{\"age\":42}", roundTripReturning("{\"age\":8371}", "$.age", "42"));
+    }
+
+    @Test
+    @DisplayName("A string field is never turned into a number, even when the token is numeric")
+    void stringFieldStaysAString() {
+        assertEquals("{\"ref\":\"12345\"}", roundTripReturning("{\"ref\":\"abc\"}", "$.ref", "12345"));
     }
 
     @Test
@@ -87,7 +164,7 @@ class RPSEndPointTransformerJsonPathTest {
     @Test
     @DisplayName("A path absent from the document is skipped instead of throwing")
     void missingPathIsSkipped() {
-        Map<String, RPSValue[]> values = transformer.getRPSValuesFromBody(
+        Map<String, JsonPathValue> values = transformer.getRPSValuesFromBody(
                 JsonPath.parse("{\"name\":\"Bob\"}"), config("$.missing"));
 
         assertTrue(values.isEmpty());
@@ -103,7 +180,7 @@ class RPSEndPointTransformerJsonPathTest {
     @Test
     @DisplayName("An indefinite path whose parent is absent is skipped instead of throwing")
     void missingParentIsSkipped() {
-        Map<String, RPSValue[]> values = transformer.getRPSValuesFromBody(
+        Map<String, JsonPathValue> values = transformer.getRPSValuesFromBody(
                 JsonPath.parse("{\"name\":\"Bob\"}"), config("$.persons[*].name"));
 
         assertTrue(values.isEmpty());
@@ -112,7 +189,7 @@ class RPSEndPointTransformerJsonPathTest {
     @Test
     @DisplayName("A null value is skipped, nothing to protect")
     void nullValueIsSkipped() {
-        Map<String, RPSValue[]> values = transformer.getRPSValuesFromBody(
+        Map<String, JsonPathValue> values = transformer.getRPSValuesFromBody(
                 JsonPath.parse("{\"name\":null}"), config("$.name"));
 
         assertTrue(values.isEmpty());
@@ -129,7 +206,7 @@ class RPSEndPointTransformerJsonPathTest {
     @Test
     @DisplayName("An indefinite path matching nothing yields no value and no error")
     void indefinitePathWithoutMatch() {
-        Map<String, RPSValue[]> values = transformer.getRPSValuesFromBody(
+        Map<String, JsonPathValue> values = transformer.getRPSValuesFromBody(
                 JsonPath.parse("{\"persons\":[]}"), config("$.persons[*].name"));
 
         assertTrue(values.isEmpty());

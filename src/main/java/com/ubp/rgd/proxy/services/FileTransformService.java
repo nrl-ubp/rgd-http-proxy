@@ -8,6 +8,7 @@ import ch.regdata.rps.engine.client.model.api.value.IRPSValue;
 import ch.regdata.rps.engine.client.model.api.value.RPSValue;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ubp.rgd.proxy.transform.JsonPathValue;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
@@ -28,6 +29,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -45,6 +48,53 @@ public class FileTransformService {
     private static final Configuration PATH_LIST_CONFIG = Configuration.builder()
             .options(Option.AS_PATH_LIST)
             .build();
+
+    /**
+     * Convert a transformed value into the JSON value to write back.
+     * <p>
+     * A value read as a JSON number must stay a JSON number: RPS returns a number when it
+     * tokenizes a number, so writing the token as text would change the file structure.
+     *
+     * @param transformed the value returned by the RPS engine
+     * @param numeric     whether the original value was read as a JSON number
+     * @param jsonPath    the concrete path, for logging only
+     * @return the value to hand over to {@code DocumentContext.set()}
+     */
+    private static Object toJsonValue(String transformed, boolean numeric, String jsonPath) {
+        if (!numeric || transformed == null) {
+            return transformed;
+        }
+        try {
+            Number number = parseJsonNumber(transformed);
+            if (!transformed.equals(String.valueOf(number))) {
+                // Typically a leading zero, which JSON numbers cannot carry: 007 is written as 7.
+                LOG.debug("Numeric value {} normalized to {} for json path {}", transformed, number, jsonPath);
+            }
+            return number;
+        } catch (NumberFormatException e) {
+            // Keep the value rather than losing it, even though the JSON type changes.
+            LOG.warn("Transformed value for the numeric json path {} is not a number. Writing it as a"
+                    + " string, which changes the json type of this field.", jsonPath);
+            return transformed;
+        }
+    }
+
+    /**
+     * Build a number out of the exact digits of the given value.
+     * <p>
+     * {@link BigDecimal} and {@link BigInteger} are used rather than {@code double} or {@code long}
+     * so that neither precision nor width is lost, whatever the size of the value.
+     *
+     * @param value the textual value to convert
+     * @return the value as a number
+     * @throws NumberFormatException when the value is not a valid number
+     */
+    private static Number parseJsonNumber(String value) {
+        if (value.indexOf('.') >= 0 || value.indexOf('e') >= 0 || value.indexOf('E') >= 0) {
+            return new BigDecimal(value);
+        }
+        return new BigInteger(value);
+    }
 
     /**
      * Read a JSON path and always return a list of values.
@@ -299,11 +349,11 @@ public class FileTransformService {
         // Parse JSON as a document
         DocumentContext documentContext = JsonPath.parse(jsonContent);
 
-        Map<String, RPSValue[]> rpsValuesByJsonPath = getRPSValuesFromBody(documentContext, attributesConfigs);
+        Map<String, JsonPathValue> rpsValuesByJsonPath = getRPSValuesFromBody(documentContext, attributesConfigs);
 
         // Create a flat list of RPS Values
         List<RPSValue> flatList = new ArrayList<>();
-        rpsValuesByJsonPath.values().forEach(rpsJsonValues -> flatList.addAll(Arrays.asList(rpsJsonValues)));
+        rpsValuesByJsonPath.values().forEach(pathValue -> flatList.add(pathValue.rpsValue()));
 
         if (flatList.isEmpty()) {
             LOG.debug("No values to transform, returning original content");
@@ -364,9 +414,9 @@ public class FileTransformService {
      * @param attributesConfigs the transformation configuration, keyed by configured JSON path
      * @return the RPS values to transform, keyed by concrete JSON path
      */
-    protected Map<String, RPSValue[]> getRPSValuesFromBody(DocumentContext documentContext, 
+    protected Map<String, JsonPathValue> getRPSValuesFromBody(DocumentContext documentContext, 
                                                             Map<String, EntityTransformConfig> attributesConfigs) {
-        Map<String, RPSValue[]> rpsValuesByJsonPath = new HashMap<>();
+        Map<String, JsonPathValue> rpsValuesByJsonPath = new HashMap<>();
 
         // Reuses the already parsed document, so the file content is not parsed a second time.
         DocumentContext pathContext = JsonPath.using(PATH_LIST_CONFIG).parse((Object) documentContext.json());
@@ -399,7 +449,8 @@ public class FileTransformService {
                 }
                 String oldValue = String.valueOf(rawValue);
                 LOG.debug("RPSValue: {} = {} : {}", oldValue, attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName());
-                rpsValuesByJsonPath.put(matchedPaths.get(i), new RPSValue[]{attrCfg.getRPSValue(oldValue)});
+                rpsValuesByJsonPath.put(matchedPaths.get(i),
+                        new JsonPathValue(attrCfg.getRPSValue(oldValue), rawValue instanceof Number));
             }
         }
 
@@ -415,14 +466,13 @@ public class FileTransformService {
      * @param documentContext     the parsed JSON document to update
      * @param rpsValuesByJsonPath the transformed values, keyed by concrete JSON path
      */
-    protected void setRPSValuesToBody(DocumentContext documentContext, Map<String, RPSValue[]> rpsValuesByJsonPath) {
-        rpsValuesByJsonPath.forEach((jsonPath, rpsJsonValues) -> {
-            for (RPSValue rpsValue : rpsJsonValues) {
-                try {
-                    documentContext.set(jsonPath, rpsValue.getTransformed());
-                } catch (Exception e) {
-                    LOG.warn("Failed to set value for json path: {}", jsonPath, e);
-                }
+    protected void setRPSValuesToBody(DocumentContext documentContext, Map<String, JsonPathValue> rpsValuesByJsonPath) {
+        rpsValuesByJsonPath.forEach((jsonPath, pathValue) -> {
+            try {
+                Object newValue = toJsonValue(pathValue.rpsValue().getTransformed(), pathValue.numeric(), jsonPath);
+                documentContext.set(jsonPath, newValue);
+            } catch (Exception e) {
+                LOG.warn("Failed to set value for json path: {}", jsonPath, e);
             }
         });
     }

@@ -33,10 +33,20 @@ indefinite ones (`$.persons[*].name`, `$..name`) are supported. Two behaviours a
 - **A path absent from the payload is simply skipped** (logged at `debug`), so a single transform
   configuration can serve several payload shapes and optional fields cost nothing. The same applies
   to a `null` value, which holds nothing to protect.
-- **Non-string values are tokenized as strings.** If a path points to a JSON number or boolean, the
-  value is converted to text before being sent to RPS, so `{"age": 42}` comes back as
-  `{"age": "<token>"}` — note that the JSON type changes from number to string. Only map a
-  non-string field when the target service accepts a string in return.
+- **A JSON number stays a JSON number.** The engine returns a number when it tokenizes a number, so
+  `{"accountNumber": 42}` becomes `{"accountNumber": 8371}` and not `{"accountNumber": "8371"}`. The
+  value is rebuilt from the exact digits of the token, so neither precision nor width is lost,
+  whatever the size of the number. The same applies when unprotecting. Booleans, on the other hand,
+  are written back as strings.
+
+Two limits are worth knowing when mapping a numeric field:
+
+- **A token starting with a zero loses it.** JSON numbers cannot carry a leading zero, so a
+  format-preserving token such as `007` is written as `7` and will no longer detokenize. Avoid
+  mapping numeric fields to an RPS property whose tokens may start with a zero.
+- **A non-numeric token is written as a string.** If the engine returns something that is not a
+  number for a numeric field, the value is kept as text rather than lost, a warning is logged, and
+  the JSON type of that field changes.
 
 Each match is written back to the exact location it was read from, so wildcards over arrays whose
 elements do not all carry the mapped field are handled correctly.
