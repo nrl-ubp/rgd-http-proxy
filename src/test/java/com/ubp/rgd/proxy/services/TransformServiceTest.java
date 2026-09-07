@@ -2,6 +2,7 @@ package com.ubp.rgd.proxy.services;
 
 import ch.regdata.rps.engine.client.model.api.value.RPSValue;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
+import com.ubp.rgd.proxy.transform.ValuePlan;
 import com.ubp.rgd.proxy.transform.api.TransformRequest;
 import com.ubp.rgd.proxy.transform.api.TransformValue;
 import org.junit.jupiter.api.Test;
@@ -27,27 +28,27 @@ class TransformServiceTest {
         return tv;
     }
 
-    private List<String> originals(TransformService.ValuePlan plan) {
-        return plan.rpsValues.stream().map(RPSValue::getOriginal).toList();
+    private List<String> originals(ValuePlan plan) {
+        return plan.rpsValues().stream().map(RPSValue::getOriginal).toList();
     }
 
     @Test
     void testProtectWithExtractRegexSplitsWordByWord() throws RPSTransformException {
         TransformValue tv = value("John Doe", "Person", "Name", "\\w+");
 
-        TransformService.ValuePlan plan = service.buildValuePlan("Protect", tv);
+        ValuePlan plan = service.buildValuePlan("Protect", tv);
 
         assertEquals(List.of("John", "Doe"), originals(plan));
         // className / propertyName carried onto each segment's mapping.
-        assertEquals("Person", plan.rpsValues.get(0).getMapping().getClassName());
-        assertEquals("Name", plan.rpsValues.get(0).getMapping().getPropertyName());
+        assertEquals("Person", plan.rpsValues().get(0).getMapping().getClassName());
+        assertEquals("Name", plan.rpsValues().get(0).getMapping().getPropertyName());
     }
 
     @Test
     void testProtectWithoutRegexIsSingleSegment() throws RPSTransformException {
         TransformValue tv = value("John Doe", "Person", "Name", null);
 
-        TransformService.ValuePlan plan = service.buildValuePlan("Protect", tv);
+        ValuePlan plan = service.buildValuePlan("Protect", tv);
 
         assertEquals(List.of("John Doe"), originals(plan));
     }
@@ -57,7 +58,7 @@ class TransformServiceTest {
         // extract-regex is ignored for unprotect; tokens located by the fixed RG{...} delimiter.
         TransformValue tv = value("RG{aaa} RG{bbb}", "Person", "Name", "\\w+");
 
-        TransformService.ValuePlan plan = service.buildValuePlan("Unprotect", tv);
+        ValuePlan plan = service.buildValuePlan("Unprotect", tv);
 
         assertEquals(List.of("RG{aaa}", "RG{bbb}"), originals(plan));
     }
@@ -65,10 +66,10 @@ class TransformServiceTest {
     @Test
     void testReassembleProtectPreservesSeparators() throws RPSTransformException {
         TransformValue tv = value("John Doe", "Person", "Name", "\\w+");
-        TransformService.ValuePlan plan = service.buildValuePlan("Protect", tv);
+        ValuePlan plan = service.buildValuePlan("Protect", tv);
 
-        plan.rpsValues.get(0).setTransformed("RG{111}");
-        plan.rpsValues.get(1).setTransformed("RG{222}");
+        plan.rpsValues().get(0).setTransformed("RG{111}");
+        plan.rpsValues().get(1).setTransformed("RG{222}");
 
         assertEquals("RG{111} RG{222}", plan.reassemble());
     }
@@ -76,10 +77,10 @@ class TransformServiceTest {
     @Test
     void testReassembleUnprotectReplacesTokensInPlace() throws RPSTransformException {
         TransformValue tv = value("Mr RG{aaa}-RG{bbb}!", "Person", "Name", null);
-        TransformService.ValuePlan plan = service.buildValuePlan("Unprotect", tv);
+        ValuePlan plan = service.buildValuePlan("Unprotect", tv);
 
-        plan.rpsValues.get(0).setTransformed("John");
-        plan.rpsValues.get(1).setTransformed("Doe");
+        plan.rpsValues().get(0).setTransformed("John");
+        plan.rpsValues().get(1).setTransformed("Doe");
 
         assertEquals("Mr John-Doe!", plan.reassemble());
     }
@@ -87,9 +88,9 @@ class TransformServiceTest {
     @Test
     void testReassembleSingleSegmentReturnsTransformed() throws RPSTransformException {
         TransformValue tv = value("secret", "Person", "Name", null);
-        TransformService.ValuePlan plan = service.buildValuePlan("Protect", tv);
+        ValuePlan plan = service.buildValuePlan("Protect", tv);
 
-        plan.rpsValues.get(0).setTransformed("RG{zzz}");
+        plan.rpsValues().get(0).setTransformed("RG{zzz}");
 
         assertEquals("RG{zzz}", plan.reassemble());
     }
@@ -98,16 +99,16 @@ class TransformServiceTest {
     void testReassembleNoMatchReturnsOriginalUnchanged() throws RPSTransformException {
         // Protect regex that matches nothing in the value -> value returned unchanged.
         TransformValue tv = value("!!!", "Person", "Name", "\\w+");
-        TransformService.ValuePlan plan = service.buildValuePlan("Protect", tv);
+        ValuePlan plan = service.buildValuePlan("Protect", tv);
 
-        assertTrue(plan.rpsValues.isEmpty());
+        assertTrue(plan.rpsValues().isEmpty());
         assertEquals("!!!", plan.reassemble());
     }
 
     @Test
     void testReassembleNullTransformedThrows() throws RPSTransformException {
         TransformValue tv = value("John", "Person", "Name", null);
-        TransformService.ValuePlan plan = service.buildValuePlan("Protect", tv);
+        ValuePlan plan = service.buildValuePlan("Protect", tv);
         // getTransformed() left null (no engine call) -> reassemble must fail clearly.
         assertThrows(RPSTransformException.class, plan::reassemble);
     }

@@ -51,6 +51,48 @@ Two limits are worth knowing when mapping a numeric field:
 Each match is written back to the exact location it was read from, so wildcards over arrays whose
 elements do not all carry the mapped field are handled correctly.
 
+### Word by word tokenization with `extract-regex`
+
+An attribute transform config may carry an `extract-regex` — generated from the `x-cid-extractregex`
+annotation of the swagger by `SwaggerTransformConfigGenerator`. When it is present, the value is
+**not** tokenized as a whole: every substring the regex matches is tokenized on its own, and the
+original formatting is rebuilt around the tokens.
+
+With the regex `(?:\w(?<!_)|~)+` carried by most WDX1 name properties:
+
+| Direction | Value | Result |
+|---|---|---|
+| Protect | `Jean-Claude DUSSE` | `RG{t1}-RG{t2} RG{t3}` |
+| Protect | `O'Brien` | `RG{t1}'RG{t2}` |
+| Protect | `  spaced  out  ` | `  RG{t1}  RG{t2}  ` |
+| Unprotect | `RG{aaa}-RG{bbb} RG{ccc}` | `Jean-Claude DUSSE` |
+
+Separators, apostrophes and leading or trailing whitespace are preserved exactly, and a value the
+regex does not match at all is left untouched. This is the same behaviour as the `/transform`
+endpoint, which shares the implementation (`com.ubp.rgd.proxy.transform.ValuePlan`).
+
+The direction is read from the `Action` evidence of the endpoint's `processing-context`:
+
+- **`Protect` with an `extract-regex`** — tokenized word by word.
+- **`Protect` without an `extract-regex`** — the whole value is tokenized, as before.
+- **`Unprotect`** — every `RG{...}` token found in the value is detokenized, for **every** attribute,
+  whether or not it declares an `extract-regex`. A value that carries no token is therefore left
+  untouched and is **no longer sent to the engine**, which is a change from the previous behaviour
+  where the whole value was always sent.
+- **No `Action` evidence, or any other action** — the whole value is transformed, as before.
+
+Two things to keep in mind:
+
+- **Numbers are never split.** A JSON number can carry neither a separator nor an `RG{...}` token, so
+  numeric values are always transformed as a whole, in both directions. This is what keeps the
+  numeric detokenization described above working, since the engine returns a plain number — `8371`,
+  not `RG{...}` — for a tokenized number.
+- **An invalid `extract-regex` fails the transformation** with an `RPSTransformException`. In the
+  proxy this fails the request; in the file transformer the file is moved to the error directory.
+
+The same rules apply to `FileTransformService`. Headers and query parameters have no `extract-regex`
+and are unaffected.
+
 ## Bypassing the transformation
 
 A caller can ask the proxy to forward a request **without any RPS transformation**, whatever the

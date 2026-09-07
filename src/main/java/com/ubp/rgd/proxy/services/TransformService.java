@@ -17,6 +17,7 @@ import com.ubp.rgd.proxy.transform.RPSClientEngineProvider;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
 import com.ubp.rgd.proxy.transform.api.TransformRequest;
 import com.ubp.rgd.proxy.transform.api.TransformResponse;
+import com.ubp.rgd.proxy.transform.ValuePlan;
 import com.ubp.rgd.proxy.transform.api.TransformResultSet;
 import com.ubp.rgd.proxy.transform.api.TransformSet;
 import com.ubp.rgd.proxy.transform.api.TransformValue;
@@ -32,7 +33,6 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -48,12 +48,6 @@ import java.util.regex.Pattern;
 public class TransformService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TransformService.class);
-
-    private static final String ACTION_PROTECT = "Protect";
-    private static final String ACTION_UNPROTECT = "Unprotect";
-
-    /** Fixed delimiter pattern of an RPS token ({@code RG{...}}), used to locate tokens on unprotect. */
-    static final Pattern TOKEN_PATTERN = Pattern.compile("RG\\{[^}]*\\}");
 
     @ConfigProperty(name = "proxy.transform.endpoint.right-context-target")
     String rightContextTarget;
@@ -184,7 +178,7 @@ public class TransformService {
         for (TransformValue value : set.getValues()) {
             ValuePlan plan = buildValuePlan(set.getAction(), value);
             plans.add(plan);
-            flatValues.addAll(plan.rpsValues);
+            flatValues.addAll(plan.rpsValues());
         }
 
         if (!flatValues.isEmpty()) {
@@ -231,47 +225,11 @@ public class TransformService {
         }
 
         RPSMapping mapping = new RPSMapping(value.getClassName(), value.getPropertyName());
-        Pattern pattern = extractionPattern(action, value.getExtractRegExp());
+        Pattern pattern = ValuePlan.extractionPattern(action, value.getExtractRegExp());
 
-        List<RPSValue> rpsValues = new ArrayList<>();
-        if (pattern == null) {
-            // Whole value transformed as a single segment.
-            rpsValues.add(new RPSValue(mapping, value.getValue()));
-        } else {
-            Matcher matcher = pattern.matcher(value.getValue());
-            while (matcher.find()) {
-                rpsValues.add(new RPSValue(mapping, matcher.group()));
-            }
-        }
-
-        return new ValuePlan(value.getValue(), pattern, rpsValues);
+        return ValuePlan.of(mapping, value.getValue(), pattern);
     }
 
-    /**
-     * Choose the extraction pattern for a value depending on the action:
-     * <ul>
-     *     <li>Protect: the value's {@code extractRegExp} when present (word-by-word tokenization),
-     *         otherwise {@code null} (whole value).</li>
-     *     <li>Unprotect: the fixed {@link #TOKEN_PATTERN} to locate {@code RG{...}} tokens.</li>
-     *     <li>Any other action: {@code null} (whole value).</li>
-     * </ul>
-     */
-    private Pattern extractionPattern(String action, String extractRegExp) throws RPSTransformException {
-        if (ACTION_PROTECT.equalsIgnoreCase(action)) {
-            if (extractRegExp == null || extractRegExp.isEmpty()) {
-                return null;
-            }
-            try {
-                return Pattern.compile(extractRegExp);
-            } catch (Exception e) {
-                throw new RPSTransformException("Invalid extract-regex: " + extractRegExp);
-            }
-        }
-        if (ACTION_UNPROTECT.equalsIgnoreCase(action)) {
-            return TOKEN_PATTERN;
-        }
-        return null;
-    }
 
     private ProcessingContext buildProcessingContext(TransformSet set) {
         ProcessingContext processingContext = new ProcessingContext();
@@ -307,49 +265,4 @@ public class TransformService {
         requestContext.transform();
     }
 
-    /**
-     * Plan to rebuild a single value from its transformed segments while preserving the original
-     * format (surrounding characters, separators, token order).
-     */
-    static final class ValuePlan {
-        private final String originalValue;
-        private final Pattern pattern;
-        final List<RPSValue> rpsValues;
-
-        ValuePlan(String originalValue, Pattern pattern, List<RPSValue> rpsValues) {
-            this.originalValue = originalValue;
-            this.pattern = pattern;
-            this.rpsValues = rpsValues;
-        }
-
-        String reassemble() throws RPSTransformException {
-            if (rpsValues.isEmpty()) {
-                // No segment matched (e.g. regex with no match): return the value unchanged.
-                return originalValue;
-            }
-            if (pattern == null) {
-                // Single whole-value segment.
-                return requireTransformed(rpsValues.getFirst());
-            }
-
-            Matcher matcher = pattern.matcher(originalValue);
-            StringBuilder rebuilt = new StringBuilder();
-            int index = 0;
-            while (matcher.find() && index < rpsValues.size()) {
-                String transformed = requireTransformed(rpsValues.get(index++));
-                matcher.appendReplacement(rebuilt, Matcher.quoteReplacement(transformed));
-            }
-            matcher.appendTail(rebuilt);
-            return rebuilt.toString();
-        }
-
-        private String requireTransformed(RPSValue rpsValue) throws RPSTransformException {
-            String transformed = rpsValue.getTransformed();
-            if (transformed == null) {
-                throw new RPSTransformException(
-                        "Transformation did not return a value for: " + rpsValue.getOriginal());
-            }
-            return transformed;
-        }
-    }
 }
