@@ -1,5 +1,7 @@
 package com.ubp.rgd.proxy.tools;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ubp.rgd.proxy.transform.config.EndPointTransformConfig;
@@ -20,10 +22,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 
 /**
  * Generates an rps_transform_config.json (the ProxyService transform configuration)
@@ -51,18 +49,7 @@ import java.util.logging.SimpleFormatter;
  */
 public class SwaggerTransformConfigGenerator {
 
-    public static Logger quickConsoleLogger(Class<?> clazz, Level level) {
-        Logger logger = Logger.getLogger(clazz.getName());
-        logger.setUseParentHandlers(false);
-        ConsoleHandler ch = new ConsoleHandler();
-        ch.setLevel(level);
-        ch.setFormatter(new SimpleFormatter());
-        logger.addHandler(ch);
-        logger.setLevel(level);
-        return logger;
-    }
-
-    private static final Logger LOG = quickConsoleLogger(SwaggerTransformConfigGenerator.class, Level.INFO);
+    private static final Logger LOG = LoggerFactory.getLogger(SwaggerTransformConfigGenerator.class);
 
     // CID (sensitivity) vendor extensions describing a protected field.
     private static final String CID_CLASSNAME = "x-cid-classname";
@@ -105,7 +92,7 @@ public class SwaggerTransformConfigGenerator {
                     return;
                 }
                 default -> {
-                    LOG.severe("Unknown argument: " + args[i]);
+                    LOG.error("Unknown argument: " + args[i]);
                     printUsage();
                     System.exit(2);
                 }
@@ -113,19 +100,19 @@ public class SwaggerTransformConfigGenerator {
         }
 
         if (outputFile == null) {
-            LOG.severe("--output-file is required.");
+            LOG.error("--output-file is required.");
             printUsage();
             System.exit(2);
         }
 
         if (swaggerFile == null && swaggerUrl == null) {
-            LOG.severe("One of --swagger-file or --swagger-url is required.");
+            LOG.error("One of --swagger-file or --swagger-url is required.");
             printUsage();
             System.exit(2);
         }
 
         if (swaggerFile != null && swaggerUrl != null) {
-            LOG.severe("--swagger-file and --swagger-url are mutually exclusive.");
+            LOG.error("--swagger-file and --swagger-url are mutually exclusive.");
             printUsage();
             System.exit(2);
         }
@@ -145,10 +132,10 @@ public class SwaggerTransformConfigGenerator {
 
             JSONFile.saveAs(new File(outputFile), configs);
 
-            LOG.info(String.format("Generated %d endpoint transform configuration(s) into: %s",
-                    configs.size(), outputFile));
+            LOG.info("Generated {} endpoint transform configuration(s) into: {}",
+                    configs.size(), outputFile);
         } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Failed to generate transform configuration", e);
+            LOG.error("Failed to generate transform configuration", e);
             System.exit(1);
         }
     }
@@ -165,7 +152,7 @@ public class SwaggerTransformConfigGenerator {
         String fileName = fileNameFromUrl(swaggerUrl);
         Path target = Paths.get(fileName).toAbsolutePath();
 
-        LOG.info(String.format("Downloading Swagger document from %s", swaggerUrl));
+        LOG.info("Downloading Swagger document from {}", swaggerUrl);
 
         HttpResponse<byte[]> response;
         try (HttpClient client = HttpClient.newBuilder()
@@ -189,7 +176,7 @@ public class SwaggerTransformConfigGenerator {
             }
 
             Files.write(target, response.body());
-            LOG.info(String.format("Downloaded Swagger document into: %s", target));
+            LOG.info("Downloaded Swagger document into: {}", target);
 
             return target.toString();
         }
@@ -217,7 +204,7 @@ public class SwaggerTransformConfigGenerator {
 
     private static String valueOf(String[] args, int index) {
         if (index >= args.length) {
-            LOG.severe("Missing value for argument: " + args[index - 1]);
+            LOG.error("Missing value for argument: " + args[index - 1]);
             printUsage();
             System.exit(2);
         }
@@ -253,7 +240,7 @@ public class SwaggerTransformConfigGenerator {
 
         JsonNode paths = root.path("paths");
         if (paths.isMissingNode() || !paths.isObject()) {
-            LOG.warning("No 'paths' object found in the Swagger document.");
+            LOG.warn("No 'paths' object found in the Swagger document.");
             return results;
         }
 

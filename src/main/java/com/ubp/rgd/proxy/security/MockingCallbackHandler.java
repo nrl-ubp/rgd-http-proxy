@@ -1,11 +1,12 @@
 package com.ubp.rgd.proxy.security;
 
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.security.auth.callback.*;
 
 public class MockingCallbackHandler implements CallbackHandler {
-    private static final Logger LOG = Logger.getLogger(MockingCallbackHandler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MockingCallbackHandler.class);
 
     private String user;
     private char[] password;
@@ -24,7 +25,7 @@ public class MockingCallbackHandler implements CallbackHandler {
             switch (callback) {
                 case TextOutputCallback tocb ->
                     // display a message according to a specified type
-                        LOG.debugf("%s : %s", tocb.getMessageType(), tocb.getMessage());
+                        LOG.debug("{} : {}", tocb.getMessageType(), tocb.getMessage());
                 case NameCallback ncb -> {
                     LOG.debug("Name callback. Set user name.");
                     ncb.setName(this.user);

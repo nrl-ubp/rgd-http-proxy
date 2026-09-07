@@ -3,7 +3,8 @@ package com.ubp.rgd.proxy.security;
 import com.sun.security.auth.module.Krb5LoginModule;
 import com.sun.security.jgss.ExtendedGSSContext;
 import org.ietf.jgss.*;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosTicket;
@@ -21,7 +22,7 @@ import java.util.concurrent.Callable;
 @SuppressWarnings("restriction")
 public class SecurityUtils {
 
-    private static final Logger LOGGER = Logger.getLogger(SecurityUtils.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(SecurityUtils.class);
 
     private static final String jaasConfigFile = "./config/login.conf";
     private static final String krb5ConfFile = "./config/krb5.ini";
@@ -30,17 +31,17 @@ public class SecurityUtils {
     private static final int MAX_ATTEMPT = 2;
 
     public static void setup() {
-        LOGGER.debug("KRB5 init...");
+        LOG.debug("KRB5 init...");
 
         File configFile = new File(jaasConfigFile);
         if (!configFile.exists()) {
-            LOGGER.error("ERROR : Config file not found : " + jaasConfigFile);
+            LOG.error("ERROR : Config file not found : " + jaasConfigFile);
         }
         System.setProperty("java.security.auth.login.config", jaasConfigFile);
 
         configFile = new File(krb5ConfFile);
         if (!configFile.exists()) {
-            LOGGER.error("ERROR : Config file not found : " + krb5ConfFile);
+            LOG.error("ERROR : Config file not found : " + krb5ConfFile);
         }
         System.setProperty("java.security.krb5.conf", krb5ConfFile);
     }
@@ -53,12 +54,12 @@ public class SecurityUtils {
         krb5LoginModule.initialize(subject, null, new HashMap<String, String>(), optionMap);
 
         if (!krb5LoginModule.login()) {
-            LOGGER.error("Service login failed !");
+            LOG.error("Service login failed !");
             return null;
         }
 
         if (!krb5LoginModule.commit()) {
-            LOGGER.error("Service login commit failed !");
+            LOG.error("Service login commit failed !");
             return null;
         }
 
@@ -124,11 +125,11 @@ public class SecurityUtils {
      */
     public static String getClientToServiceToken(Subject userSubject, String targetSpn) {
         if (userSubject == null) {
-            LOGGER.error("Cannot obtain a client-to-service ticket: user Subject is null.");
+            LOG.error("Cannot obtain a client-to-service ticket: user Subject is null.");
             return null;
         }
         if (targetSpn == null || targetSpn.isEmpty()) {
-            LOGGER.error("Cannot obtain a client-to-service ticket: target SPN is null or empty.");
+            LOG.error("Cannot obtain a client-to-service ticket: target SPN is null or empty.");
             return null;
         }
 
@@ -171,13 +172,13 @@ public class SecurityUtils {
 
             byte[] serviceToken = Subject.callAs(userSubject, call);
             if (serviceToken == null || serviceToken.length == 0) {
-                LOGGER.errorf("Empty client-to-service token obtained for target SPN: %s", targetSpn);
+                LOG.error("Empty client-to-service token obtained for target SPN: {}", targetSpn);
                 return null;
             }
 
             return Base64.getEncoder().encodeToString(serviceToken);
         } catch (Exception ex) {
-            LOGGER.errorf(ex, "Could not obtain a client-to-service ticket for target SPN: %s", targetSpn);
+            LOG.error("Could not obtain a client-to-service ticket for target SPN: {}", targetSpn, ex);
             return null;
         }
     }
@@ -228,17 +229,17 @@ public class SecurityUtils {
 
     private static byte[] createServiceTokenTechnicalUSer(String serviceName, int attempts, Oid oid) throws Exception {
 
-        LOGGER.info("createServiceTokenTechnicalUSer(" + serviceName + ") for User " + technicalUser);
+        LOG.info("createServiceTokenTechnicalUSer(" + serviceName + ") for User " + technicalUser);
 
         try {
             GSSManager manager = GSSManager.getInstance();
             GSSName gssUserName = manager.createName(technicalUser, GSSName.NT_USER_NAME);
-            LOGGER.debug("gssUserName: " + gssUserName.toString());
+            LOG.debug("gssUserName: " + gssUserName.toString());
             GSSCredential clientGSSCreds = manager.createCredential(gssUserName, GSSCredential.INDEFINITE_LIFETIME, oid,
                     GSSCredential.INITIATE_ONLY);
-            LOGGER.debug("clientGSSCreds: " + clientGSSCreds.toString());
+            LOG.debug("clientGSSCreds: " + clientGSSCreds.toString());
             GSSName gssServerName = manager.createName(serviceName, GSSName.NT_USER_NAME);
-            LOGGER.debug("gssServerName: " + gssServerName.toString());
+            LOG.debug("gssServerName: " + gssServerName.toString());
             GSSContext clientContext = manager.createContext(gssServerName, oid, clientGSSCreds,
                     GSSContext.DEFAULT_LIFETIME);
             // Optional: enable GSS credential delegation
@@ -250,18 +251,18 @@ public class SecurityUtils {
             serviceToken = clientContext.initSecContext(serviceToken, 0, serviceToken.length);
 
             String result = new String(Base64.getEncoder().encode(serviceToken));
-            LOGGER.debug("Token for technical user: " + result);
+            LOG.debug("Token for technical user: " + result);
 
             return serviceToken;
 
         } catch (Exception e) {
-            LOGGER.error("Error getting token to for " + e.getMessage(), e);
+            LOG.error("Error getting token to for " + e.getMessage(), e);
             if (attempts == 0) {
-                LOGGER.error("Cannot create kerberos token", e);
+                LOG.error("Cannot create kerberos token", e);
                 throw e;
             }
             --attempts;
-            LOGGER.warn("Error during ticket generation. Attempt: " + (MAX_ATTEMPT - attempts));
+            LOG.warn("Error during ticket generation. Attempt: " + (MAX_ATTEMPT - attempts));
             return createServiceTokenTechnicalUSer(serviceName, attempts, oid);
         }
     }
@@ -281,24 +282,24 @@ public class SecurityUtils {
             File keyTabFile = new File(keytabFilePath);
             if (!keyTabFile.exists() || !keyTabFile.canRead()) {
                 String message = "Keytab file does not exist or is not readable: " + keyTabFile;
-                LOGGER.error(message);
+                LOG.error(message);
                 return null;
             }
 
             if (kerbServicePrincipal == null || kerbServicePrincipal.isEmpty()) {
                 String message = "Keytab principal name is not found in the config !";
-                LOGGER.error(message);
+                LOG.error(message);
                 return null;
             }
 
             Subject serviceSubject = SecurityUtils.loginService(keytabFilePath, kerbServicePrincipal);
 
             if (serviceSubject == null) {
-                LOGGER.error("Could NOT get service subject : " + keytabFilePath + " for " + kerbServicePrincipal);
+                LOG.error("Could NOT get service subject : " + keytabFilePath + " for " + kerbServicePrincipal);
                 return null;
             }
 
-            LOGGER.debug("We have the security subject for service !");
+            LOG.debug("We have the security subject for service !");
 
             // STEP 1.1
             // Get end user token from request
@@ -312,17 +313,17 @@ public class SecurityUtils {
             GSSCredential clientCred = SecurityUtils.validateTicket(endUserTicket, serviceSubject);
 
             if (clientCred == null) {
-                LOGGER.error("Could not get a client credential.");
+                LOG.error("Could not get a client credential.");
                 return null;
             }
 
-            LOGGER.debug("We have a delegated credential for end user to use the service !");
+            LOG.debug("We have a delegated credential for end user to use the service !");
 
             // STEP 3
             // Initiate TGS request for another service using delegated credentials obtained in previous step
             Object obj = SecurityUtils.getServiceTicket(clientCred, targetServicePrincipal);
             if (obj == null) {
-                LOGGER.error("Could not have the service ticket to put in WWW-Authorization header! NULL.");
+                LOG.error("Could not have the service ticket to put in WWW-Authorization header! NULL.");
                 return null;
             }
 
@@ -332,14 +333,14 @@ public class SecurityUtils {
             return new String(Base64.getEncoder().encode(serviceToken));
 
         } catch (Exception ex) {
-            LOGGER.error("Could not get the delegated service token", ex);
+            LOG.error("Could not get the delegated service token", ex);
             return null;
         }
     }
 
     private static byte[] getEndUserTicket(String endUserTicketB64) {
         if (endUserTicketB64 == null || endUserTicketB64.isEmpty()) {
-            LOGGER.error("Cannot decode null or empty enduser ticket");
+            LOG.error("Cannot decode null or empty enduser ticket");
             return null;
         }
 
@@ -351,7 +352,7 @@ public class SecurityUtils {
         try {
             endUserTicket = Base64.getDecoder().decode(endUserTicketB64);
         } catch (Exception ex) {
-            LOGGER.error("Could not decode the end user token", ex);
+            LOG.error("Could not decode the end user token", ex);
             return null;
         }
 

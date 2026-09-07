@@ -13,7 +13,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -23,7 +24,7 @@ import java.util.Objects;
 @Consumes(MediaType.APPLICATION_JSON)
 @Tag(name = "Auth Resource", description = "Utility resource providing auth information on BASIC and Kerberos negotiate schemes.")
 public class AuthResource {
-    private static final Logger LOG = Logger.getLogger(AuthResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(AuthResource.class);
 
     /**
      * The personalized security context containing user information from Kerberos (or Basic authz for local dev)

@@ -1,7 +1,8 @@
 package com.ubp.rgd.proxy.security;
 
 import org.ietf.jgss.Oid;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class KerberosConstants {
     public static Oid SPNEGO_OID;
@@ -10,7 +11,7 @@ public class KerberosConstants {
     public static final String SPNEGO_MECHANISM = "1.3.6.1.5.5.2";
     public static final String KRB5_PRINCIPAL = "1.2.840.113554.1.2.2.1";
 
-    public static final Logger LOG = Logger.getLogger(KerberosConstants.class.getName());
+    public static final Logger LOG = LoggerFactory.getLogger(KerberosConstants.class);
 
     static {
         try {

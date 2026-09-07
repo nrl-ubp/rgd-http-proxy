@@ -14,7 +14,8 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
@@ -24,7 +25,7 @@ import java.util.Objects;
 @Tag(name = "Token utils Resource", description = "Utility resource providing operators on tokens")
 public class TokenUtilsResource {
 
-    private static final Logger LOG = Logger.getLogger(TokenUtilsResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TokenUtilsResource.class);
 
     /**
      * The personalized security context containing user information from Kerberos (or Basic authz for local dev)

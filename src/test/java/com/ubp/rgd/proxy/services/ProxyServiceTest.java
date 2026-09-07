@@ -13,7 +13,8 @@ import io.restassured.http.ContentType;
 import io.restassured.http.Header;
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -39,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestProfile(com.ubp.rgd.proxy.services.TestProfile.class)
 class ProxyServiceTest {
 
-    private static final Logger LOG = Logger.getLogger(ProxyServiceTest.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ProxyServiceTest.class);
 
     public static final String apiPathUrl = "/api/v1/persons/1";
     public static final String proxyPathUrl = String.format("/proxy%s", apiPathUrl);
@@ -106,7 +107,7 @@ class ProxyServiceTest {
 
         // display headers and body after transformation
         headers.asList().stream().map(header -> String.format("GET Response Header: %s = %s", header.getName(), header.getValue())).forEach(LOG::info);
-        LOG.infof("GET response body:\n%s", responseBody);
+        LOG.info("GET response body:\n{}", responseBody);
 
         // after a protection, persons should be different
         List<Person> protectedPersons = objectMapper.readValue(responseBody, new TypeReference<>() { } );
@@ -128,7 +129,7 @@ class ProxyServiceTest {
         Person unprotectedPerson = unprotectedPersons.getFirst();
 
         headers.asList().stream().map(header -> String.format("POST Response Header: %s = %s", header.getName(), header.getValue())).forEach(LOG::info);
-        LOG.infof("POST response body:\n%s", unprotectedBody);
+        LOG.info("POST response body:\n{}", unprotectedBody);
 
         // back to unprotected state then should be the same as clear text
         assertEquals(clearPerson, unprotectedPerson);
@@ -168,7 +169,7 @@ class ProxyServiceTest {
         concatReq.setBirthDate(df.format(person.birthDate));
         concatReq.setCountry("CH");
 
-        LOG.infof("Concat request is:\n%s", concatReq.toJSONString());
+        LOG.info("Concat request is:\n{}", concatReq.toJSONString());
 
         response = RestAssured.given()
                 .contentType(ContentType.JSON)
@@ -180,7 +181,7 @@ class ProxyServiceTest {
         response.then().statusCode(200);
 
         String concatBody = response.getBody().asString();
-        LOG.infof("CONCAT response body is: %s", concatBody);
+        LOG.info("CONCAT response body is: {}", concatBody);
 
         WDX1ConcatResponse concatResponse = JSONFile.parse(concatBody, WDX1ConcatResponse.class);
         assertNotNull(concatResponse);

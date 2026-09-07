@@ -4,12 +4,13 @@ import com.ubp.rgd.proxy.security.SecurityUtils;
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.QuarkusApplication;
 import io.quarkus.runtime.annotations.QuarkusMain;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @QuarkusMain
 public class HttpProxyApplication implements QuarkusApplication {
 
-    private static final Logger LOG = Logger.getLogger(HttpProxyApplication.class);
+    private static final Logger LOG = LoggerFactory.getLogger(HttpProxyApplication.class);
 
     public static void main(String[] args) {
 
@@ -23,7 +24,7 @@ public class HttpProxyApplication implements QuarkusApplication {
 
             Quarkus.run(HttpProxyApplication.class, args);
         } catch (Throwable ex) {
-            LOG.errorf(ex, "ERROR in Quarkus app.");
+            LOG.error("ERROR in Quarkus app.", ex);
         }
     }
 

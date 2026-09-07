@@ -14,7 +14,8 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.*;
 import java.io.ByteArrayInputStream;
@@ -33,7 +34,7 @@ import java.util.Map;
 @ApplicationScoped
 public class ProxyService {
 
-    private static final Logger LOG = Logger.getLogger(ProxyService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ProxyService.class);
 
     @ConfigProperty(name = "proxy.target.base-url")
     String targetBaseUrl;
@@ -111,7 +112,7 @@ public class ProxyService {
             return clientBuilder.build();
 
         } catch (Exception e) {
-            LOG.errorf(e, "Error while creating gHTTPS client: %s", e.getMessage());
+            LOG.error("Error while creating gHTTPS client: {}", e.getMessage(), e);
             return ClientBuilder.newClient();
         }
     }
@@ -181,7 +182,7 @@ public class ProxyService {
         try {
             // Build target URL
             String targetUrl = buildTargetUrl(path, uriInfo);
-            LOG.infof("Forwarding %s request to: %s", method, targetUrl);
+            LOG.info("Forwarding {} request to: {}", method, targetUrl);
 
             WebTarget target = client.target(targetUrl);
 
@@ -215,13 +216,13 @@ public class ProxyService {
             // Record per-endpoint (method + path) duration for the ubp_proxy_forward metrics.
             recordForwardDuration(method, path, duration);
 
-            LOG.infof("Forwarded request took %d ms with return code: %d - %s", duration, response.getStatusInfo().getStatusCode(), response.getStatusInfo().getReasonPhrase());
+            LOG.info("Forwarded request took {} ms with return code: {} - {}", duration, response.getStatusInfo().getStatusCode(), response.getStatusInfo().getReasonPhrase());
 
             // Now build the proxy response
             return buildProxyResponse(response);
 
         } catch (Exception e) {
-            LOG.errorf(e, "Erreur lors du proxy de la requête %s %s", method, path);
+            LOG.error("Erreur lors du proxy de la requête {} {}", method, path, e);
             return Response.status(Response.Status.BAD_GATEWAY)
                     .entity("Erreur du proxy: " + e.getMessage())
                     .build();
@@ -249,7 +250,7 @@ public class ProxyService {
             String token = com.ubp.rgd.proxy.security.SecurityUtils
                     .getClientToServiceToken(userSubject, targetServicePrincipal);
             if (token != null) {
-                LOG.infof("Obtained client-to-service ticket for downstream call to SPN: %s", targetServicePrincipal);
+                LOG.info("Obtained client-to-service ticket for downstream call to SPN: {}", targetServicePrincipal);
                 return "Negotiate " + token;
             }
             LOG.warn("Could not obtain a client-to-service ticket for the basic-auth user; falling back.");
@@ -337,7 +338,7 @@ public class ProxyService {
             return responseBuilder.build();
 
         } catch (Exception e) {
-            LOG.errorf(e,"Error while building proxy response: %s", e.getMessage());
+            LOG.error("Error while building proxy response: {}", e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(String.format("Error while building proxy response: %s", e.getMessage()))
                     .build();
@@ -373,7 +374,7 @@ public class ProxyService {
             }
             return out.toByteArray();
         } catch (Exception e) {
-            LOG.warnf(e, "Failed to gunzip response body; returning raw bytes.");
+            LOG.warn("Failed to gunzip response body; returning raw bytes.", e);
             return data;
         }
     }

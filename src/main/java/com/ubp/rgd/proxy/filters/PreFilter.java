@@ -13,7 +13,8 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -32,7 +33,7 @@ import java.util.List;
 @Provider
 public class PreFilter implements ContainerRequestFilter {
 
-    private static final Logger LOG = Logger.getLogger(PreFilter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PreFilter.class);
 
     @ConfigProperty(name = "proxy.prefilter.auth-enabled", defaultValue = "true")
     String preFilterAuthEnabled;
@@ -73,7 +74,7 @@ public class PreFilter implements ContainerRequestFilter {
         String requestPath = requestContext.getUriInfo().getPath();
 
         // trace request
-        LOG.infof("PRE-FILTER: %s %s du client %s",
+        LOG.info("PRE-FILTER: {} {} du client {}",
                 requestContext.getMethod(),
                 requestPath,
                 getClientIp(requestContext));
@@ -91,7 +92,7 @@ public class PreFilter implements ContainerRequestFilter {
 
         // if request is not a sub path of the proxy path then do nothing
         if (!requestPath.startsWith("/proxy")) {
-            LOG.infof("PRE-FILTER: Not the proxied path. Skipping filtering.");
+            LOG.info("PRE-FILTER: Not the proxied path. Skipping filtering.");
             return;
         }
 
@@ -100,7 +101,7 @@ public class PreFilter implements ContainerRequestFilter {
 
         // a caller may ask for the payloads to be forwarded without any RPS transformation
         if (!allowIgnoreTransformHeader && TransformBypass.isPresent(requestContext)) {
-            LOG.warnf("PRE-FILTER: %s was sent while the transform bypass is disabled by configuration."
+            LOG.warn("PRE-FILTER: {} was sent while the transform bypass is disabled by configuration."
                     + " See the proxy.transform.allow-ignore-header property.", TransformBypass.HEADER_NAME);
             requestContext.abortWith(Response.status(Response.Status.FORBIDDEN)
                     .entity(String.format("The %s header is not allowed on this proxy.",
@@ -110,17 +111,17 @@ public class PreFilter implements ContainerRequestFilter {
         }
 
         if (TransformBypass.isRequested(requestContext)) {
-            LOG.infof("PRE-FILTER: %s is set, forwarding %s > %s without any transformation.",
+            LOG.info("PRE-FILTER: {} is set, forwarding {} > {} without any transformation.",
                     TransformBypass.HEADER_NAME, requestContext.getMethod(), requestPath);
             return;
         }
 
         // now check if we should transform payload BEFORE invoking proxified target url
         String proxyUrlPath = requestContext.getUriInfo().getPath().substring("/proxy".length());
-        LOG.infof("Comparing if we need to transform url path: BEFORE: %s > %s", requestContext.getMethod(), proxyUrlPath);
+        LOG.info("Comparing if we need to transform url path: BEFORE: {} > {}", requestContext.getMethod(), proxyUrlPath);
         EndPointTransformConfig cfg = endpointTransformer.getEndpointTransformConfig(requestContext.getMethod(), proxyUrlPath, "BEFORE");
         if (cfg != null) {
-            LOG.infof("PRE filter: Transforming %s > %s", requestContext.getMethod(), requestContext.getUriInfo().getPath());
+            LOG.info("PRE filter: Transforming {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
 
             try {
                 InputStream is = requestContext.getEntityStream();
@@ -147,7 +148,7 @@ public class PreFilter implements ContainerRequestFilter {
                 requestContext.abortWith(Response.status(500).entity(e.getMessage()).build());
             }
         } else {
-            LOG.infof("No need to transform: %s > %s", requestContext.getMethod(), requestContext.getUriInfo().getPath());
+            LOG.info("No need to transform: {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
         }
     }
 
@@ -173,7 +174,7 @@ public class PreFilter implements ContainerRequestFilter {
      * @see #handleAuthForRequest(ContainerRequestContext)
      */
     private void handleBasicAuthForRequest(ContainerRequestContext requestContext) {
-        LOG.infof("PRE-FILTER: BASIC auth %s %s du client %s",
+        LOG.info("PRE-FILTER: BASIC auth {} {} du client {}",
                 requestContext.getMethod(),
                 requestContext.getUriInfo().getPath(),
                 getClientIp(requestContext));
@@ -231,7 +232,7 @@ public class PreFilter implements ContainerRequestFilter {
      * @see KerberosToken for more details on implementation
      */
     private void handleKerberosAuthForRequest(ContainerRequestContext requestContext) {
-        LOG.infof("PRE-FILTER: KERBEROS auth %s %s of client %s",
+        LOG.info("PRE-FILTER: KERBEROS auth {} {} of client {}",
                 requestContext.getMethod(),
                 requestContext.getUriInfo().getPath(),
                 getClientIp(requestContext));
@@ -255,7 +256,7 @@ public class PreFilter implements ContainerRequestFilter {
                 // valid user, set the context into the request
                 securityContext.setToken(krbToken);
                 securityContext.setUserSubject(krbToken.getUserSubject());
-                LOG.debugf("User %s has %s roles configured.", krbToken.getUser(), krbToken.getRoles().size());
+                LOG.debug("User {} has {} roles configured.", krbToken.getUser(), krbToken.getRoles().size());
             } else {
                 Response respNegoKerb = getKerberosNegociateResponse(krbToken.getServiceToken());
                 requestContext.abortWith(respNegoKerb);
@@ -281,7 +282,7 @@ public class PreFilter implements ContainerRequestFilter {
                 header = String.format("%s %s", header, b64Token);
             }
 
-            LOG.debugf("Adding header: WWW-Authenticate: %s", header);
+            LOG.debug("Adding header: WWW-Authenticate: {}", header);
             builder.header("WWW-Authenticate", header)
                     .entity( "Must provide auth token to use this service.");
         } catch (Exception ex) {

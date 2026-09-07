@@ -5,7 +5,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -14,7 +15,7 @@ import org.jboss.logging.Logger;
 @Provider
 @ApplicationScoped
 public class RPSTransformExceptionMapper implements ExceptionMapper<RPSTransformException> {
-    private static final Logger LOG = Logger.getLogger(RPSTransformExceptionMapper.class);
+    private static final Logger LOG = LoggerFactory.getLogger(RPSTransformExceptionMapper.class);
     @Override
     public Response toResponse(RPSTransformException ex) {
         LOG.error("RPS Transform error", ex);

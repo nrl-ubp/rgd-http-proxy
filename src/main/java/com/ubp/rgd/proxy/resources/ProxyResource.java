@@ -7,7 +7,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
@@ -17,7 +18,7 @@ import java.util.Objects;
 @Tag(name = "Proxy Resource", description = "Check authz and forward request to configured target site.")
 public class ProxyResource {
 
-    private static final Logger LOG = Logger.getLogger(ProxyResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ProxyResource.class);
 
     /**
      * Service implementation of the resource.
@@ -42,7 +43,7 @@ public class ProxyResource {
     public Response proxyGet(@PathParam("path") String path,
                              @Context UriInfo uriInfo,
                              @Context HttpHeaders headers) {
-        LOG.infof("Proxy GET request for path: %s", path);
+        LOG.info("Proxy GET request for path: {}", path);
         Objects.requireNonNull(metricsRegistry.counter("ubp_proxy_counter", Tags.of("name", "get"))).increment();
         return proxyService.forwardRequest("GET", path, null, uriInfo, headers);
     }
@@ -53,7 +54,7 @@ public class ProxyResource {
                               String body,
                               @Context UriInfo uriInfo,
                               @Context HttpHeaders headers) {
-        LOG.infof("Proxy POST request for path: %s", path);
+        LOG.info("Proxy POST request for path: {}", path);
         Objects.requireNonNull(metricsRegistry.counter("ubp_proxy_counter", Tags.of("name", "post"))).increment();
         return proxyService.forwardRequest("POST", path, body, uriInfo, headers);
     }
@@ -64,7 +65,7 @@ public class ProxyResource {
                              String body,
                              @Context UriInfo uriInfo,
                              @Context HttpHeaders headers) {
-        LOG.infof("Proxy PUT request for path: %s", path);
+        LOG.info("Proxy PUT request for path: {}", path);
         Objects.requireNonNull(metricsRegistry.counter("ubp_proxy_counter", Tags.of("name", "put"))).increment();
         return proxyService.forwardRequest("PUT", path, body, uriInfo, headers);
     }
@@ -74,7 +75,7 @@ public class ProxyResource {
     public Response proxyDelete(@PathParam("path") String path,
                                 @Context UriInfo uriInfo,
                                 @Context HttpHeaders headers) {
-        LOG.infof("Proxy DELETE request for path: %s", path);
+        LOG.info("Proxy DELETE request for path: {}", path);
         Objects.requireNonNull(metricsRegistry.counter("ubp_proxy_counter", Tags.of("name", "delete"))).increment();
         return proxyService.forwardRequest("DELETE", path, null, uriInfo, headers);
     }
@@ -85,7 +86,7 @@ public class ProxyResource {
                                 String body,
                                 @Context UriInfo uriInfo,
                                 @Context HttpHeaders headers) {
-        LOG.infof("Proxy PATCH request for path: %s", path);
+        LOG.info("Proxy PATCH request for path: {}", path);
         Objects.requireNonNull(metricsRegistry.counter("ubp_proxy_counter", Tags.of("name", "patch"))).increment();
         return proxyService.forwardRequest("PATCH", path, body, uriInfo, headers);
     }

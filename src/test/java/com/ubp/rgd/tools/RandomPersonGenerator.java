@@ -13,7 +13,8 @@ import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.logging.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.github.javafaker.Name;
 import com.ubp.rgd.proxy.utils.CliArgs;
@@ -23,21 +24,9 @@ import com.ubp.rgd.proxy.utils.CliArgs;
  */
 public class RandomPersonGenerator {
 
-    private static final Logger LOG = Logger.getLogger(RandomPersonGenerator.class.getName());
-    private static final ConsoleHandler handler = new ConsoleHandler();
-    private static final SimpleDateFormat logDf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    public static void main(String[] args) {
+    private static final Logger LOG = LoggerFactory.getLogger(RandomPersonGenerator.class);
 
-        // configure logger
-        handler.setFormatter(new SimpleFormatter() {
-            @Override
-            public synchronized String format(LogRecord record) {
-                String formattedDate = logDf.format(new Date(record.getMillis()));
-                return String.format("%s [%s]: %s%n", formattedDate, record.getLevel(), record.getMessage());
-            }
-        });
-        LOG.addHandler(handler);
-        LOG.setUseParentHandlers(false);
+    public static void main(String[] args) {
 
         LOG.info("Random person generator starting...");
 
@@ -50,14 +39,14 @@ public class RandomPersonGenerator {
         String dateFormat = cliArgs.switchValue("--date-format", "yyyy-MM-dd");
 
         LOG.info("Generation parameters:");
-        LOG.info(String.format("--rows       : %d (default 10k)", rows));
-        LOG.info(String.format("--filename   : %s (default [rows]_random_person_data.csv)", fileName));
-        LOG.info(String.format("--file-format: %s (CSV or JSON by default)", fileFormat));
-        LOG.info(String.format("--locale     : %s (default ch-DE)", locale));
-        LOG.info(String.format("--date-format: %s (default dd.MM.yyyy)", dateFormat));
+        LOG.info("--rows       : {} (default 10k)", rows);
+        LOG.info("--filename   : {} (default [rows]_random_person_data.csv)", fileName);
+        LOG.info("--file-format: {} (CSV or JSON by default)", fileFormat);
+        LOG.info("--locale     : {} (default ch-DE)", locale);
+        LOG.info("--date-format: {} (default dd.MM.yyyy)", dateFormat);
 
         if (!fileFormat.equalsIgnoreCase("CSV") && !fileFormat.equalsIgnoreCase("JSON")) {
-            LOG.severe(String.format("Invalid --file-format value. Expected CSV or JSON: %s", fileFormat));
+            LOG.error("Invalid --file-format value. Expected CSV or JSON: {}", fileFormat);
             System.exit(-1);
         }
 
@@ -136,7 +125,7 @@ public class RandomPersonGenerator {
                 writer.append(String.join(",", columnNames)).append("\n");
                 writer.append(sb);
             } catch (IOException e) {
-                LOG.log(Level.SEVERE, "Cannot generate random data.", e);
+                LOG.error("Cannot generate random data.", e);
                 System.exit(-1);
             }
         }
@@ -166,7 +155,7 @@ public class RandomPersonGenerator {
                     sw.writeAll(objectList);
                 }
             } catch (IOException ioe) {
-                LOG.log(Level.SEVERE, "Cannot generate JSON object list from CSV contents.", ioe);
+                LOG.error("Cannot generate JSON object list from CSV contents.", ioe);
                 System.exit(-2);
             }
         }

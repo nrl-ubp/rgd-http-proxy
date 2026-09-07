@@ -14,7 +14,8 @@ import org.apache.arrow.flight.auth2.GeneratedBearerTokenAuthenticator;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -26,7 +27,7 @@ import java.io.IOException;
 @ApplicationScoped
 public class FlightSqlServerService {
 
-    private static final Logger LOG = Logger.getLogger(FlightSqlServerService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FlightSqlServerService.class);
 
     @ConfigProperty(name = "proxy.flight-sql.enabled", defaultValue = "false")
     boolean enabled;
@@ -58,7 +59,7 @@ public class FlightSqlServerService {
         try {
             // The detokenizer is lazy: touch it so its mappings are loaded before the first query
             // rather than during it.
-            LOG.infof("Flight SQL detokenizer ready with %d column mapping(s)",
+            LOG.info("Flight SQL detokenizer ready with {} column mapping(s)",
                     detokenizeService.getMappingConfig().getColumnMappings().size());
             allocator = new RootAllocator(Long.MAX_VALUE);
             producer = new ProxyFlightSqlProducer(allocator, connectionManager, detokenizeService, batchSize);
@@ -67,7 +68,7 @@ public class FlightSqlServerService {
                             new BasicCallHeaderAuthenticator(connectionManager)))
                     .build();
             server.start();
-            LOG.infof("Flight SQL server listening on %s:%d", host, server.getPort());
+            LOG.info("Flight SQL server listening on {}:{}", host, server.getPort());
         } catch (IOException e) {
             LOG.error("Failed to start the Flight SQL server", e);
             closeQuietly();
@@ -89,7 +90,7 @@ public class FlightSqlServerService {
                 server.close();
             }
         } catch (Exception e) {
-            LOG.warnf("Error while stopping the Flight SQL server: %s", e.getMessage());
+            LOG.warn("Error while stopping the Flight SQL server: {}", e.getMessage());
         } finally {
             server = null;
         }
@@ -98,7 +99,7 @@ public class FlightSqlServerService {
                 producer.close();
             }
         } catch (Exception e) {
-            LOG.warnf("Error while closing the Flight SQL producer: %s", e.getMessage());
+            LOG.warn("Error while closing the Flight SQL producer: {}", e.getMessage());
         } finally {
             producer = null;
         }

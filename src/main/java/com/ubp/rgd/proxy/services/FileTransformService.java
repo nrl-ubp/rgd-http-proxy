@@ -17,7 +17,8 @@ import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.jspecify.annotations.NonNull;
 
 import java.io.File;
@@ -33,7 +34,7 @@ import java.util.regex.Pattern;
 @ApplicationScoped
 public class FileTransformService {
 
-    private static final Logger LOG = Logger.getLogger(FileTransformService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FileTransformService.class);
 
     @Inject
     RPSClientEngineProvider engineProvider;
@@ -55,12 +56,12 @@ public class FileTransformService {
         }
 
         try {
-            LOG.infof("Loading file transform configuration from %s", fileTransformConfigFile);
+            LOG.info("Loading file transform configuration from {}", fileTransformConfigFile);
             ObjectMapper objectMapper = new ObjectMapper();
             File configFile = new File(fileTransformConfigFile);
             
             if (!configFile.exists()) {
-                LOG.warnf("File transform config file not found: %s", fileTransformConfigFile);
+                LOG.warn("File transform config file not found: {}", fileTransformConfigFile);
                 return;
             }
 
@@ -71,7 +72,7 @@ public class FileTransformService {
                 return;
             }
 
-            LOG.infof("Loaded %d file transform configuration(s)", fileTransformConfigs.size());
+            LOG.info("Loaded {} file transform configuration(s)", fileTransformConfigs.size());
             
             // Validate and create directories
             for (FileTransformConfig config : fileTransformConfigs) {
@@ -97,10 +98,10 @@ public class FileTransformService {
             Path path = Paths.get(directory);
             if (!Files.exists(path)) {
                 Files.createDirectories(path);
-                LOG.infof("Created %s directory: %s", type, directory);
+                LOG.info("Created {} directory: {}", type, directory);
             }
         } catch (IOException e) {
-            LOG.errorf(e, "Failed to create %s directory: %s", type, directory);
+            LOG.error("Failed to create {} directory: {}", type, directory, e);
         }
     }
 
@@ -115,10 +116,10 @@ public class FileTransformService {
                         TimeUnit.SECONDS
                 );
                 schedulers.put(config.getName(), scheduler);
-                LOG.infof("Started scheduler for '%s' with interval: %d seconds", 
+                LOG.info("Started scheduler for '{}' with interval: {} seconds", 
                     config.getName(), config.getScanIntervalSeconds());
             } else {
-                LOG.infof("Configuration '%s' has scan interval %d - will only process on-demand", 
+                LOG.info("Configuration '{}' has scan interval {} - will only process on-demand", 
                     config.getName(), config.getScanIntervalSeconds());
             }
         }
@@ -137,7 +138,7 @@ public class FileTransformService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Configuration not found: " + configName));
         
-        LOG.infof("Processing configuration '%s' synchronously", configName);
+        LOG.info("Processing configuration '{}' synchronously", configName);
         return processConfiguration(config);
     }
 
@@ -181,12 +182,12 @@ public class FileTransformService {
 
                 @Override
                 public FileVisitResult visitFileFailed(@NonNull Path file, @NonNull IOException exc) {
-                    LOG.warnf(exc, "Failed to visit file: %s", file);
+                    LOG.warn("Failed to visit file: {}", file, exc);
                     return FileVisitResult.CONTINUE;
                 }
             });
         } catch (IOException e) {
-            LOG.errorf(e, "Error scanning directory: %s", sourceDir);
+            LOG.error("Error scanning directory: {}", sourceDir, e);
         }
         
         return processedCount[0];
@@ -200,7 +201,7 @@ public class FileTransformService {
             wipFile = file.resolveSibling(file.getFileName() + config.getWorkInProgressSuffix());
             Files.move(file, wipFile, StandardCopyOption.ATOMIC_MOVE);
             
-            LOG.infof("Processing file: %s", file.getFileName());
+            LOG.info("Processing file: {}", file.getFileName());
 
             // Read the file content
             String content = Files.readString(wipFile);
@@ -218,10 +219,10 @@ public class FileTransformService {
             // Delete the work-in-progress file
             Files.delete(wipFile);
 
-            LOG.infof("Successfully processed file: %s -> %s", file.getFileName(), targetPath);
+            LOG.info("Successfully processed file: {} -> {}", file.getFileName(), targetPath);
 
         } catch (Exception e) {
-            LOG.errorf(e, "Error processing file: %s", file.getFileName());
+            LOG.error("Error processing file: {}", file.getFileName(), e);
             
             // Move file to error directory
             if (wipFile != null && Files.exists(wipFile)) {
@@ -229,9 +230,9 @@ public class FileTransformService {
                     Path errorPath = calculateTargetPath(file, wipFile, config, config.getErrorDirectory());
                     Files.createDirectories(errorPath.getParent());
                     Files.move(wipFile, errorPath, StandardCopyOption.REPLACE_EXISTING);
-                    LOG.infof("Moved failed file to error directory: %s", errorPath);
+                    LOG.info("Moved failed file to error directory: {}", errorPath);
                 } catch (IOException moveException) {
-                    LOG.errorf(moveException, "Failed to move file to error directory: %s", wipFile);
+                    LOG.error("Failed to move file to error directory: {}", wipFile, moveException);
                 }
             }
         }
@@ -301,7 +302,7 @@ public class FileTransformService {
             moduleEvidence.setName(key);
             moduleEvidence.setValue(value);
             rightContext.addEvidence(moduleEvidence);
-            LOG.debugf("Right context: %s = %s", key, value);
+            LOG.debug("Right context: {} = {}", key, value);
         });
 
         return rightContext;
@@ -315,7 +316,7 @@ public class FileTransformService {
             evidence.setName(key);
             evidence.setValue(value);
             processingContext.addEvidence(evidence);
-            LOG.debugf("Processing context: %s = %s", key, value);
+            LOG.debug("Processing context: {} = {}", key, value);
         });
 
         return processingContext;
@@ -333,13 +334,13 @@ public class FileTransformService {
                 
                 for (int i = 0; i < values.size(); i++) {
                     String oldValue = values.get(i);
-                    LOG.debugf("RPSValue: %s = %s : %s", oldValue, attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName());
+                    LOG.debug("RPSValue: {} = {} : {}", oldValue, attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName());
                     valuesForPath[i] = attrCfg.getRPSValue(oldValue);
                 }
                 
                 rpsValuesByJsonPath.put(jsonPath, valuesForPath);
             } catch (Exception e) {
-                LOG.warnf(e, "Failed to read json path: %s", jsonPath);
+                LOG.warn("Failed to read json path: {}", jsonPath, e);
             }
         }
 
@@ -356,7 +357,7 @@ public class FileTransformService {
                     documentContext.set(jsonPath.replace("*", String.valueOf(i)), newValue);
                 }
             } catch (Exception e) {
-                LOG.warnf(e, "Failed to set values for json path: %s", jsonPath);
+                LOG.warn("Failed to set values for json path: {}", jsonPath, e);
             }
         });
     }
@@ -389,7 +390,7 @@ public class FileTransformService {
             LOG.info("Shutting down file transform schedulers");
             schedulers.forEach((name, scheduler) -> {
                 if (scheduler != null && !scheduler.isShutdown()) {
-                    LOG.infof("Shutting down scheduler for: %s", name);
+                    LOG.info("Shutting down scheduler for: {}", name);
                     scheduler.shutdown();
                     try {
                         if (!scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
