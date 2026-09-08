@@ -1,5 +1,6 @@
 package com.ubp.rgd.proxy.filters;
 
+import com.ubp.rgd.proxy.resources.ProxyResource;
 import com.ubp.rgd.proxy.security.SecurityContext;
 import com.ubp.rgd.proxy.transform.config.EndPointTransformConfig;
 import com.ubp.rgd.proxy.transform.RPSEndPointTransformer;
@@ -58,18 +59,15 @@ public class PostFilter implements ContainerResponseFilter {
             return;
         }
 
-        // TODO set the proxy string in a application.properties parameter !
-        String proxyBasePath = "/proxy";
-
         String requestPath = requestContext.getUriInfo().getPath();
 
         // if request is not a sub path of the proxy path
-        if (!requestPath.startsWith(proxyBasePath)) {
+        if (!requestPath.startsWith(ProxyResource.PROXY_BASE_PATH)) {
             LOG.info("POST-FILTER: Not the proxied path. Skipping filtering.");
             return;
         }
 
-        String proxyUrlPath = requestPath.substring(proxyBasePath.length());
+        String proxyUrlPath = requestPath.substring(ProxyResource.PROXY_BASE_PATH.length());
 
         // the caller may have asked for the payloads to be returned without any RPS transformation
         if (allowIgnoreTransformHeader && TransformBypass.isRequested(requestContext)) {

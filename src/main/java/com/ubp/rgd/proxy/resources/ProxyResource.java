@@ -12,14 +12,14 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
-@Path("/proxy")
+@Path(ProxyResource.PROXY_BASE_PATH)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Tag(name = "Proxy Resource", description = "Check authz and forward request to configured target site.")
 public class ProxyResource {
-
     private static final Logger LOG = LoggerFactory.getLogger(ProxyResource.class);
 
+    public static final String PROXY_BASE_PATH = "/proxy";
     /**
      * Service implementation of the resource.
      */

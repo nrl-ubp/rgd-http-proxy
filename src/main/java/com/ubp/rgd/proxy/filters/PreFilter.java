@@ -1,5 +1,6 @@
 package com.ubp.rgd.proxy.filters;
 
+import com.ubp.rgd.proxy.resources.ProxyResource;
 import com.ubp.rgd.proxy.security.BasicToken;
 import com.ubp.rgd.proxy.security.KerberosToken;
 import com.ubp.rgd.proxy.security.SecurityContext;
@@ -91,7 +92,7 @@ public class PreFilter implements ContainerRequestFilter {
         requestContext.getHeaders().add("X-Proxy-Timestamp", LocalDateTime.now().toString());
 
         // if request is not a sub path of the proxy path then do nothing
-        if (!requestPath.startsWith("/proxy")) {
+        if (!requestPath.startsWith(ProxyResource.PROXY_BASE_PATH)) {
             LOG.info("PRE-FILTER: Not the proxied path. Skipping filtering.");
             return;
         }
@@ -117,7 +118,7 @@ public class PreFilter implements ContainerRequestFilter {
         }
 
         // now check if we should transform payload BEFORE invoking proxified target url
-        String proxyUrlPath = requestContext.getUriInfo().getPath().substring("/proxy".length());
+        String proxyUrlPath = requestContext.getUriInfo().getPath().substring(ProxyResource.PROXY_BASE_PATH.length());
         LOG.info("Comparing if we need to transform url path: BEFORE: {} > {}", requestContext.getMethod(), proxyUrlPath);
         EndPointTransformConfig cfg = endpointTransformer.getEndpointTransformConfig(requestContext.getMethod(), proxyUrlPath, "BEFORE");
         if (cfg != null) {
