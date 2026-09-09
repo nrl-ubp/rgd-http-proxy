@@ -71,7 +71,10 @@ public final class ValuePlan {
                 throw new RPSTransformException("Invalid extract-regex: " + extractRegex);
             }
         }
-        if (ACTION_UNPROTECT.equalsIgnoreCase(action)) {
+
+        // TODO add search action
+
+        if (ACTION_UNPROTECT.equalsIgnoreCase(action) || action == null) {
             return TOKEN_PATTERN;
         }
         return null;
@@ -141,7 +144,7 @@ public final class ValuePlan {
         String transformed = rpsValue.getTransformed();
         if (transformed == null) {
             throw new RPSTransformException(
-                    "Transformation did not return a value for: " + rpsValue.getOriginal());
+                    String.format("Transformation did not return a value for: %s. Error: %s", rpsValue.getOriginal(), rpsValue.getError().getMessage()));
         }
         return transformed;
     }
