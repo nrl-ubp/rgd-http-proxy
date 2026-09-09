@@ -35,13 +35,13 @@ public class SecurityUtils {
 
         File configFile = new File(jaasConfigFile);
         if (!configFile.exists()) {
-            LOG.error("ERROR : Config file not found : " + jaasConfigFile);
+            LOG.error("Config file not found : " + jaasConfigFile);
         }
         System.setProperty("java.security.auth.login.config", jaasConfigFile);
 
         configFile = new File(krb5ConfFile);
         if (!configFile.exists()) {
-            LOG.error("ERROR : Config file not found : " + krb5ConfFile);
+            LOG.error("Config file not found : " + krb5ConfFile);
         }
         System.setProperty("java.security.krb5.conf", krb5ConfFile);
     }
@@ -79,7 +79,7 @@ public class SecurityUtils {
         optionMap.put("useKeyTab", "true");
         optionMap.put("storeKey", "true");
         optionMap.put("isInitiator", "true"); // needed for delegation
-        optionMap.put("debug", "true"); // trace will be printed on console
+        optionMap.put("debug", "false"); // trace will be printed on console
 
         return optionMap;
     }
@@ -219,7 +219,7 @@ public class SecurityUtils {
     public static byte[] getServiceTicket(Subject serviceSubject) {
         KerberosTicket serviceTicket = null;
         for(Object obj : serviceSubject.getPrivateCredentials()) {
-            System.out.println(obj.getClass().getName());
+            LOG.debug(obj.getClass().getName());
             if (obj instanceof KerberosTicket) {
                 serviceTicket = (KerberosTicket)obj;
             }
@@ -229,17 +229,17 @@ public class SecurityUtils {
 
     private static byte[] createServiceTokenTechnicalUSer(String serviceName, int attempts, Oid oid) throws Exception {
 
-        LOG.info("createServiceTokenTechnicalUSer(" + serviceName + ") for User " + technicalUser);
+        LOG.debug("createServiceTokenTechnicalUSer({}) for User " + technicalUser, serviceName);
 
         try {
             GSSManager manager = GSSManager.getInstance();
             GSSName gssUserName = manager.createName(technicalUser, GSSName.NT_USER_NAME);
-            LOG.debug("gssUserName: " + gssUserName.toString());
+            LOG.debug("gssUserName: {}", gssUserName.toString());
             GSSCredential clientGSSCreds = manager.createCredential(gssUserName, GSSCredential.INDEFINITE_LIFETIME, oid,
                     GSSCredential.INITIATE_ONLY);
-            LOG.debug("clientGSSCreds: " + clientGSSCreds.toString());
+            LOG.debug("clientGSSCreds: {}", clientGSSCreds.toString());
             GSSName gssServerName = manager.createName(serviceName, GSSName.NT_USER_NAME);
-            LOG.debug("gssServerName: " + gssServerName.toString());
+            LOG.debug("gssServerName: {}", gssServerName.toString());
             GSSContext clientContext = manager.createContext(gssServerName, oid, clientGSSCreds,
                     GSSContext.DEFAULT_LIFETIME);
             // Optional: enable GSS credential delegation
@@ -251,18 +251,18 @@ public class SecurityUtils {
             serviceToken = clientContext.initSecContext(serviceToken, 0, serviceToken.length);
 
             String result = new String(Base64.getEncoder().encode(serviceToken));
-            LOG.debug("Token for technical user: " + result);
+            LOG.debug("Token for technical user: {}", result);
 
             return serviceToken;
 
         } catch (Exception e) {
-            LOG.error("Error getting token to for " + e.getMessage(), e);
+            LOG.error("Error getting token to for {}", e.getMessage(), e);
             if (attempts == 0) {
                 LOG.error("Cannot create kerberos token", e);
                 throw e;
             }
             --attempts;
-            LOG.warn("Error during ticket generation. Attempt: " + (MAX_ATTEMPT - attempts));
+            LOG.warn("Error during ticket generation. Attempt: {}", MAX_ATTEMPT - attempts);
             return createServiceTokenTechnicalUSer(serviceName, attempts, oid);
         }
     }
@@ -295,7 +295,7 @@ public class SecurityUtils {
             Subject serviceSubject = SecurityUtils.loginService(keytabFilePath, kerbServicePrincipal);
 
             if (serviceSubject == null) {
-                LOG.error("Could NOT get service subject : " + keytabFilePath + " for " + kerbServicePrincipal);
+                LOG.error("Could NOT get service subject : {} for {}", keytabFilePath, kerbServicePrincipal);
                 return null;
             }
 
