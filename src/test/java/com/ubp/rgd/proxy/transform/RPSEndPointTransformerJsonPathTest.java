@@ -7,8 +7,6 @@ import com.ubp.rgd.proxy.transform.config.EntityTransformConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import ch.regdata.rps.engine.client.model.api.value.RPSValue;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +56,7 @@ class RPSEndPointTransformerJsonPathTest {
      * Runs the full read / transform / write round trip and returns the resulting JSON.
      */
     private String roundTrip(String json, String... jsonPaths) throws RPSTransformException {
-        return roundTripWith(json, null, null, jsonPaths);
+        return roundTripWith(json, "Protect", null, jsonPaths);
     }
 
     /**
@@ -81,7 +79,7 @@ class RPSEndPointTransformerJsonPathTest {
             throws RPSTransformException {
         DocumentContext documentContext = JsonPath.parse(json);
         Map<String, JsonPathValue> rpsValues =
-                transformer.getRPSValuesFromBody(documentContext, config(jsonPath), null);
+                transformer.getRPSValuesFromBody(documentContext, config(jsonPath), "Protect");
         rpsValues.values().forEach(value ->
                 value.plan().rpsValues().forEach(rpsValue -> rpsValue.setTransformed(transformed)));
         transformer.setRPSValuesToBody(documentContext, rpsValues);
