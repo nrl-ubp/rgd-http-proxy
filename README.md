@@ -249,6 +249,70 @@ A token whose index is not declared is returned untouched and logs a warning, on
 Apache Arrow needs access to the `java.nio` internals of the JDK, so the server **must** be started
 with `--add-opens=java.base/java.nio=ALL-UNNAMED` (see the launch commands below).
 
+### Prepared statements
+
+The Flight SQL server supports **parameterized statements**, both queries and updates. The parameter
+schema is derived from the proxied driver's `ParameterMetaData` and advertised to the client, the
+Arrow batches sent by the client are bound onto the JDBC statement, and a prepared batch is executed
+in a single round trip returning the summed update count.
+
+If the proxied JDBC driver refuses to describe its parameters, the server falls back to an empty
+parameter schema: statements without parameters keep working unchanged.
+
+> **Known client limitation.** `Statement.addBatch()` / `executeBatch()` on a *plain* statement fails
+> inside the Arrow Flight JDBC driver itself (a `NullPointerException` in its Avatica layer) and
+> cannot be fixed on the server side. Use `PreparedStatement.addBatch()`, which works.
+
+### Loading test data
+
+`src/test/java/com/ubp/rgd/tools/PersonFlightSqlLoader.java` generates random persons and writes them
+into a `PERSON` table **through the proxy**, using the Arrow Flight SQL JDBC driver and plain SQL (no
+JPA). It then reads the rows back and reports how many values came back detokenized.
+
+Start the proxy with `proxy.flight-sql.enabled=true`, then:
+
+```
+mvn -Pflight-sql-loader test-compile exec:exec \
+    -Dloader.args="--user sa --password secret --rows 1000 --create-table"
+```
+
+The profile uses `exec:exec` so the forked JVM gets the required `--add-opens` flag.
+
+| Switch | Default | Meaning |
+| --- | --- | --- |
+| `--host` / `--port` | `localhost` / `32010` | Flight SQL endpoint of the proxy. |
+| `--user` / `--password` | `sa` / empty | **Database** credentials: the proxy validates them by opening a real connection to the proxied datasource. |
+| `--table` | `PERSON` | Target table name. |
+| `--rows` | `10000` | Number of persons to generate. |
+| `--locale` | `de-CH` | Faker locale for the generated data. |
+| `--data-mode` | `tokens` | `tokens` emits token-shaped values, `clear` emits plain faker data. |
+| `--insert-mode` | `prepared` | `prepared` uses parameter binding, `literal` uses quote-escaped literals. |
+| `--batch-size` | `1000` | Rows per batch, prepared mode only. |
+| `--create-table` | off | Drops and recreates the table first, with portable DDL (H2 and SQL Server). |
+| `--no-read-back` | off | Skips the read-back phase. |
+| `--read-back-rows` | `10` | Number of rows printed during read-back. |
+| `--help` | | Prints the usage. |
+
+The generated columns are chosen to exercise **all three** resolution tiers at once:
+
+| Column | Resolved through |
+| --- | --- |
+| `FIRST_NAME`, `LAST_NAME`, `BIRTH_DATE` | column mapping on `PERSON` |
+| `EMAIL` | column mapping on `*` |
+| `CITY` | data-mappings regex |
+| `NOTES` | token mapping index, tokens embedded in free text |
+
+All token-bearing columns are `VARCHAR`, including `BIRTH_DATE`: a tokenized date does not fit a
+`DATE` column.
+
+> **Caveat.** `--data-mode tokens` produces *synthetic* tokens. Their shape is valid, so they fully
+> exercise recognition and mapping resolution, but a real RPS engine has never issued them and will
+> not return meaningful clear values. The Flight SQL proxy only ever detokenizes, so real tokens have
+> to be obtained beforehand from the `/transform` endpoint.
+
+`PersonFlightSqlLoaderTest` runs this same `main()` end to end against an in-memory H2 database
+fronted by a real Flight SQL server, which is the reproducible version of the above.
+
 ## Useful commands
 
 Launch proxy in dev mode :
