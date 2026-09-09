@@ -15,7 +15,7 @@ public class KerberosConstants {
 
     static {
         try {
-            LOG.info("Init OID for Kerberos...");
+            LOG.debug("Init OID for Kerberos...");
             SPNEGO_OID = new Oid(SPNEGO_MECHANISM);
             KRB5_PRINCIPAL_OID = new Oid(KRB5_PRINCIPAL);
         } catch (Exception ex) {
