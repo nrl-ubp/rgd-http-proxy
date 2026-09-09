@@ -53,13 +53,13 @@ public class KerberosToken extends SecurityToken {
 
     @Override
     public void decode(String b64RawToken) throws Exception {
-        LOG.info("Starting kerb token validation for service principal: {} and with keytab {}", servicePrincipalName, keytabFileName);
+        LOG.debug("Starting kerb token validation for service principal: {} and with keytab {}", servicePrincipalName, keytabFileName);
 
         if (b64RawToken.toUpperCase().startsWith(NEGOTIATE)) {
             b64RawToken = b64RawToken.substring(NEGOTIATE.length());
         }
 
-        LOG.info("Now decoding and verifying kerberos token: {}...", b64RawToken.substring(0, 16));
+        LOG.debug("Now decoding and verifying kerberos token: {}...", b64RawToken.substring(0, 16));
 
         byte[] token = Base64.getDecoder().decode(b64RawToken);
 
@@ -69,12 +69,12 @@ public class KerberosToken extends SecurityToken {
             return;
         }
 
-        LOG.info("Login service...");
+        LOG.debug("Login service...");
         Subject serviceSubject = SecurityUtils.loginService(this.keytabFileName, servicePrincipalName);
         assert serviceSubject != null;
         this.serviceToken = SecurityUtils.getServiceTicket(serviceSubject);
 
-        LOG.info("Decoding token ({} bytes)...", token.length);
+        LOG.debug("Decoding token ({} bytes)...", token.length);
         GSSName gssName = Subject.callAs(serviceSubject, (Callable<? extends GSSName>) () -> {
             GSSManager manager = GSSManager.getInstance();
             try {
@@ -94,7 +94,7 @@ public class KerberosToken extends SecurityToken {
                 // client-to-service ticket as the user for the downstream API.
                 captureDelegatedCredential(context);
 
-                LOG.info("Now loading AD groups for user: {}", this.user);
+                LOG.debug("Now loading AD groups for user: {}", this.user);
                 DirContext ctx = ldapClient.login();
                 List<String> theRoles = ldapClient.listUserGroups(ctx, this.user);
                 assert theRoles != null;
@@ -111,7 +111,7 @@ public class KerberosToken extends SecurityToken {
         if (gssName == null) {
             LOG.error("Error while decoding token.");
         } else {
-            LOG.info("Decoded user info: {}", this.user);
+            LOG.debug("Decoded user info: {}", this.user);
         }
     }
 
@@ -141,7 +141,7 @@ public class KerberosToken extends SecurityToken {
             Subject subject = new Subject();
             subject.getPrivateCredentials().add(delegatedCred);
             this.userSubject = subject;
-            LOG.info("Captured delegated credential for user: {}", this.user);
+            LOG.debug("Captured delegated credential for user: {}", this.user);
         } catch (Exception e) {
             LOG.error("Could not capture the delegated credential from the SPNEGO context.", e);
         }
