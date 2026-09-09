@@ -127,7 +127,7 @@ public class ProxyService {
             KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
             kmf.init(keyStore, keystorePassword.toCharArray());
             keyManagers = kmf.getKeyManagers();
-            LOG.info("Keystore chargé: " + keystorePath);
+            LOG.info("Keystore chargÃ©: " + keystorePath);
         }
 
         // Configuration du TrustManager (certificats de confiance)
@@ -139,7 +139,7 @@ public class ProxyService {
             TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
             tmf.init(trustStore);
             trustManagers = tmf.getTrustManagers();
-            LOG.info("Truststore chargé: " + truststorePath);
+            LOG.info("Truststore chargÃ©: " + truststorePath);
         }
 
         sslContext.init(keyManagers, trustManagers, new SecureRandom());
@@ -222,7 +222,7 @@ public class ProxyService {
             return buildProxyResponse(response);
 
         } catch (Exception e) {
-            LOG.error("Erreur lors du proxy de la requête {} {}", method, path, e);
+            LOG.error("Erreur lors du proxy de la requÃªte {} {}", method, path, e);
             return Response.status(Response.Status.BAD_GATEWAY)
                     .entity("Erreur du proxy: " + e.getMessage())
                     .build();
@@ -250,7 +250,7 @@ public class ProxyService {
             String token = com.ubp.rgd.proxy.security.SecurityUtils
                     .getClientToServiceToken(userSubject, targetServicePrincipal);
             if (token != null) {
-                LOG.info("Obtained client-to-service ticket for downstream call to SPN: {}", targetServicePrincipal);
+                LOG.debug("Obtained client-to-service ticket for downstream call to SPN: {}", targetServicePrincipal);
                 return "Negotiate " + token;
             }
             LOG.warn("Could not obtain a client-to-service ticket for the basic-auth user; falling back.");
@@ -281,7 +281,7 @@ public class ProxyService {
     private void copyHeaders(HttpHeaders headers,
                              jakarta.ws.rs.client.Invocation.Builder requestBuilder) {
 
-        // Headers à exclure du proxy
+        // Headers Ã  exclure du proxy
         // "authorization" is excluded here because the downstream Authorization header is set
         // explicitly by resolveDownstreamAuthorization (basic-auth client-to-service ticket,
         // Kerberos delegation, or pass-through).
@@ -326,6 +326,14 @@ public class ProxyService {
             byte[] rawBytes = originalResponse.readEntity(byte[].class);
             byte[] bodyBytes = gunzipIfNeeded(rawBytes);
             String responseBody = bodyBytes == null ? "" : new String(bodyBytes, StandardCharsets.UTF_8);
+
+            // log response body for debug if not SUCCESS family
+            if (originalResponse.getStatusInfo().getFamily() != Response.Status.Family.SUCCESSFUL) {
+                LOG.debug("Forwarded request failed: {} - {}.\n{}",
+                        originalResponse.getStatus(),
+                        originalResponse.getStatusInfo().getReasonPhrase(),
+                        responseBody);
+            }
 
             // Build the new response
             Response.ResponseBuilder responseBuilder = Response
@@ -382,7 +390,7 @@ public class ProxyService {
     private void copyResponseHeaders(Response originalResponse,
                                      Response.ResponseBuilder responseBuilder) {
 
-        // Headers à exclure.
+        // Headers Ã  exclure.
         // "content-encoding" is dropped because the proxy always emits an uncompressed body
         // (see buildProxyResponse / gunzipIfNeeded); advertising gzip would break the client.
         List<String> excludedHeaders = List.of(
