@@ -34,7 +34,7 @@ public class KerberosValidateCallable implements Callable<GSSCredential> {
     }
 
     public static byte[] tweakJdkRegression(byte[] token) {
-        LOG.info("tweakJdkRegression...");
+        LOG.debug("tweakJdkRegression...");
         //    	Due to regression in 8u40/8u45 described in
         //    	https://bugs.openjdk.java.net/browse/JDK-8078439
         //    	try to tweak token package if it looks like it has
@@ -64,7 +64,7 @@ public class KerberosValidateCallable implements Callable<GSSCredential> {
         if (token == null || token.length < 48) {
             return token;
         }
-        LOG.info("tweakJdkRegression: token length... " + token.length);
+        LOG.debug("tweakJdkRegression: token length... {}", token.length);
 
         int[] toCheck = new int[] { 0x06, 0x09, 0x2A, 0x86, 0x48, 0x82, 0xF7, 0x12, 0x01, 0x02, 0x02, 0x06, 0x09, 0x2A,
                 0x86, 0x48, 0x86, 0xF7, 0x12, 0x01, 0x02, 0x02 };
