@@ -72,7 +72,7 @@ public class PreFilter implements ContainerRequestFilter {
         // add a timestamp to request to ease debugging
         requestContext.setProperty("request.timestamp", LocalDateTime.now());
 
-        String requestPath = requestContext.getUriInfo().getPath();
+        String requestPath = requestContext.getUriInfo().getPath().replaceAll("//", "/").toLowerCase();
 
         // trace request
         LOG.info("PRE-FILTER: {} {} du client {}",
@@ -118,7 +118,7 @@ public class PreFilter implements ContainerRequestFilter {
         }
 
         // now check if we should transform payload BEFORE invoking proxified target url
-        String proxyUrlPath = requestContext.getUriInfo().getPath().substring(ProxyResource.PROXY_BASE_PATH.length());
+        String proxyUrlPath = requestPath.substring(ProxyResource.PROXY_BASE_PATH.length()).replaceAll("//","/").toLowerCase();
         LOG.info("Comparing if we need to transform url path: BEFORE: {} > {}", requestContext.getMethod(), proxyUrlPath);
         EndPointTransformConfig cfg = endpointTransformer.getEndpointTransformConfig(requestContext.getMethod(), proxyUrlPath, "BEFORE");
         if (cfg != null) {
@@ -319,7 +319,7 @@ public class PreFilter implements ContainerRequestFilter {
      * @return client ip if contained in one of the headers above and unknown if not found in the headers
      */
     private String getClientIp(ContainerRequestContext requestContext) {
-        // Vérifier les headers de proxy
+        // VÃ©rifier les headers de proxy
         String xForwardedFor = requestContext.getHeaderString("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
             return xForwardedFor.split(",")[0].trim();
@@ -339,10 +339,10 @@ public class PreFilter implements ContainerRequestFilter {
      * @param requestContext the container request context to validate
      */
     private void validateRequest(ContainerRequestContext requestContext) {
-        // Validation de sécurité basique
+        // Validation de sÃ©curitÃ© basique
         String userAgent = requestContext.getHeaderString("User-Agent");
         if (userAgent != null && userAgent.toLowerCase().contains("bot")) {
-            LOG.warn("Requête suspecte détectée (bot): " + userAgent);
+            LOG.warn("RequÃªte suspecte dÃ©tectÃ©e (bot): " + userAgent);
             // Optionnel : bloquer les bots
             // requestContext.abortWith(Response.status(Response.Status.FORBIDDEN).build());
         }
