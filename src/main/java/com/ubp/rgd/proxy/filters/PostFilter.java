@@ -59,7 +59,7 @@ public class PostFilter implements ContainerResponseFilter {
             return;
         }
 
-        String requestPath = requestContext.getUriInfo().getPath();
+        String requestPath = requestContext.getUriInfo().getPath().replaceAll("//", "/").toLowerCase();
 
         // if request is not a sub path of the proxy path
         if (!requestPath.startsWith(ProxyResource.PROXY_BASE_PATH)) {
@@ -67,7 +67,7 @@ public class PostFilter implements ContainerResponseFilter {
             return;
         }
 
-        String proxyUrlPath = requestPath.substring(ProxyResource.PROXY_BASE_PATH.length());
+        String proxyUrlPath = requestPath.substring(ProxyResource.PROXY_BASE_PATH.length()).replaceAll("//", "/").toLowerCase();
 
         // the caller may have asked for the payloads to be returned without any RPS transformation
         if (allowIgnoreTransformHeader && TransformBypass.isRequested(requestContext)) {
