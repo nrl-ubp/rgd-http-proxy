@@ -17,11 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Generates an rps_transform_config.json (the ProxyService transform configuration)
@@ -265,7 +261,7 @@ public class SwaggerTransformConfigGenerator {
     }
 
     private EndPointTransformConfig buildEndpointConfig(String pathTemplate, String method, JsonNode operation) {
-        boolean isGet = "get".equals(method);
+        boolean isGet = "get".equalsIgnoreCase(method);
         String when = isGet ? "AFTER" : "BEFORE";
 
         // GET -> protect the response payload; other verbs -> transform the request payload.
@@ -289,7 +285,18 @@ public class SwaggerTransformConfigGenerator {
         cfg.setEndpointMethods(List.of(method.toUpperCase()));
         cfg.setEndpointTransformWhen(when);
         cfg.setEntityTransformConfigs(entityConfigs);
-        // right-context and processing-context are intentionally left empty.
+
+        // right-context is always the same
+        cfg.setRightContextEvidences(new HashMap<>(Map.of(
+                "Target", "WDX1",
+                "Module", "WDX1Proxy",
+                "Right", "Transform")));
+
+        // Processing context depends on the BEFORE / AFTER flag
+        cfg.setProcessingContextEvidences(new HashMap<>(Map.of(
+                "Target", "WDX1",
+                "Module", "WDX1Proxy",
+                "Action", "BEFORE".equalsIgnoreCase(when) ? "Protect" : "Unprotect")));
 
         LOG.info(String.format("%-6s %-40s -> %s (%d sensitive field(s))",
                 method.toUpperCase(), pathTemplate, when, entityConfigs.size()));
