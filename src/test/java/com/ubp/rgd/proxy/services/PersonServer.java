@@ -111,4 +111,21 @@ public abstract class PersonServer {
 
         return server;
     }
+
+    public static void main(String... args) {
+        final String apiPathUrl = "/api/v1/persons/1";
+
+        HttpServer server = null;
+        try {
+            server = PersonServer.create(apiPathUrl);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        // Start the server
+        server.setExecutor(null); // Use the default executor
+        server.start();
+        LOG.info("TEST Mocking Server is running on http://localhost:37200/");
+
+    }
 }
