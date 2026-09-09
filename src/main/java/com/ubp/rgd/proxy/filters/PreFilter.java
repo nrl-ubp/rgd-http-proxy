@@ -119,10 +119,10 @@ public class PreFilter implements ContainerRequestFilter {
 
         // now check if we should transform payload BEFORE invoking proxified target url
         String proxyUrlPath = requestPath.substring(ProxyResource.PROXY_BASE_PATH.length()).replaceAll("//","/").toLowerCase();
-        LOG.info("Comparing if we need to transform url path: BEFORE: {} > {}", requestContext.getMethod(), proxyUrlPath);
+        LOG.info("PRE-FILTER: Comparing if we need to transform url path: BEFORE: {} > {}", requestContext.getMethod(), proxyUrlPath);
         EndPointTransformConfig cfg = endpointTransformer.getEndpointTransformConfig(requestContext.getMethod(), proxyUrlPath, "BEFORE");
         if (cfg != null) {
-            LOG.info("PRE filter: Transforming {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
+            LOG.info("PRE-FILTER: Transforming {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
 
             try {
                 InputStream is = requestContext.getEntityStream();
@@ -145,11 +145,11 @@ public class PreFilter implements ContainerRequestFilter {
                 InputStream modifiedInputStream = new ByteArrayInputStream(finalJson.getBytes(StandardCharsets.UTF_8));
                 requestContext.setEntityStream(modifiedInputStream);
             } catch (RPSTransformException e) {
-                LOG.error("PRE FILTER: Cannot transform response to tokenizer.", e);
+                LOG.error("PRE-FILTER: Cannot transform response to tokenizer.", e);
                 requestContext.abortWith(Response.status(500).entity(e.getMessage()).build());
             }
         } else {
-            LOG.info("No need to transform: {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
+            LOG.info("PRE-FILTER: No need to transform: {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
         }
     }
 
@@ -319,7 +319,7 @@ public class PreFilter implements ContainerRequestFilter {
      * @return client ip if contained in one of the headers above and unknown if not found in the headers
      */
     private String getClientIp(ContainerRequestContext requestContext) {
-        // VÃ©rifier les headers de proxy
+        // VÃƒÂ©rifier les headers de proxy
         String xForwardedFor = requestContext.getHeaderString("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
             return xForwardedFor.split(",")[0].trim();
@@ -339,10 +339,10 @@ public class PreFilter implements ContainerRequestFilter {
      * @param requestContext the container request context to validate
      */
     private void validateRequest(ContainerRequestContext requestContext) {
-        // Validation de sÃ©curitÃ© basique
+        // Validation de sÃƒÂ©curitÃƒÂ© basique
         String userAgent = requestContext.getHeaderString("User-Agent");
         if (userAgent != null && userAgent.toLowerCase().contains("bot")) {
-            LOG.warn("RequÃªte suspecte dÃ©tectÃ©e (bot): " + userAgent);
+            LOG.warn("RequÃƒÂªte suspecte dÃƒÂ©tectÃƒÂ©e (bot): " + userAgent);
             // Optionnel : bloquer les bots
             // requestContext.abortWith(Response.status(Response.Status.FORBIDDEN).build());
         }
