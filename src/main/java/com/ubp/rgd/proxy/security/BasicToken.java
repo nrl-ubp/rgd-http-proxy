@@ -1,368 +1,142 @@
-package com.ubp.rgd.proxy.filters;
+package com.ubp.rgd.proxy.security;
 
-import com.ubp.rgd.proxy.resources.ProxyResource;
-import com.ubp.rgd.proxy.security.BasicToken;
-import com.ubp.rgd.proxy.security.KerberosToken;
-import com.ubp.rgd.proxy.security.SecurityContext;
-import com.ubp.rgd.proxy.transform.config.EndPointTransformConfig;
-import com.ubp.rgd.proxy.transform.RPSEndPointTransformer;
-import com.ubp.rgd.proxy.transform.RPSTransformException;
+import com.sun.security.auth.module.Krb5LoginModule;
+import com.ubp.rgd.proxy.security.ldap.LdapClient;
+import io.quarkus.cache.Cache;
+import io.quarkus.cache.CacheName;
+import io.quarkus.cache.CaffeineCache;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.core.MultivaluedMap;
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.Provider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.util.List;
+import javax.naming.directory.DirContext;
+import javax.security.auth.Subject;
+import javax.security.auth.kerberos.KerberosTicket;
+import java.security.Principal;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
-/**
- * PreFilter is authenticating users against the proxy service.
- * Only authenticated users can use the proxy service.
- * If no authentication and users not in the authorized list are receiving a 403 response status code.
- * Secondly, the pre filter will transform payload of the request agains RegData RPS platform depending on the method
- * and endpoint path (target url)
- */
-@Provider
-public class PreFilter implements ContainerRequestFilter {
+@ApplicationScoped
+public class BasicToken extends SecurityToken {
 
-    private static final Logger LOG = LoggerFactory.getLogger(PreFilter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BasicToken.class);
 
-    @ConfigProperty(name = "proxy.prefilter.auth-enabled", defaultValue = "true")
-    String preFilterAuthEnabled;
+    private static final String basic = "BASIC ";
 
     /**
-     * Whether a caller is allowed to skip the RPS transformation with the
-     * {@value TransformBypass#HEADER_NAME} header.
+     * The ticket obtained after login against Active Directory.
      */
-    @ConfigProperty(name = "proxy.transform.allow-ignore-header", defaultValue = "true")
-    boolean allowIgnoreTransformHeader;
+    private KerberosTicket kerbTicket = null;
 
     @Inject
-    SecurityContext securityContext;
+    LdapClient ldapClient;
 
-    /**
-     * Kerberos token decoder and validator bean
-     */
     @Inject
-    KerberosToken krbToken;
+    @CacheName(("ubp_user_ad_groups"))
+    public Cache userAdGroupsCache;
 
-    /**
-     * Basic token decoder.
-     */
-    @Inject
-    BasicToken basicToken;
+    @ConfigProperty(name = "proxy.kerberos.service-principal-realm", defaultValue = KerberosConstants.DEFAULT_REALM)
+    String domainName;
 
-    /**
-     * Endpoint transformer bean to transform payload depending of the request method and path
-     */
-    @Inject
-    RPSEndPointTransformer endpointTransformer;
+    public BasicToken() {
+    }
 
     @Override
-    public void filter(ContainerRequestContext requestContext) throws IOException {
-        // add a timestamp to request to ease debugging
-        requestContext.setProperty("request.timestamp", LocalDateTime.now());
-
-        String requestPath = requestContext.getUriInfo().getPath().replaceAll("//", "/").toLowerCase();
-
-        // trace request
-        LOG.info("PRE-FILTER: {} {} du client {}",
-                requestContext.getMethod(),
-                requestPath,
-                getClientIp(requestContext));
-
-        // AuthN prefilter : always initialize the security context regardless of the API called
-        if (!"true".equalsIgnoreCase(preFilterAuthEnabled)) {
-            LOG.warn("Pre Filter AUTH is disabled by configuration. See proxy.prefilter.auth-enabled property in config file.");
-        } else {
-            handleAuthForRequest(requestContext);
+    public void decode(String b64RawToken) throws Exception {
+        String token = b64RawToken;
+        if (token.toUpperCase().startsWith(basic)) {
+            token = token.substring(basic.length());
         }
 
-        // add personalized header to ease debug
-        requestContext.getHeaders().add("X-Proxy-Processed", "true");
-        requestContext.getHeaders().add("X-Proxy-Timestamp", LocalDateTime.now().toString());
+        byte[] basicToken = Base64.getDecoder().decode(token);
+        String basicAuth = new String(basicToken);
+        String[] userPass = basicAuth.split(":");
 
-        // if request is not a sub path of the proxy path then do nothing
-        if (!requestPath.startsWith(ProxyResource.PROXY_BASE_PATH)) {
-            LOG.info("PRE-FILTER: Not the proxied path. Skipping filtering.");
-            return;
+        if (userPass.length != 2) {
+            LOG.error("Invalid basic auth provided. Cannot decode the user and password.");
+            throw new Exception("Invalid basic auth token provided. Cannot decode user and password.");
         }
 
-        // Personalized validation, eg authZ or any business related validation can occur in this method
-        validateRequest(requestContext);
+        this.userSubject = validateUserPass(userPass);
+        if (this.userSubject != null) {
+            this.user = userPass[0];
+            this.domainName = "CORP.UBP.CH";
+            this.hostname = "localhost";
 
-        // a caller may ask for the payloads to be forwarded without any RPS transformation
-        if (!allowIgnoreTransformHeader && TransformBypass.isPresent(requestContext)) {
-            LOG.warn("PRE-FILTER: {} was sent while the transform bypass is disabled by configuration."
-                    + " See the proxy.transform.allow-ignore-header property.", TransformBypass.HEADER_NAME);
-            requestContext.abortWith(Response.status(Response.Status.FORBIDDEN)
-                    .entity(String.format("The %s header is not allowed on this proxy.",
-                            TransformBypass.HEADER_NAME))
-                    .build());
-            return;
+            LOG.info("Now checking cache to get AD groups...");
+            // query the cache and populate if nothing found, otherwise use the cache
+            CompletableFuture<List<String>> futUserAdGroups = userAdGroupsCache.as(CaffeineCache.class).getIfPresent(this.user);
+            if (futUserAdGroups == null) {
+                LOG.info("User AD groups not found in cache. Requesting LDAP / AD for user: {}", this.user);
+                futUserAdGroups = getUserGroups(userPass[0], userPass[1]);
+                userAdGroupsCache.as(CaffeineCache.class).put(this.user, futUserAdGroups);
+            }
+            this.setRoles(new HashSet<>(futUserAdGroups.get()));
         }
+    }
 
-        if (TransformBypass.isRequested(requestContext)) {
-            LOG.info("PRE-FILTER: {} is set, forwarding {} > {} without any transformation.",
-                    TransformBypass.HEADER_NAME, requestContext.getMethod(), requestPath);
-            return;
-        }
+    private CompletableFuture<List<String>> getUserGroups(String user, String pass) {
+        return CompletableFuture.supplyAsync(() -> {
+            DirContext ctx = ldapClient.login(user, pass, this.domainName);
+            return ldapClient.listUserGroups(ctx, user);
+        });
+    }
 
-        // now check if we should transform payload BEFORE invoking proxified target url
-        String proxyUrlPath = requestPath.substring(ProxyResource.PROXY_BASE_PATH.length()).replaceAll("//","/").toLowerCase();
-        LOG.info("PRE-FILTER: Comparing if we need to transform url path: BEFORE: {} > {}", requestContext.getMethod(), proxyUrlPath);
-        EndPointTransformConfig cfg = endpointTransformer.getEndpointTransformConfig(requestContext.getMethod(), proxyUrlPath, "BEFORE");
-        if (cfg != null) {
-            LOG.info("PRE-FILTER: Transforming {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
+    private synchronized Subject validateUserPass(String[] userPass) {
+        try {
+            Subject subject = new Subject();
+            Krb5LoginModule krb5LoginModule = new Krb5LoginModule();
+            Map<String, String> optionMap = getKrb5LoginModuleOptionMap();
+            MockingCallbackHandler callbackHandler = new MockingCallbackHandler();
+            callbackHandler.setUser(userPass[0]);
+            callbackHandler.setPassword(userPass[1].toCharArray());
 
-            try {
-                InputStream is = requestContext.getEntityStream();
-                String originalBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            krb5LoginModule.initialize(subject, callbackHandler, new HashMap<String, String>(), optionMap);
 
-                // TODO can we have a pre filter without transforming the body?
-                if (originalBody.isEmpty()) {
-                    throw new RPSTransformException(String.format("Cannot transform BEFORE: %s : %s. Request's body is empty.", requestContext.getMethod(), proxyUrlPath));
+            if (!krb5LoginModule.login()) {
+                LOG.error("Could not login for user: {}", userPass[0]);
+                return null;
+            }
+
+            krb5LoginModule.commit();
+
+            for(Object obj: subject.getPrivateCredentials()) {
+                LOG.debug("Private creds: " + obj.getClass().getName());
+                if (obj instanceof KerberosTicket) {
+                    this.kerbTicket = (KerberosTicket)obj;
+                    LOG.debug("Kerb ticket client principal: " + this.kerbTicket.getClient().getName());
+                    LOG.debug("Kerb ticket server principal: " + this.kerbTicket.getServer().getName());
                 }
-
-                // request headers to transform
-                MultivaluedMap<String, String> requestHeaders =  requestContext.getHeaders();
-
-                // we can also transform the values of the query parameters
-                MultivaluedMap<String, String> requestParams = requestContext.getUriInfo().getQueryParameters();
-
-                // perform actual transformation
-                String finalJson = endpointTransformer.transform(originalBody, requestHeaders, requestParams, cfg);
-
-                InputStream modifiedInputStream = new ByteArrayInputStream(finalJson.getBytes(StandardCharsets.UTF_8));
-                requestContext.setEntityStream(modifiedInputStream);
-            } catch (RPSTransformException e) {
-                LOG.error("PRE-FILTER: Cannot transform response to tokenizer.", e);
-                requestContext.abortWith(Response.status(500).entity(e.getMessage()).build());
             }
-        } else {
-            LOG.info("PRE-FILTER: No need to transform: {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
-        }
-    }
 
-    /**
-     * Use Basic auth for client and server on the same server (aka localhost), or Kerberos
-     * if running on a server (client is on another machine)
-     * @param requestContext the ContainerRequestContext of this request.
-     * @see #handleBasicAuthForRequest(ContainerRequestContext)
-     * @see #handleBasicAuthForRequest(ContainerRequestContext)
-     */
-    private void handleAuthForRequest(ContainerRequestContext requestContext) {
-        if (isLocalRequest(requestContext)) {
-            handleBasicAuthForRequest(requestContext);
-        } else {
-            handleKerberosAuthForRequest(requestContext);
-        }
-    }
-
-    /**
-     * Performs a Basic auth against Kerberos. Use the Krb5LoginModule to login the user with username and password
-     * The context abort in case of incorrect credentials
-     * @param requestContext the container request context to get Authorization header
-     * @see #handleAuthForRequest(ContainerRequestContext)
-     */
-    private void handleBasicAuthForRequest(ContainerRequestContext requestContext) {
-        LOG.info("PRE-FILTER: BASIC auth {} {} du client {}",
-                requestContext.getMethod(),
-                requestContext.getUriInfo().getPath(),
-                getClientIp(requestContext));
-
-        List<String> authValues = requestContext.getHeaders().get("Authorization");
-        if (authValues == null) {
-            // failed authentication, try to negotiate with caller
-            Response basicNegoResp = getBasicNegociateResponse();
-            requestContext.abortWith(basicNegoResp);
-            return;
-        }
-
-        try {
-            String authHeader = authValues.getFirst();
-            basicToken.decode(authHeader);
-
-            if (basicToken.getUser() != null) {
-                securityContext.setToken(basicToken);
-                // Retain the authenticated user's Subject (holding the TGT) for the request so that
-                // downstream forwarding can obtain a client-to-service ticket as this user.
-                securityContext.setUserSubject(basicToken.getUserSubject());
-            } else {
-                // too bad, clear security context
-                securityContext.setToken(null);
-                // and try again!
-                Response basicNegoResp = getBasicNegociateResponse();
-                requestContext.abortWith(basicNegoResp);
+            for (Principal principal : subject.getPrincipals()) {
+                LOG.debug(principal.getClass().getName() + " = " + principal.getName());
             }
+
+            return subject;
         } catch (Exception ex) {
-            LOG.error("Cannot compute the security context in PRE filter.", ex);
-            Response respForbidden = Response.status(Response.Status.FORBIDDEN).entity("Invalid BASIC credentials.").build();
-            requestContext.abortWith(respForbidden);
+            LOG.error("Cannot validate BASIC user/pass against active directory.", ex);
+            return null;
         }
     }
 
-    /**
-     * Build and send an Unauthorized response with basic auth scheme and ream CORP.UBP.CH
-     * @return Response to send for an negotiate basic scheme
-     */
-    private Response getBasicNegociateResponse() {
-        Response.ResponseBuilder builder = Response.status(Response.Status.UNAUTHORIZED);
-        try {
-            builder.header("WWW-Authenticate", "Basic realm=\"CORP.UBP.CH\"");
-            builder.entity("Must provide auth token to use this service.");
-        } catch (Exception ex) {
-            builder = Response.serverError().entity("Cannot build auth headers for auth token exchange.");
-        }
+    private Map<String, String> getKrb5LoginModuleOptionMap() {
+        Map<String, String> optionMap = new HashMap<>();
 
-        return builder.build();
+        optionMap.put("doNotPrompt", "false");
+        optionMap.put("refreshKrb5Config", "true");
+        optionMap.put("useTicketCache", "true");
+        optionMap.put("renewTGT", "true");
+        optionMap.put("useKeyTab", "true");
+        optionMap.put("storeKey", "true");
+        optionMap.put("isInitiator", "true"); // needed for delegation
+        optionMap.put("debug", "false"); // trace will be printed on console
+        return optionMap;
     }
 
-    /**
-     * Performs authentication against kerberos using the ticket from the Authorization header
-     * @param requestContext the container request containing http request headers
-     * @see KerberosToken for more details on implementation
-     */
-    private void handleKerberosAuthForRequest(ContainerRequestContext requestContext) {
-        LOG.info("PRE-FILTER: KERBEROS auth {} {} of client {}",
-                requestContext.getMethod(),
-                requestContext.getUriInfo().getPath(),
-                getClientIp(requestContext));
-
-        // we ask the client for auth only if there is no Authorization header in the HTTP request.
-        List<String> authValues = requestContext.getHeaders().get("Authorization");
-        if (authValues == null || authValues.isEmpty()) {
-            Response respNegoKerb =  getKerberosNegociateResponse(null);
-            requestContext.abortWith(respNegoKerb);
-            return;
-        }
-
-        // we have authorization header with some kerberos ticket to validate.
-        // step 1 : validate the ticket from client  then send back our ticket
-        // step 2 : get the logged in user from the client new ticket and populated this info into the request object
-        try {
-            String base64Ticket = authValues.getFirst();
-            krbToken.decode(base64Ticket);
-
-            if (krbToken.getToken() != null) {
-                // valid user, set the context into the request
-                securityContext.setToken(krbToken);
-                securityContext.setUserSubject(krbToken.getUserSubject());
-                LOG.debug("User {} has {} roles configured.", krbToken.getUser(), krbToken.getRoles().size());
-            } else {
-                Response respNegoKerb = getKerberosNegociateResponse(krbToken.getServiceToken());
-                requestContext.abortWith(respNegoKerb);
-            }
-        } catch (Exception ex) {
-            LOG.error("Cannot validate ticket for authorization.", ex);
-            Response errorResp = Response.serverError().entity(String.format("Cannot validate ticket for authorization: %s", ex.getMessage())).build();
-            requestContext.abortWith(errorResp);
-        }
-    }
-
-    /**
-     * Build a HttpResponse with Unauthorized status code and asking negociation
-     * through the WWW-Authenticate header.
-     * @return HttpResponse to send back to client.
-     */
-    private Response getKerberosNegociateResponse(byte[] acceptedToken) {
-        Response.ResponseBuilder builder = Response.status(Response.Status.UNAUTHORIZED);
-        try {
-            String header = "Negotiate";
-            if (acceptedToken != null) {
-                String b64Token = new String(java.util.Base64.getEncoder().encode(acceptedToken));
-                header = String.format("%s %s", header, b64Token);
-            }
-
-            LOG.debug("Adding header: WWW-Authenticate: {}", header);
-            builder.header("WWW-Authenticate", header)
-                    .entity( "Must provide auth token to use this service.");
-        } catch (Exception ex) {
-            builder = Response.serverError().entity("Cannot build auth headers for auth token exchange.");
-        }
-
-        return builder.build();
-    }
-
-    /**
-     * Return true if the ip parameter is 127.0.0.1 or localhost
-     * @param ip the IP to test
-     * @return true if localhost and false otherwise
-     */
-    private boolean isLocalHost(String ip) {
-        return "127.0.0.1".equals(ip) || "localhost".equalsIgnoreCase((ip));
-    }
-
-    /**
-     * This metho is used to determine if the client is on the same machine (using localhost in the request)
-     * than the server. Used to decide if we use basic or kerberos ticket authentication
-     * @param ctx Container Request Context containng request http headers.
-     * @return true is the client is using the localhost or 127.0.0.1 ip to connect to the server.
-     */
-    private boolean isLocalRequest(ContainerRequestContext ctx) {
-        String host = ctx.getUriInfo().getRequestUri().getHost();
-        return isLocalHost(host);
-    }
-
-    /**
-     * Analyzes the X-Forward-For X-Real-IP headers that certain network equipments add when forwarding requests.
-     * @param requestContext the container request context that should contain the added headers
-     * @return client ip if contained in one of the headers above and unknown if not found in the headers
-     */
-    private String getClientIp(ContainerRequestContext requestContext) {
-        // VÃƒÂ©rifier les headers de proxy
-        String xForwardedFor = requestContext.getHeaderString("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-
-        String xRealIp = requestContext.getHeaderString("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp;
-        }
-
-        return "unknown";
-    }
-
-    /**
-     * Sample method to validate the request, for instance filtering user agents or validate the actual content length
-     * is coherent with the request. if anything goes wrong then the request context is aborted.
-     * @param requestContext the container request context to validate
-     */
-    private void validateRequest(ContainerRequestContext requestContext) {
-        // Validation de sÃƒÂ©curitÃƒÂ© basique
-        String userAgent = requestContext.getHeaderString("User-Agent");
-        if (userAgent != null && userAgent.toLowerCase().contains("bot")) {
-            LOG.warn("RequÃƒÂªte suspecte dÃƒÂ©tectÃƒÂ©e (bot): " + userAgent);
-            // Optionnel : bloquer les bots
-            // requestContext.abortWith(Response.status(Response.Status.FORBIDDEN).build());
-        }
-
-        // Validation de la taille du contenu
-        String contentLength = requestContext.getHeaderString("Content-Length");
-        if (contentLength != null) {
-            try {
-                long length = Long.parseLong(contentLength);
-                if (length > 10_000_000) { // 10MB max
-                    LOG.warn("Request with too large body contents: " + length + " bytes");
-                    requestContext.abortWith(
-                            Response.status(Response.Status.REQUEST_ENTITY_TOO_LARGE)
-                                    .entity("Too large entity size")
-                                    .build()
-                    );
-                }
-            } catch (NumberFormatException e) {
-                LOG.warn("Content-Length is invalid: " + contentLength);
-            }
-        }
+    public KerberosTicket getKerbTicket() {
+        return this.kerbTicket;
     }
 }
