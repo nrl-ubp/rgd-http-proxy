@@ -5,6 +5,7 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.Message;
 import com.ubp.rgd.proxy.services.FlightSqlDetokenizeService;
 import com.ubp.rgd.proxy.transform.config.FlightSqlColumnMapping;
+import org.apache.arrow.adapter.jdbc.JdbcParameterBinder;
 import org.apache.arrow.adapter.jdbc.JdbcToArrow;
 import org.apache.arrow.adapter.jdbc.JdbcToArrowConfig;
 import org.apache.arrow.adapter.jdbc.JdbcToArrowConfigBuilder;
@@ -30,6 +31,7 @@ import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.WriteChannel;
 import org.apache.arrow.vector.ipc.message.MessageSerializer;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.apache.arrow.vector.util.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +41,7 @@ import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.ParameterMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -162,12 +165,14 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
         try {
             String handle = UUID.randomUUID().toString();
             Schema datasetSchema = describeQuery(context.peerIdentity(), request.getQuery());
+            Schema parameterSchema = describeParameters(context.peerIdentity(), request.getQuery());
             statements.put(handle, new StatementHandle(context.peerIdentity(), request.getQuery()));
 
             FlightSql.ActionCreatePreparedStatementResult result =
                     FlightSql.ActionCreatePreparedStatementResult.newBuilder()
                             .setPreparedStatementHandle(ByteString.copyFromUtf8(handle))
                             .setDatasetSchema(ByteString.copyFrom(serializeSchema(datasetSchema)))
+                            .setParameterSchema(ByteString.copyFrom(serializeSchema(parameterSchema)))
                             .build();
             listener.onNext(new Result(Any.pack(result).toByteArray()));
             listener.onCompleted();
@@ -205,7 +210,7 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
         try {
             StatementHandle statement =
                     requireStatement(command.getPreparedStatementHandle().toStringUtf8());
-            executeQuery(statement.peerIdentity(), statement.query(), listener);
+            executeQuery(statement.peerIdentity(), statement.query(), statement.parameters(), listener);
         } catch (RuntimeException e) {
             listener.error(e);
         }
@@ -221,7 +226,31 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
                 StatementHandle statement = requireStatement(handle);
                 try (Connection connection = connectionManager.openConnection(statement.peerIdentity());
                      PreparedStatement preparedStatement = connection.prepareStatement(statement.query())) {
-                    long updated = preparedStatement.executeLargeUpdate();
+
+                    long updated = 0;
+                    boolean bound = false;
+                    // The client sends its parameters as Arrow batches: one row per execution, which
+                    // is what turns a multi-row insert into a single round trip.
+                    while (flightStream.next()) {
+                        VectorSchemaRoot root = flightStream.getRoot();
+                        if (root.getFieldVectors().isEmpty() || root.getRowCount() == 0) {
+                            continue;
+                        }
+                        bound = true;
+                        JdbcParameterBinder binder = JdbcParameterBinder
+                                .builder(preparedStatement, root).bindAll().build();
+                        while (binder.next()) {
+                            preparedStatement.addBatch();
+                        }
+                        for (long count : preparedStatement.executeLargeBatch()) {
+                            // A driver may answer SUCCESS_NO_INFO (-2) rather than a row count.
+                            updated += count > 0 ? count : 0;
+                        }
+                    }
+                    if (!bound) {
+                        // No parameters at all: the statement is executed as-is, as it always was.
+                        updated = preparedStatement.executeLargeUpdate();
+                    }
                     sendUpdateResult(ackStream, updated);
                 }
             } catch (SQLException e) {
@@ -237,10 +266,25 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
     public Runnable acceptPutPreparedStatementQuery(FlightSql.CommandPreparedStatementQuery command,
                                                     CallContext context, FlightStream flightStream,
                                                     StreamListener<PutResult> ackStream) {
-        // Parameter binding is not supported: the proxied query is executed as-is.
+        String handle = command.getPreparedStatementHandle().toStringUtf8();
         return () -> {
-            ackStream.onNext(PutResult.empty());
-            ackStream.onCompleted();
+            try {
+                StatementHandle statement = requireStatement(handle);
+                List<Object[]> parameters = new ArrayList<>();
+                while (flightStream.next()) {
+                    VectorSchemaRoot root = flightStream.getRoot();
+                    if (!root.getFieldVectors().isEmpty() && root.getRowCount() > 0) {
+                        parameters.addAll(readParameters(root));
+                    }
+                }
+                // Kept for the getStream call that executes this statement right after.
+                statement.setParameters(parameters);
+                // The client replaces its handle with the one carried by this result, so it must be
+                // echoed back: an empty PutResult would leave the client with an empty handle.
+                sendPreparedStatementResult(ackStream, handle);
+            } catch (RuntimeException e) {
+                ackStream.onError(e);
+            }
         };
     }
 
@@ -337,9 +381,18 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
      * Execute the query on the proxied database and stream the detokenized Arrow batches back.
      */
     private void executeQuery(String peerIdentity, String query, ServerStreamListener listener) {
+        executeQuery(peerIdentity, query, List.of(), listener);
+    }
+
+    /**
+     * Execute the query on the proxied database, binding the given parameter row when the statement
+     * was prepared with placeholders, and stream the detokenized Arrow batches back.
+     */
+    private void executeQuery(String peerIdentity, String query, List<Object[]> parameters,
+                              ServerStreamListener listener) {
         LOG.debug("Flight SQL executing for {}: {}", peerIdentity, query);
         try (Connection connection = connectionManager.openConnection(peerIdentity);
-             PreparedStatement statement = connection.prepareStatement(query);
+             PreparedStatement statement = prepare(connection, query, parameters);
              ResultSet resultSet = statement.executeQuery()) {
 
             ResultSetMetaData metaData = resultSet.getMetaData();
@@ -401,6 +454,69 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
                     .withDescription("Cannot prepare the query: " + e.getMessage())
                     .withCause(e).toRuntimeException();
         }
+    }
+
+    /**
+     * Prepare the query without executing it to derive the Arrow schema of its parameters.
+     *
+     * <p>The Flight SQL clients rely on this schema to know how many parameters they may bind: when
+     * it is missing they assume the statement takes none and reject every {@code setXxx} call. A
+     * JDBC driver that cannot describe its parameters yields an empty schema, which leaves the
+     * parameter-less statements working exactly as they did before.</p>
+     */
+    private Schema describeParameters(String peerIdentity, String query) {
+        try (Connection connection = connectionManager.openConnection(peerIdentity);
+             PreparedStatement statement = connection.prepareStatement(query)) {
+            ParameterMetaData metaData = statement.getParameterMetaData();
+            if (metaData == null || metaData.getParameterCount() == 0) {
+                return new Schema(List.of());
+            }
+            return JdbcToArrowUtils.jdbcToArrowSchema(metaData, JdbcToArrowUtils.getUtcCalendar());
+        } catch (SQLException | RuntimeException e) {
+            LOG.debug("Cannot describe the parameters of the query, assuming it takes none: {}",
+                    query, e);
+            return new Schema(List.of());
+        }
+    }
+
+    /**
+     * Copy the parameter rows of an Arrow batch out into plain Java objects, so that they outlive
+     * the {@link FlightStream} they were read from.
+     */
+    private static List<Object[]> readParameters(VectorSchemaRoot root) {
+        List<Object[]> rows = new ArrayList<>();
+        int columns = root.getFieldVectors().size();
+        for (int rowIndex = 0; rowIndex < root.getRowCount(); rowIndex++) {
+            Object[] row = new Object[columns];
+            for (int column = 0; column < columns; column++) {
+                Object value = root.getVector(column).getObject(rowIndex);
+                // Arrow hands text back as Text, which no JDBC driver knows how to bind.
+                row[column] = value instanceof Text text ? text.toString() : value;
+            }
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    /**
+     * Prepare the query and bind the first parameter row on it, if any. A query yields a single
+     * result set, so only the first row of the parameter batch can be honoured.
+     */
+    private static PreparedStatement prepare(Connection connection, String query,
+                                             List<Object[]> parameters) throws SQLException {
+        PreparedStatement statement = connection.prepareStatement(query);
+        try {
+            if (!parameters.isEmpty()) {
+                Object[] row = parameters.getFirst();
+                for (int i = 0; i < row.length; i++) {
+                    statement.setObject(i + 1, row[i]);
+                }
+            }
+        } catch (SQLException | RuntimeException e) {
+            statement.close();
+            throw e;
+        }
+        return statement;
     }
 
     private StatementHandle requireStatement(String handle) {
@@ -539,6 +655,23 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
             ackStream.onCompleted();
         }
     }
+    /**
+     * Acknowledge a prepared statement {@code doPut} by echoing its handle back. The Flight SQL
+     * clients overwrite their own handle with the one found in this result before calling
+     * {@code getFlightInfo}, so omitting it leaves them with an empty handle.
+     */
+    private void sendPreparedStatementResult(StreamListener<PutResult> ackStream, String handle) {
+        FlightSql.DoPutPreparedStatementResult result = FlightSql.DoPutPreparedStatementResult
+                .newBuilder()
+                .setPreparedStatementHandle(ByteString.copyFromUtf8(handle))
+                .build();
+        try (ArrowBuf buffer = allocator.buffer(result.getSerializedSize())) {
+            buffer.writeBytes(result.toByteArray());
+            ackStream.onNext(PutResult.metadata(buffer));
+            ackStream.onCompleted();
+        }
+    }
+
     private static List<String> asRow(String... values) {
         List<String> row = new ArrayList<>(values.length);
         for (String value : values) {
@@ -551,8 +684,40 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
         return value == null ? "" : value;
     }
 
-    /** A statement prepared by a {@code getFlightInfo} / {@code createPreparedStatement} call. */
-    private record StatementHandle(String peerIdentity, String query) {
+    /**
+     * A statement prepared by a {@code getFlightInfo} / {@code createPreparedStatement} call.
+     *
+     * <p>Prepared queries receive their parameters through a separate {@code doPut} call, before the
+     * {@code getStream} call that actually executes them. The bound parameters are therefore kept
+     * here, as plain Java objects rather than Arrow buffers, so that their lifetime is not tied to
+     * the allocator of the {@link FlightStream} they came from.</p>
+     */
+    private static final class StatementHandle {
+
+        private final String peerIdentity;
+        private final String query;
+        private volatile List<Object[]> parameters = List.of();
+
+        private StatementHandle(String peerIdentity, String query) {
+            this.peerIdentity = peerIdentity;
+            this.query = query;
+        }
+
+        private String peerIdentity() {
+            return peerIdentity;
+        }
+
+        private String query() {
+            return query;
+        }
+
+        private List<Object[]> parameters() {
+            return parameters;
+        }
+
+        private void setParameters(List<Object[]> parameters) {
+            this.parameters = parameters == null ? List.of() : parameters;
+        }
     }
 
     /** Reads rows of UTF-8 values out of the JDBC database metadata. */

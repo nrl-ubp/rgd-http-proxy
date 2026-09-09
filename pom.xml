@@ -90,6 +90,15 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Flight SQL JDBC client driver, used by the PersonFlightSqlLoader tool and its tests
+             to talk to our own Flight SQL server the way a real client would. -->
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>flight-sql-jdbc-driver</artifactId>
+            <version>${arrow.version}</version>
+            <scope>test</scope>
+        </dependency>
+
 
         <!-- WDX1 transliteration lib for CONCAT service-->
         <dependency>
@@ -285,4 +294,34 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Runs the Flight SQL person loader against a running proxy, for example:
+             mvn -Pflight-sql-loader test-compile exec:exec -Dloader.args="[switches]"
+             exec:exec is used rather than exec:java because Apache Arrow needs the forked JVM to be
+             started with the add-opens flag on java.base/java.nio. -->
+        <profile>
+            <id>flight-sql-loader</id>
+            <properties>
+                <loader.args></loader.args>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <configuration>
+                            <executable>java</executable>
+                            <classpathScope>test</classpathScope>
+                            <!-- commandlineArgs (not an arguments list) so that the switches passed
+                                 in loader.args are split on whitespace instead of being handed over
+                                 as a single argument. -->
+                            <commandlineArgs>--add-opens=java.base/java.nio=ALL-UNNAMED -classpath %classpath com.ubp.rgd.tools.PersonFlightSqlLoader ${loader.args}</commandlineArgs>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
