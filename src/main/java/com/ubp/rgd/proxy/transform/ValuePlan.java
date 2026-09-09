@@ -143,8 +143,9 @@ public final class ValuePlan {
     private String requireTransformed(RPSValue rpsValue) throws RPSTransformException {
         String transformed = rpsValue.getTransformed();
         if (transformed == null) {
+            String rpsErrMsg = rpsValue.getError() != null ? rpsValue.getError().getMessage() : "Unknown RPS error message";
             throw new RPSTransformException(
-                    String.format("Transformation did not return a value for: %s. Error: %s", rpsValue.getOriginal(), rpsValue.getError().getMessage()));
+                    String.format("Transformation did not return a value for: %s. Error: %s", rpsValue.getOriginal(), rpsErrMsg));
         }
         return transformed;
     }
