@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @ApplicationScoped
@@ -152,13 +153,19 @@ public class RPSEndPointTransformer {
         ProcessingContext processingContext = new ProcessingContext();
 
         cfg.getProcessingContextEvidences().forEach((key, value) -> {
-            Evidence evidence = new Evidence();
-            evidence.setName(key);
-            evidence.setValue(value);
+            Evidence evidence = new Evidence(key, value);
             processingContext.addEvidence(evidence);
 
             LOG.debug("Processing context: {} = {}", key, value);
         });
+
+        boolean needAction = processingContext.getEvidences().stream().filter(ev -> "Action".equalsIgnoreCase(ev.getName())).toList().isEmpty();
+        if (needAction) {
+            String actionValue = "BEFORE".equalsIgnoreCase(cfg.getEndpointTransformWhen()) ? "Protect" : "Unprotect";
+            Evidence actionEvidence = new Evidence("Action", actionValue);
+            processingContext.addEvidence(actionEvidence);
+            LOG.warn("No action evidence for processing context. Add {} ", actionValue);
+        }
 
         return processingContext;
     }
@@ -171,7 +178,12 @@ public class RPSEndPointTransformer {
      * @return the action, or {@code null} when the configuration declares none
      */
     private static String getAction(EndPointTransformConfig cfg) {
-        return cfg.getProcessingContextEvidences().get("Action");
+        String action = cfg.getProcessingContextEvidences().get("Action");
+        if (action == null) {
+            action = "BEFORE".equalsIgnoreCase(cfg.getEndpointTransformWhen()) ? "Protect" : "Unprotect";
+            LOG.warn("Action is not present in the endpoint transformation transform context. Using default: {}", action);
+        }
+        return action;
     }
 
     /**
@@ -185,7 +197,7 @@ public class RPSEndPointTransformer {
      */
     public EndPointTransformConfig getEndpointTransformConfig(String apiMethod, String apiPath, String when) {
         List<EndPointTransformConfig> matched = endpointConfig.stream().filter(cfg -> cfg.getEndpointMethods().contains(apiMethod.toUpperCase()) &&
-                Pattern.matches(cfg.getEndpointPath(), apiPath) && cfg.getEndpointTransformWhen().equalsIgnoreCase(when)).toList();
+                Pattern.matches(cfg.getEndpointPath().toLowerCase(), apiPath) && cfg.getEndpointTransformWhen().equalsIgnoreCase(when)).toList();
 
         if (matched.size() > 1) {
             LOG.warn("DUPLICATE endpoint transformation configuration detected for {} > {} > {} ", apiMethod, when, apiPath);
@@ -237,8 +249,10 @@ public class RPSEndPointTransformer {
 
             EntityTransformConfig attrCfg = attributesConfigs.get(jsonPath);
             RPSMapping mapping = new RPSMapping(attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName());
+
             // Compiled once per configured path, not once per matched value.
             Pattern extractionPattern = ValuePlan.extractionPattern(action, attrCfg.getExtractRegex());
+            Pattern datePattern = Pattern.compile(EntityTransformConfig.DATE_REGEXP);
 
             for (int i = 0; i < values.size(); i++) {
                 Object rawValue = values.get(i);
@@ -249,13 +263,15 @@ public class RPSEndPointTransformer {
                 }
                 boolean numeric = rawValue instanceof Number;
                 String oldValue = String.valueOf(rawValue);
+                Matcher dateMatcher = datePattern.matcher(oldValue);
+                boolean isDate = dateMatcher.find();
                 LOG.debug("RPSValue: {} = {} : {}", oldValue, attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName());
 
                 // A number carries neither separators nor RG{} tokens, so it is always transformed
                 // as a whole. Segmenting it would break the tokenization of numeric values.
-                ValuePlan plan = ValuePlan.of(mapping, oldValue, numeric ? null : extractionPattern);
-                if (plan.rpsValues().isEmpty()) {
-                    LOG.debug("Nothing to transform in the value of json path {}, leaving it untouched.",
+                ValuePlan plan = ValuePlan.of(mapping, oldValue, numeric ? null : isDate ? datePattern : extractionPattern);
+                if (plan.rpsValues().isEmpty() && !numeric && !isDate) {
+                    LOG.debug("Did not recognize the token form as string, nor numeric, nor date. Assuming it is kept as is. {}",
                             matchedPaths.get(i));
                     continue;
                 }
