@@ -93,6 +93,127 @@ Two things to keep in mind:
 The same rules apply to `FileTransformService`. Headers and query parameters have no `extract-regex`
 and are unaffected.
 
+## Choosing the transformer
+
+The transformer is pluggable. Everything that does not depend on the tokenizer — reading the
+configuration, locating the values in the payload, the headers and the query parameters, and writing
+the results back — lives in `AbstractEndPointTransformer`; an implementation only provides
+`transformData()`.
+
+| `proxy.transform.impl` | Implementation | What it does |
+| --- | --- | --- |
+| `RPS` (default) | `RPSEndPointTransformer` | Tokenizes through the RegData RPS engine. |
+| `FPE` | `FPEEndPointTransformer` | Encrypts locally with Format Preserving Encryption, no engine needed. |
+
+`EndPointTransformerProducer` produces the configured one. Each implementation carries a
+`@TransformerImpl` qualifier, so application code simply injects `EndPointTransformer` and gets the
+selected one. An **unknown value stops the application at startup** rather than falling back to a
+default: running with another tokenizer than the intended one would protect the data the wrong way.
+
+The property drives **every transformation of the application** — the proxy filters, the
+`/transform` endpoint, the file transformation, the Flight SQL detokenization and the WDX1 concat
+utility — which all share the same transformer instance. A value protected by one is therefore
+readable by the others, and no class calls a tokenizer directly any more.
+
+What a token looks like is asked to the transformer rather than hardcoded, which matters for Flight
+SQL: result sets carry no transformation configuration, so the tokens have to be recognised by their
+shape. An RPS token has a fixed layout (a two character mapping index, an eight character identifier,
+then the value), while an FPE token is `RG{` + a two character header + the ciphertext, and may carry
+separators inside it. The two patterns have nothing in common.
+
+> Values protected by one implementation **cannot** be unprotected by the other. Do not change this
+> property on an environment that already holds protected data.
+>
+> The **token mapping index** tier of the Flight SQL detokenization (`FlightSqlTokenIndexResolver`) is
+> **RPS only**. It reads a mapping index from the first two characters of a token, which the RegData
+> engine writes but FPE does not: those two characters are the radix marker and the padding length.
+> The tier is therefore skipped under FPE, and a column resolved by neither a column mapping nor a
+> data mapping is returned as is.
+>
+> `WDX1UtilsService` detokenizes the tokens of the **upstream WDX1 system**. If those were produced by
+> another tokenizer than the configured one, they cannot be read back, and the service now **fails
+> explicitly** rather than building its concatenation key from the raw token text.
+>
+> The `birthDateToken` of a concat request is detokenized like any other token; the **clear** date it
+> yields is expected in the `dateFormat` declared by the request (default `yyyy-MM-dd`) and is then
+> rendered as the `YYYYMMDD` component of the key. A clear value that is not a valid date in that
+> format is rejected.
+
+### Format Preserving Encryption
+
+`FPEEndPointTransformer` encrypts with **FF1** (NIST SP 800-38G), provided by BouncyCastle. There is
+no engine to reach and no token vault: protecting and unprotecting are the two directions of the same
+deterministic cipher.
+
+```properties
+proxy.transform.impl=FPE
+# hex encoded AES key: 32, 48 or 64 characters for 128, 192 or 256 bits
+proxy.transform.fpe.key=2b7e151628aed2a6abf7158809cf4f3c
+```
+
+The key committed in `config/application.properties` is a **development key**. On a real environment
+provide it through the `PROXY_TRANSFORM_FPE_KEY` environment variable, which Quarkus reads natively,
+and never commit the real one. It is decoded at startup, so a wrong key fails immediately instead of
+on the first payload carrying sensitive data — and only when `FPE` is actually selected.
+
+#### Token format
+
+The ciphertext is wrapped like an RPS token, because `RG{...}` is how `ValuePlan` locates the values
+to unprotect. Inside the braces comes a two character header:
+
+```
+RG{ <radix marker> <padding length> <ciphertext> }
+```
+
+| Marker | Radix | Alphabet | Minimum length |
+| --- | --- | --- | --- |
+| `N` | 10 | `0123456789` | 6 |
+| `A` | 62 | `0-9A-Za-z` | 4 |
+
+The **radix marker** is needed because the alphabet is picked from the clear value when protecting,
+but has to be recovered from the ciphertext when unprotecting. A value made of digits keeps the
+numeric alphabet, so its ciphertext stays digits.
+
+Only the characters of the alphabet are encrypted: separators, punctuation and accented letters stay
+exactly where they were, which is what makes the transformation reversible.
+
+```
+"12-34"  ->  "RG{N483-9204}"          the dash never moved
+"Jean-Claude DUSSE"                   with extract-regex, each word gets its own token
+```
+
+#### Short values are padded, not skipped
+
+FF1 refuses any input with fewer than a million possible values, that is 6 digits or 4 alphanumeric
+characters. Skipping shorter values would leave most numbers in the clear, so a short value is padded
+with `0` up to the minimum, encrypted, and the number of padding characters is written into the token
+header. Unprotecting decrypts and drops the filler:
+
+```
+"42"  ->  padded to "420000"  ->  RG{N4839204}
+                                      ^ four padding characters were added
+```
+
+`0` is index 0 in both alphabets, so one filler serves both. Padding is deterministic, so equal values
+still give equal tokens, and leading zeros survive: `007` comes back as `007`.
+
+#### Behaviour worth knowing
+
+- **Encryption is deterministic.** The same value always gives the same token within a property. That
+  is a property of FPE, not a defect: it is what lets encrypted values be compared and joined.
+- **Each property has its own tweak**, derived from `SHA-256("ClassName.PropertyName")`. The same
+  value encrypts differently in two properties, so a token cannot be correlated across fields — and a
+  token can only be read back with the tweak of the property it belongs to.
+- **Numeric JSON fields become strings.** A tokenized number normally stays a JSON number, but
+  `RG{...}` is not one, so such a field is written back as a string and the existing warning is
+  logged. This is inherent to the wrapped token format.
+- **A value carrying `{` or `}` is left unchanged**, with a warning: a brace kept in place inside the
+  token would close it early and the value would come back truncated.
+- **Values that cannot be transformed are left unchanged** rather than failing the request: an empty
+  value, a value holding no character of the alphabet (`---`), a value that is not a token when
+  unprotecting, and an RPS token, whose header is not an FPE one. Mixed payloads are therefore never
+  corrupted.
+
 ## Bypassing the transformation
 
 A caller can ask the proxy to forward a request **without any RPS transformation**, whatever the
@@ -203,7 +324,8 @@ Each string column of a result set is resolved in this order:
    that are not plain `RG{...}` tokens.
 3. **Token mapping index — last resort.** The `RG{...}` tokens that no data mapping claimed are
    resolved from the **mapping index they carry in their own value**, so a token can be detokenized
-   even when nothing at all was configured for it.
+   even when nothing at all was configured for it. This tier is **RPS only** and is skipped when
+   `proxy.transform.impl=FPE`, whose tokens carry no mapping index.
 
 The segment sent to the engine is the **whole match**, not a capturing group, so a regex may use
 capturing or named groups freely for readability.

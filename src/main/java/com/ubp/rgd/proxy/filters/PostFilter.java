@@ -3,7 +3,7 @@ package com.ubp.rgd.proxy.filters;
 import com.ubp.rgd.proxy.resources.ProxyResource;
 import com.ubp.rgd.proxy.security.SecurityContext;
 import com.ubp.rgd.proxy.transform.config.EndPointTransformConfig;
-import com.ubp.rgd.proxy.transform.RPSEndPointTransformer;
+import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -37,7 +37,7 @@ public class PostFilter implements ContainerResponseFilter {
     private SecurityContext securityContext;
 
     @Inject
-    RPSEndPointTransformer endPointTransformer;
+    EndPointTransformer endPointTransformer;
 
     /**
      * Whether a caller is allowed to skip the RPS transformation with the

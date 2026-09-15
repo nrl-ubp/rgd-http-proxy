@@ -1,6 +1,6 @@
 package com.ubp.rgd.proxy.filters;
 
-import com.ubp.rgd.proxy.transform.RPSEndPointTransformer;
+import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.config.EndPointTransformConfig;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.MultivaluedHashMap;
@@ -32,12 +32,12 @@ import static org.mockito.Mockito.when;
 class PreFilterBypassTest {
 
     private PreFilter filter;
-    private RPSEndPointTransformer transformer;
+    private EndPointTransformer transformer;
     private ContainerRequestContext requestContext;
 
     @BeforeEach
     void setUp() {
-        transformer = mock(RPSEndPointTransformer.class);
+        transformer = mock(EndPointTransformer.class);
         filter = new PreFilter();
         filter.endpointTransformer = transformer;
         filter.allowIgnoreTransformHeader = true;

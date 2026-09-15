@@ -1,5 +1,6 @@
 package com.ubp.rgd.proxy.flightsql;
 
+import com.ubp.rgd.proxy.transform.RPSEndPointTransformer;
 import ch.regdata.rps.engine.client.mapping.RPSMapping;
 import ch.regdata.rps.engine.client.model.api.value.RPSValue;
 import com.ubp.rgd.tools.PersonFlightSqlLoader;
@@ -51,6 +52,7 @@ class PersonFlightSqlLoaderTest {
         config.setDataMappings(List.of());
 
         FlightSqlDetokenizeService detokenizeService = new LocalDetokenizeService();
+        detokenizeService.setTransformer(new RPSEndPointTransformer());
         detokenizeService.setMappingConfig(config);
         detokenizeService.loadTokenIndexMappings();
 

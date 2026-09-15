@@ -1,19 +1,12 @@
 package com.ubp.rgd.proxy.services;
 
-import ch.regdata.rps.engine.client.Context;
 import ch.regdata.rps.engine.client.Evidence;
-import ch.regdata.rps.engine.client.RPSEngine;
-import ch.regdata.rps.engine.client.RPSEngineConverter;
-import ch.regdata.rps.engine.client.RequestContext;
 import ch.regdata.rps.engine.client.enginecontext.ProcessingContext;
-import ch.regdata.rps.engine.client.enginecontext.RPSEngineContextResolver;
 import ch.regdata.rps.engine.client.enginecontext.RightContext;
-import ch.regdata.rps.engine.client.http.HttpClientEngineProvider;
 import ch.regdata.rps.engine.client.mapping.RPSMapping;
-import ch.regdata.rps.engine.client.model.api.value.IRPSValue;
 import ch.regdata.rps.engine.client.model.api.value.RPSValue;
 import com.ubp.rgd.proxy.security.SecurityContext;
-import com.ubp.rgd.proxy.transform.RPSClientEngineProvider;
+import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
 import com.ubp.rgd.proxy.transform.api.TransformRequest;
 import com.ubp.rgd.proxy.transform.api.TransformResponse;
@@ -36,13 +29,20 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Service exposing generic RPS transformation (Protect / Unprotect) of a list of value sets.
+ * Service exposing generic transformation (Protect / Unprotect) of a list of value sets.
  * <p>
  * Each {@link TransformSet} carries an {@code action}, a {@code target} and a {@code jurisdiction}
- * code that are passed to the RPS engine as processing-context evidences ({@code Action},
+ * code that are passed to the engine as processing-context evidences ({@code Action},
  * {@code Target}, {@code Jurisdiction}). A value may optionally carry an {@code extractRegExp} used,
  * for protection, to tokenize the value group by group while preserving its original format. For
  * unprotection, tokens are located by their fixed delimiter ({@code RG{...}}).
+ * <p>
+ * The values are handed over to the {@link EndPointTransformer} selected by
+ * {@code proxy.transform.impl}, so this endpoint protects the data exactly like the proxy filters
+ * do: with {@code RPS} it calls the RegData engine, with {@code FPE} it encrypts locally. A value
+ * protected through this endpoint is therefore readable through the proxy, and the other way round.
+ *
+ * @see EndPointTransformer
  */
 @ApplicationScoped
 public class TransformService {
@@ -59,8 +59,12 @@ public class TransformService {
     String rightContextRight;
 
 
+    /**
+     * The transformer selected by {@code proxy.transform.impl}, so the endpoint protects the data
+     * exactly like the proxy filters do rather than being tied to one implementation.
+     */
     @Inject
-    RPSClientEngineProvider rpsClientEngineProvider;
+    EndPointTransformer transformer;
 
     @Inject
     SecurityContext securityContext;
@@ -79,10 +83,10 @@ public class TransformService {
     String preFilterAuthEnabled;
 
     /**
-     * Transform every value of every set through the RPS engine.
+     * Transform every value of every set through the configured transformer.
      * @param request the transform request (list of sets)
      * @return the transformed values grouped per set, in input order
-     * @throws RPSTransformException on invalid input or any RPS transformation error
+     * @throws RPSTransformException on invalid input or any transformation error
      */
     public TransformResponse transform(TransformRequest request) throws RPSTransformException {
         // Only authorized SPNs / usernames may call the transform endpoint.
@@ -183,8 +187,7 @@ public class TransformService {
 
         if (!flatValues.isEmpty()) {
             try {
-                transformData(
-                        rpsClientEngineProvider.getClientEngineProvider(),
+                transformer.transformData(
                         flatValues.toArray(new RPSValue[0]),
                         buildRightContext(),
                         buildProcessingContext(set));
@@ -249,20 +252,6 @@ public class TransformService {
         evidence.setName(name);
         evidence.setValue(value);
         processingContext.addEvidence(evidence);
-    }
-
-    /**
-     * Calls the RPS engine to transform the given values in place.
-     */
-    private void transformData(HttpClientEngineProvider engineProvider, IRPSValue<String>[] values,
-                               Context rightContext, ProcessingContext processingContext) throws Exception {
-        RPSEngine engine = new RPSEngine(engineProvider,
-                new RPSEngineConverter(),
-                new RPSEngineContextResolver(null));
-
-        RequestContext requestContext = new RequestContext(engine, new RPSEngineContextResolver(null));
-        requestContext.withRequest(values, rightContext, processingContext, null);
-        requestContext.transform();
     }
 
 }

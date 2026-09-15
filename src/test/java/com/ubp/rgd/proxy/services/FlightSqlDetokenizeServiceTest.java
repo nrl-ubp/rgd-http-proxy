@@ -2,6 +2,7 @@ package com.ubp.rgd.proxy.services;
 
 import ch.regdata.rps.engine.client.mapping.RPSMapping;
 import com.ubp.rgd.proxy.services.FlightSqlDetokenizeService.Segment;
+import com.ubp.rgd.proxy.transform.RPSEndPointTransformer;
 import com.ubp.rgd.proxy.transform.config.FlightSqlColumnMapping;
 import com.ubp.rgd.proxy.transform.config.FlightSqlDataMapping;
 import com.ubp.rgd.proxy.transform.config.FlightSqlMappingConfig;
@@ -21,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.ResultSetMetaData;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -33,6 +35,9 @@ class FlightSqlDetokenizeServiceTest {
 
     private static final RPSMapping MAPPING = new RPSMapping("Person", "shortString");
 
+    /** What a token looks like for the RPS transformer, which these tests run against. */
+    private static final Pattern RPS_TOKENS = RPSEndPointTransformer.TOKEN_PATTERN;
+
     private BufferAllocator allocator;
     private FlightSqlDetokenizeService service;
 
@@ -40,6 +45,7 @@ class FlightSqlDetokenizeServiceTest {
     void setUp() {
         allocator = new RootAllocator(Long.MAX_VALUE);
         service = new FlightSqlDetokenizeService();
+        service.setTransformer(new RPSEndPointTransformer());
         service.setMappingConfig(new FlightSqlMappingConfig());
         // Built outside of CDI, so @PostConstruct never ran: populate the token index table by hand.
         service.loadTokenIndexMappings();
@@ -58,7 +64,7 @@ class FlightSqlDetokenizeServiceTest {
     @Test
     void shouldExtractEveryTokenOfAValue() {
         List<Segment> segments =
-                FlightSqlDetokenizeService.extractTokens("RG{AB12345678aa} de RG{CD87654321bb}", MAPPING);
+                FlightSqlDetokenizeService.extractTokens("RG{AB12345678aa} de RG{CD87654321bb}", MAPPING, RPS_TOKENS);
 
         assertEquals(2, segments.size());
         assertEquals("RG{AB12345678aa}", segments.get(0).rpsValue().getOriginal());
@@ -70,15 +76,15 @@ class FlightSqlDetokenizeServiceTest {
 
     @Test
     void shouldExtractNoTokenFromAClearValue() {
-        assertTrue(FlightSqlDetokenizeService.extractTokens("John Doe", MAPPING).isEmpty());
-        assertTrue(FlightSqlDetokenizeService.extractTokens("", MAPPING).isEmpty());
+        assertTrue(FlightSqlDetokenizeService.extractTokens("John Doe", MAPPING, RPS_TOKENS).isEmpty());
+        assertTrue(FlightSqlDetokenizeService.extractTokens("", MAPPING, RPS_TOKENS).isEmpty());
     }
 
     @Test
     void shouldRebuildAValuePreservingItsFormat() {
         String original = "Mr RG{AB12345678aa} RG{CD87654321bb} (Geneva)";
         String rebuilt = FlightSqlDetokenizeService.rebuild(original,
-                FlightSqlDetokenizeService.extractTokens(original, MAPPING), List.of("John", "Doe"));
+                FlightSqlDetokenizeService.extractTokens(original, MAPPING, RPS_TOKENS), List.of("John", "Doe"));
 
         assertEquals("Mr John Doe (Geneva)", rebuilt);
     }
@@ -87,7 +93,7 @@ class FlightSqlDetokenizeServiceTest {
     void shouldRebuildAValueWithRegexSpecialCharactersInTheClearValue() {
         String original = "RG{AB12345678aa}";
         String rebuilt = FlightSqlDetokenizeService.rebuild(original,
-                FlightSqlDetokenizeService.extractTokens(original, MAPPING), List.of("a\\b$c"));
+                FlightSqlDetokenizeService.extractTokens(original, MAPPING, RPS_TOKENS), List.of("a\\b$c"));
 
         assertEquals("a\\b$c", rebuilt);
     }
@@ -96,7 +102,7 @@ class FlightSqlDetokenizeServiceTest {
     void shouldLeaveTheValueUnchangedWhenNoClearValueIsAvailable() {
         String original = "RG{AB12345678aa}";
         assertEquals(original, FlightSqlDetokenizeService.rebuild(original,
-                FlightSqlDetokenizeService.extractTokens(original, MAPPING), List.of()));
+                FlightSqlDetokenizeService.extractTokens(original, MAPPING, RPS_TOKENS), List.of()));
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -180,8 +186,7 @@ class FlightSqlDetokenizeServiceTest {
 
     @Test
     void shouldResolveATokenFromItsMappingIndexWhenNoDataMappingMatches() {
-        List<Segment> segments = FlightSqlDetokenizeService.extractImplicitSegments(
-                "Mr RG{Bx12345678aa}", List.of());
+        List<Segment> segments = FlightSqlDetokenizeService.extractImplicitSegments("Mr RG{Bx12345678aa}", List.of(), RPS_TOKENS, true);
 
         assertEquals(1, segments.size());
         assertEquals("RG{Bx12345678aa}", segments.get(0).rpsValue().getOriginal());
@@ -192,15 +197,14 @@ class FlightSqlDetokenizeServiceTest {
     @Test
     void shouldLeaveATokenCarryingAnUndeclaredMappingIndexUntouched() {
         // AB does not follow the encoding, and Ax is not declared in the hardcoded table.
-        assertTrue(FlightSqlDetokenizeService.extractImplicitSegments(
-                "RG{AB12345678aa} RG{Ax12345678aa}", List.of()).isEmpty());
+        assertTrue(FlightSqlDetokenizeService.extractImplicitSegments("RG{AB12345678aa} RG{Ax12345678aa}",
+                List.of(), RPS_TOKENS, true).isEmpty());
     }
 
     @Test
     void shouldPreferTheDataMappingOverTheMappingIndexOfAToken() {
-        List<Segment> segments = FlightSqlDetokenizeService.extractImplicitSegments(
-                "RG{Bx12345678aa}",
-                List.of(dataMapping("RG\\{[^}]+\\}", "Other", "number")));
+        List<Segment> segments = FlightSqlDetokenizeService.extractImplicitSegments("RG{Bx12345678aa}",
+                List.of(dataMapping("RG\\{[^}]+\\}", "Other", "number")), RPS_TOKENS, true);
 
         assertEquals(1, segments.size());
         assertEquals("Other", segments.get(0).rpsValue().getMapping().getClassName());
@@ -208,9 +212,8 @@ class FlightSqlDetokenizeServiceTest {
 
     @Test
     void shouldCombineDataMappedAndIndexMappedSegmentsInOrder() {
-        List<Segment> segments = FlightSqlDetokenizeService.extractImplicitSegments(
-                "on 3011-04-05 for RG{Bx12345678aa}",
-                List.of(dataMapping("\\d{4}-\\d{2}-\\d{2}", "Person", "birthDate")));
+        List<Segment> segments = FlightSqlDetokenizeService.extractImplicitSegments("on 3011-04-05 for RG{Bx12345678aa}",
+                List.of(dataMapping("\\d{4}-\\d{2}-\\d{2}", "Person", "birthDate")), RPS_TOKENS, true);
 
         assertEquals(2, segments.size());
         assertEquals("3011-04-05", segments.get(0).rpsValue().getOriginal());
@@ -224,7 +227,7 @@ class FlightSqlDetokenizeServiceTest {
         List<Segment> claimed = List.of(new Segment(0, 16, null));
 
         assertTrue(FlightSqlDetokenizeService
-                .extractIndexMappedSegments("RG{Bx12345678aa}", claimed).isEmpty());
+                .extractIndexMappedSegments("RG{Bx12345678aa}", claimed, RPS_TOKENS).isEmpty());
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -357,6 +360,7 @@ class FlightSqlDetokenizeServiceTest {
             }
         };
 
+        failing.setTransformer(new RPSEndPointTransformer());
         failing.loadTokenIndexMappings();
 
         assertEquals(0, FlightSqlTokenIndexResolver.size());
