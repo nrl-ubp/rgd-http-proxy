@@ -1,5 +1,6 @@
 package com.ubp.rgd.proxy.flightsql;
 
+import com.ubp.rgd.proxy.transform.RPSEndPointTransformer;
 import ch.regdata.rps.engine.client.mapping.RPSMapping;
 import ch.regdata.rps.engine.client.model.api.value.RPSValue;
 import com.ubp.rgd.proxy.services.FlightSqlDetokenizeService;
@@ -71,6 +72,7 @@ class FlightSqlJdbcDriverTest {
                 new FlightSqlDataMapping("RG\\{EF[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+\\}", "Person", "city")));
 
         detokenizeService = new LocalDetokenizeService();
+        detokenizeService.setTransformer(new RPSEndPointTransformer());
         detokenizeService.setMappingConfig(config);
 
         FlightSqlConnectionManager connectionManager = new FlightSqlConnectionManager();

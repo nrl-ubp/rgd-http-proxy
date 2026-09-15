@@ -2,17 +2,12 @@ package com.ubp.rgd.proxy.services;
 
 import ch.regdata.rps.engine.client.Context;
 import ch.regdata.rps.engine.client.Evidence;
-import ch.regdata.rps.engine.client.RPSEngine;
-import ch.regdata.rps.engine.client.RPSEngineConverter;
-import ch.regdata.rps.engine.client.RequestContext;
 import ch.regdata.rps.engine.client.enginecontext.ProcessingContext;
-import ch.regdata.rps.engine.client.enginecontext.RPSEngineContextResolver;
 import ch.regdata.rps.engine.client.enginecontext.RightContext;
-import ch.regdata.rps.engine.client.http.HttpClientEngineProvider;
 import ch.regdata.rps.engine.client.mapping.RPSMapping;
-import ch.regdata.rps.engine.client.model.api.value.IRPSValue;
 import ch.regdata.rps.engine.client.model.api.value.RPSValue;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.RPSClientEngineProvider;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
 import com.ubp.rgd.proxy.transform.config.FlightSqlColumnMapping;
@@ -44,32 +39,39 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Detokenizes, through the RPS engine, the tokens found in the Arrow record batches produced by the
- * Flight SQL server.
+ * Detokenizes the tokens found in the Arrow record batches produced by the Flight SQL server, with
+ * the transformer selected by {@code proxy.transform.impl}.
  * <p>
  * Result sets carry no RPS metadata, so the RPS class / property names are resolved from the mapping
  * file configured by {@code proxy.flight-sql.mapping-config-file}, in this order:
  * <ol>
  *     <li><b>Column mappings</b> — when the table/column of a result-set column is mapped, its
- *     {@code RG{...}} tokens (see {@link #TOKEN_PATTERN}) are all detokenized with that mapping.</li>
+ *     tokens are all detokenized with that mapping.</li>
  *     <li><b>Data mappings</b> — otherwise the column is detokenized implicitly: each configured
  *     regex locates its own segments in the values and supplies their class / property names.</li>
  *     <li><b>Token mapping index</b> — the tokens no data mapping claimed are finally resolved from
  *     the mapping index they carry in their first two characters, see
- *     {@link FlightSqlTokenIndexResolver}.</li>
+ *     {@link FlightSqlTokenIndexResolver}. This tier is <b>RPS only</b>: it is skipped when the
+ *     selected transformer produces tokens without a mapping index.</li>
  * </ol>
+ * What a token looks like is asked to the transformer rather than hardcoded, because it differs from
+ * one implementation to the next.
+ * <p>
  * Only the variable-width (string) columns are scanned, and all the tokens of a record batch are
- * batched into a single engine call.
+ * batched into a single transformation call.
  */
 @ApplicationScoped
 public class FlightSqlDetokenizeService {
 
     private static final Logger LOG = LoggerFactory.getLogger(FlightSqlDetokenizeService.class);
 
-    /** Fixed delimiter pattern of an RPS token ({@code RG{...}}). */
-    // static final Pattern TOKEN_PATTERN = Pattern.compile("RG\\{[^}]*\\}");
-    static final Pattern TOKEN_PATTERN = Pattern.compile("(RG\\{[A-Z2-7x]{2}[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+\\})");
+    @Inject
+    EndPointTransformer transformer;
 
+    /**
+     * Only kept to build the token mapping index table, which is an RPS notion: the transformation
+     * itself goes through {@link #transformer}.
+     */
     @Inject
     RPSClientEngineProvider rpsClientEngineProvider;
 
@@ -118,6 +120,13 @@ public class FlightSqlDetokenizeService {
      */
     public void loadTokenIndexMappings() {
         FlightSqlTokenIndexResolver.clear();
+        if (!transformer.supportsTokenMappingIndex()) {
+            // The tokens of the selected transformer carry no mapping index, so the table could never
+            // be consulted. Building it would only be misleading.
+            LOG.info("The selected transformer produces tokens without a mapping index."
+                    + " The token mapping index tier is disabled.");
+            return;
+        }
         try {
             initTokenIndexMappings(transformClientId);
             LOG.info("Loaded {} token mapping index(es) for the RPS client {}",
@@ -163,6 +172,15 @@ public class FlightSqlDetokenizeService {
 
     public void setMappingConfig(FlightSqlMappingConfig mappingConfig) {
         this.mappingConfig = mappingConfig;
+    }
+
+    /**
+     * Set the transformer, for the callers building this service outside of CDI.
+     *
+     * @param transformer the transformer to detokenize with
+     */
+    public void setTransformer(EndPointTransformer transformer) {
+        this.transformer = transformer;
     }
 
     /**
@@ -255,8 +273,7 @@ public class FlightSqlDetokenizeService {
      */
     protected void transformValues(List<RPSValue> values) throws RPSTransformException {
         try {
-            transformData(rpsClientEngineProvider.getClientEngineProvider(),
-                    values.toArray(new RPSValue[0]),
+            transformer.transformData(values.toArray(new RPSValue[0]),
                     buildRightContext(),
                     buildProcessingContext());
         } catch (Exception e) {
@@ -284,8 +301,9 @@ public class FlightSqlDetokenizeService {
             }
             String value = new String(vector.get(row), StandardCharsets.UTF_8);
             List<Segment> segments = rpsMapping != null
-                    ? extractTokens(value, rpsMapping)
-                    : extractImplicitSegments(value, dataMappings);
+                    ? extractTokens(value, rpsMapping, transformer.tokenPattern())
+                    : extractImplicitSegments(value, dataMappings, transformer.tokenPattern(),
+                            transformer.supportsTokenMappingIndex());
             if (!segments.isEmpty()) {
                 cells.add(new CellPlan(row, value, segments));
             }
@@ -297,11 +315,12 @@ public class FlightSqlDetokenizeService {
      * Locate the {@code RG{...}} tokens of a value, all mapped to the same RPS class / property. Used
      * for the columns having an explicit {@link FlightSqlColumnMapping}.
      *
+     * @param tokenPattern what a token looks like for the selected transformer
      * @return the segments to detokenize, in order of appearance (empty when the value holds no token)
      */
-    static List<Segment> extractTokens(String value, RPSMapping mapping) {
+    static List<Segment> extractTokens(String value, RPSMapping mapping, Pattern tokenPattern) {
         List<Segment> segments = new ArrayList<>();
-        Matcher matcher = TOKEN_PATTERN.matcher(value);
+        Matcher matcher = tokenPattern.matcher(value);
         while (matcher.find()) {
             segments.add(new Segment(matcher.start(), matcher.end(),
                     new RPSValue(mapping, matcher.group())));
@@ -316,11 +335,16 @@ public class FlightSqlDetokenizeService {
      *
      * @param value the value to scan
      * @param dataMappings the usable data mappings, in declaration order
+     * @param tokenPattern what a token looks like for the selected transformer
+     * @param useMappingIndex whether the tokens carry a mapping index that can be read
      * @return the segments to detokenize, ordered by position (empty when nothing was resolved)
      */
-    static List<Segment> extractImplicitSegments(String value, List<FlightSqlDataMapping> dataMappings) {
+    static List<Segment> extractImplicitSegments(String value, List<FlightSqlDataMapping> dataMappings,
+                                                 Pattern tokenPattern, boolean useMappingIndex) {
         List<Segment> segments = new ArrayList<>(extractDataMappedSegments(value, dataMappings));
-        segments.addAll(extractIndexMappedSegments(value, segments));
+        if (useMappingIndex) {
+            segments.addAll(extractIndexMappedSegments(value, segments, tokenPattern));
+        }
         segments.sort(Comparator.comparingInt(Segment::start));
         return segments;
     }
@@ -332,12 +356,14 @@ public class FlightSqlDetokenizeService {
      *
      * @param value the value to scan
      * @param claimed the segments already located by the data mappings; an overlapping token is skipped
+     * @param tokenPattern what a token looks like for the selected transformer
      * @return the resolved segments (empty when no token carries a declared mapping index)
      * @see FlightSqlTokenIndexResolver
      */
-    static List<Segment> extractIndexMappedSegments(String value, List<Segment> claimed) {
+    static List<Segment> extractIndexMappedSegments(String value, List<Segment> claimed,
+                                                    Pattern tokenPattern) {
         List<Segment> segments = new ArrayList<>();
-        Matcher matcher = TOKEN_PATTERN.matcher(value);
+        Matcher matcher = tokenPattern.matcher(value);
         while (matcher.find()) {
             Segment candidate = new Segment(matcher.start(), matcher.end(), null);
             if (claimed.stream().anyMatch(candidate::overlaps)) {
@@ -471,6 +497,15 @@ public class FlightSqlDetokenizeService {
     private ProcessingContext buildProcessingContext() {
         ProcessingContext context = new ProcessingContext();
         addEvidences(context, mappingConfig.getProcessingContextEvidences());
+
+        boolean hasAction = context.getEvidences().stream()
+                .anyMatch(evidence -> "Action".equalsIgnoreCase(evidence.getName()));
+        if (!hasAction) {
+            // This service only ever reads data back, and a transformer takes its direction from the
+            // action: without it nothing would be detokenized.
+            LOG.warn("The Flight SQL mapping configuration declares no Action evidence. Using Unprotect.");
+            context.addEvidence(new Evidence("Action", "Unprotect"));
+        }
         return context;
     }
 
@@ -485,19 +520,6 @@ public class FlightSqlDetokenizeService {
         });
     }
 
-    /**
-     * Calls the RPS engine to transform the given values in place.
-     */
-    private void transformData(HttpClientEngineProvider engineProvider, IRPSValue<String>[] values,
-                               Context rightContext, ProcessingContext processingContext) throws Exception {
-        RPSEngine engine = new RPSEngine(engineProvider,
-                new RPSEngineConverter(),
-                new RPSEngineContextResolver(null));
-
-        RequestContext requestContext = new RequestContext(engine, new RPSEngineContextResolver(null));
-        requestContext.withRequest(values, rightContext, processingContext, null);
-        requestContext.transform();
-    }
 
     /** All the cells of a single column that hold at least one segment to detokenize. */
     private record ColumnPlan(int columnIndex, List<CellPlan> cells) {

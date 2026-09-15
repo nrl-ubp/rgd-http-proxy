@@ -5,7 +5,7 @@ import com.ubp.rgd.proxy.security.BasicToken;
 import com.ubp.rgd.proxy.security.KerberosToken;
 import com.ubp.rgd.proxy.security.SecurityContext;
 import com.ubp.rgd.proxy.transform.config.EndPointTransformConfig;
-import com.ubp.rgd.proxy.transform.RPSEndPointTransformer;
+import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -65,7 +65,7 @@ public class PreFilter implements ContainerRequestFilter {
      * Endpoint transformer bean to transform payload depending of the request method and path
      */
     @Inject
-    RPSEndPointTransformer endpointTransformer;
+    EndPointTransformer endpointTransformer;
 
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
