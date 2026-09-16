@@ -120,16 +120,30 @@ public class FileTransformService {
     /**
      * Process a specific configuration synchronously.
      * This method can be called from external applications for on-demand processing.
+     * <p>
+     * A configuration driven by the scheduler cannot be triggered: the server is already processing
+     * it every {@code scan-interval-seconds}, so an on-demand run would walk the same directory at
+     * the same time as a scheduled one, and neither run would then describe what really happened. A
+     * configuration meant to be driven by a batch must declare an interval of 0.
+     *
      * @param configName the name of the configuration to process
-     * @return number of files processed
+     * @return the outcome of the run
      * @throws IllegalArgumentException if configuration not found
+     * @throws IllegalStateException if the configuration is driven by the scheduler
      */
-    public int processConfigurationByName(String configName) {
+    public FileTransformResult processConfigurationByName(String configName) {
         FileTransformConfig config = fileTransformConfigs.stream()
                 .filter(cfg -> cfg.getName().equals(configName))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Configuration not found: " + configName));
-        
+
+        if (config.getScanIntervalSeconds() > 0) {
+            throw new IllegalStateException(String.format(
+                    "Configuration '%s' is processed by the scheduler every %d seconds and cannot be"
+                            + " triggered on demand. Set its scan-interval-seconds to 0 to drive it from a batch.",
+                    configName, config.getScanIntervalSeconds()));
+        }
+
         LOG.info("Processing configuration '{}' synchronously", configName);
         return processConfiguration(config);
     }
@@ -147,10 +161,12 @@ public class FileTransformService {
                 .toList();
     }
 
-    private int processConfiguration(FileTransformConfig config) {
+    private FileTransformResult processConfiguration(FileTransformConfig config) {
         Path sourceDir = Paths.get(config.getSourceDirectory());
         Pattern filePattern = Pattern.compile(config.getFilePattern());
-        final int[] processedCount = {0};
+        final int[] succeeded = {0};
+        final int[] failed = {0};
+        final List<String> errors = new ArrayList<>();
 
         try {
             Files.walkFileTree(sourceDir, new SimpleFileVisitor<Path>() {
@@ -165,8 +181,13 @@ public class FileTransformService {
 
                     // Check if file matches the pattern
                     if (filePattern.matcher(fileName).matches()) {
-                        processFile(file, config);
-                        processedCount[0]++;
+                        String failure = processFile(file, config);
+                        if (failure == null) {
+                            succeeded[0]++;
+                        } else {
+                            failed[0]++;
+                            errors.add(failure);
+                        }
                     }
 
                     return FileVisitResult.CONTINUE;
@@ -175,17 +196,34 @@ public class FileTransformService {
                 @Override
                 public FileVisitResult visitFileFailed(@NonNull Path file, @NonNull IOException exc) {
                     LOG.warn("Failed to visit file: {}", file, exc);
+                    errors.add(String.format("%s: cannot be read - %s", file, exc.getMessage()));
                     return FileVisitResult.CONTINUE;
                 }
             });
         } catch (IOException e) {
+            // Not being able to scan the source directory is a failed run, not an empty one.
             LOG.error("Error scanning directory: {}", sourceDir, e);
+            errors.add(String.format("Cannot scan the source directory %s - %s", sourceDir, e.getMessage()));
         }
-        
-        return processedCount[0];
+
+        FileTransformResult result =
+                new FileTransformResult(config.getName(), succeeded[0], failed[0], List.copyOf(errors));
+
+        LOG.info("Configuration '{}' finished with status {}: {} succeeded, {} failed",
+                config.getName(), result.status(), result.filesSucceeded(), result.filesFailed());
+
+        return result;
     }
 
-    private void processFile(Path file, FileTransformConfig config) {
+    /**
+     * Transform one file: rename it to mark it in progress, write the result to the target
+     * directory, and move it to the error directory if anything goes wrong.
+     *
+     * @param file   the file to process
+     * @param config the configuration being run
+     * @return {@code null} when the file was transformed, otherwise a message describing the failure
+     */
+    private String processFile(Path file, FileTransformConfig config) {
         Path wipFile = null;
         
         try {
@@ -212,10 +250,13 @@ public class FileTransformService {
             Files.delete(wipFile);
 
             LOG.info("Successfully processed file: {} -> {}", file.getFileName(), targetPath);
+            return null;
 
         } catch (Exception e) {
             LOG.error("Error processing file: {}", file.getFileName(), e);
-            
+
+            String failure = String.format("%s: %s", file.getFileName(), e.getMessage());
+
             // Move file to error directory
             if (wipFile != null && Files.exists(wipFile)) {
                 try {
@@ -225,8 +266,12 @@ public class FileTransformService {
                     LOG.info("Moved failed file to error directory: {}", errorPath);
                 } catch (IOException moveException) {
                     LOG.error("Failed to move file to error directory: {}", wipFile, moveException);
+                    failure += String.format(" (and could not be moved to the error directory: %s)",
+                            moveException.getMessage());
                 }
             }
+
+            return failure;
         }
     }
 
