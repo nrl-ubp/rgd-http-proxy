@@ -242,6 +242,46 @@ class ProxyServiceTest {
     }
 
     /**
+     * A batch step must not report success when the server could not transform the files, which is
+     * what used to happen: a failed file was counted as processed and the run reported "success".
+     */
+    @Test
+    public void testTriggerFileProtectionFailureIsReported() throws Exception {
+        FileTransformConfig config = fileTransformConfig("protect_random_persons");
+
+        Path sourceDir = Paths.get(config.getSourceDirectory());
+        Path errorDir = Paths.get(config.getErrorDirectory());
+        Files.createDirectories(sourceDir);
+        Files.createDirectories(errorDir);
+
+        String fixtureName = "trigger-broken-" + System.currentTimeMillis() + ".json";
+        Path fixture = sourceDir.resolve(fixtureName);
+        Files.writeString(fixture, "{ this is not json");
+
+        int exitCode = FileTransformTriggerApp.run(
+                new String[]{"protect_random_persons", "localhost:" + RestAssured.port});
+
+        assertNotEquals(0, exitCode, "A run that could not transform its file must not report success");
+
+        Path failed = errorDir.resolve(fixtureName);
+        assertTrue(Files.exists(failed), "The failed file should be in the error directory");
+
+        Files.deleteIfExists(failed);
+    }
+
+    /**
+     * A configuration polled by the server cannot be driven by a batch as well, otherwise the two
+     * would process the same directory at the same time.
+     */
+    @Test
+    public void testTriggerRefusesAScheduledConfiguration() throws Exception {
+        int exitCode = FileTransformTriggerApp.run(
+                new String[]{"scheduled_persons", "localhost:" + RestAssured.port});
+
+        assertEquals(7, exitCode, "A scheduled configuration should be refused");
+    }
+
+    /**
      * Read a configuration from the same file the server is configured with, to keep the test and the
      * server in agreement about the directories being used.
      */

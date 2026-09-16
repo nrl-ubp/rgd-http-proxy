@@ -20,6 +20,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -90,9 +91,9 @@ class FileTransformServiceFPETest {
      * @param cfg          the configuration to run
      * @param relativePath the path of the file, relative to the source directory
      * @param content      the content of the file
-     * @return the number of files processed
+     * @return the outcome of the run
      */
-    private int run(FileTransformConfig cfg, String relativePath, String content) throws IOException {
+    private FileTransformResult run(FileTransformConfig cfg, String relativePath, String content) throws IOException {
         Path file = Path.of(cfg.getSourceDirectory()).resolve(relativePath);
         Files.createDirectories(file.getParent());
         Files.writeString(file, content);
@@ -110,7 +111,7 @@ class FileTransformServiceFPETest {
     void protectsAFile() throws Exception {
         FileTransformConfig cfg = config("protect", "Protect");
 
-        assertEquals(1, run(cfg, "person.json", "{\"name\":\"Bernadette\",\"account\":\"123456789\"}"));
+        assertEquals(1, run(cfg, "person.json", "{\"name\":\"Bernadette\",\"account\":\"123456789\"}").filesSucceeded());
 
         String result = read(cfg, "person.json");
         assertTrue(result.contains("RG{"), "Values should be protected: " + result);
@@ -133,7 +134,7 @@ class FileTransformServiceFPETest {
         String protectedContent = read(protect, "person.json");
 
         FileTransformConfig unprotect = config("rt-unprotect", "Unprotect");
-        assertEquals(1, run(unprotect, "person.json", protectedContent));
+        assertEquals(1, run(unprotect, "person.json", protectedContent).filesSucceeded());
 
         String clear = read(unprotect, "person.json");
         assertTrue(clear.contains("Bernadette"), clear);
@@ -146,7 +147,15 @@ class FileTransformServiceFPETest {
     void movesAFailedFileToTheErrorDirectory() throws Exception {
         FileTransformConfig cfg = config("error", "Protect");
 
-        run(cfg, "broken.json", "{ this is not json");
+        FileTransformResult result = run(cfg, "broken.json", "{ this is not json");
+
+        // The run must report the failure: a file that failed is not a file that was processed.
+        assertEquals(0, result.filesSucceeded());
+        assertEquals(1, result.filesFailed());
+        assertTrue(result.hasFailures());
+        assertEquals("error", result.status());
+        assertEquals(1, result.errors().size(), "The failure should be described: " + result.errors());
+        assertTrue(result.errors().getFirst().contains("broken.json"), result.errors().getFirst());
 
         assertTrue(Files.exists(Path.of(cfg.getErrorDirectory(), "broken.json")),
                 "The failed file should be in the error directory");
@@ -157,12 +166,72 @@ class FileTransformServiceFPETest {
     }
 
     @Test
+    @DisplayName("A run mixing good and bad files is reported as partial")
+    void reportsAPartialRun() throws Exception {
+        FileTransformConfig cfg = config("partial", "Protect");
+
+        Path source = Path.of(cfg.getSourceDirectory());
+        Files.writeString(source.resolve("good.json"), "{\"name\":\"Bernadette\",\"account\":\"1\"}");
+        Files.writeString(source.resolve("broken.json"), "{ this is not json");
+
+        service.fileTransformConfigs = List.of(cfg);
+        FileTransformResult result = service.processConfigurationByName(cfg.getName());
+
+        assertEquals(1, result.filesSucceeded());
+        assertEquals(1, result.filesFailed());
+        assertEquals(2, result.filesProcessed());
+        assertEquals("partial", result.status());
+    }
+
+    @Test
+    @DisplayName("A configuration matching no file is reported as empty, not as a success")
+    void reportsAnEmptyRun() throws Exception {
+        FileTransformConfig cfg = config("empty", "Protect");
+
+        service.fileTransformConfigs = List.of(cfg);
+        FileTransformResult result = service.processConfigurationByName(cfg.getName());
+
+        assertEquals(0, result.filesProcessed());
+        assertTrue(result.isEmpty());
+        assertFalse(result.hasFailures());
+        assertEquals("empty", result.status());
+    }
+
+    @Test
+    @DisplayName("A source directory that cannot be scanned is a failed run, not an empty one")
+    void reportsAnUnscannableSourceDirectory() throws Exception {
+        FileTransformConfig cfg = config("unscannable", "Protect");
+        Files.delete(Path.of(cfg.getSourceDirectory()));
+
+        service.fileTransformConfigs = List.of(cfg);
+        FileTransformResult result = service.processConfigurationByName(cfg.getName());
+
+        assertTrue(result.hasFailures(), "A missing source directory must not look like an empty run");
+        assertFalse(result.isEmpty());
+        assertEquals("error", result.status());
+    }
+
+    @Test
+    @DisplayName("A configuration driven by the scheduler cannot be triggered on demand")
+    void refusesToTriggerAScheduledConfiguration() throws Exception {
+        FileTransformConfig cfg = config("scheduled", "Protect");
+        cfg.setScanIntervalSeconds(30);
+
+        service.fileTransformConfigs = List.of(cfg);
+
+        IllegalStateException thrown = assertThrows(IllegalStateException.class,
+                () -> service.processConfigurationByName(cfg.getName()));
+
+        assertTrue(thrown.getMessage().contains("scheduler"), thrown.getMessage());
+    }
+
+    @Test
     @DisplayName("The directory tree of the source is preserved in the target")
     void preservesTheDirectoryTree() throws Exception {
         FileTransformConfig cfg = config("tree", "Protect");
         cfg.setPreserveDirectoryStructure(true);
 
-        assertEquals(1, run(cfg, "2026/09/person.json", "{\"name\":\"Bernadette\",\"account\":\"123456789\"}"));
+        assertEquals(1, run(cfg, "2026/09/person.json", "{\"name\":\"Bernadette\",\"account\":\"123456789\"}").filesSucceeded());
 
         assertTrue(read(cfg, "2026/09/person.json").contains("RG{"));
     }
@@ -199,7 +268,7 @@ class FileTransformServiceFPETest {
         cfg.setEntityTransformConfigs(Set.of());
 
         String content = "{\"name\":\"Bernadette\"}";
-        assertEquals(1, run(cfg, "person.json", content));
+        assertEquals(1, run(cfg, "person.json", content).filesSucceeded());
 
         assertEquals(content, read(cfg, "person.json"));
     }
