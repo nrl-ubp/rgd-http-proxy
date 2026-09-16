@@ -1,13 +1,13 @@
 [
   {
-    "name": "Person Data Protection",
+    "name": "protect_random_persons",
     "source-directory": "./data/source",
     "target-directory": "./data/target",
     "error-directory": "./data/error",
     "work-in-progress-suffix": ".processing",
     "file-pattern": ".*\\.json$",
     "preserve-directory-structure": true,
-    "scan-interval-seconds": 30,
+    "scan-interval-seconds": 0,
     "right-context": {
       "Target" : "WDX1",
       "Module": "WDX1Proxy",
@@ -20,34 +20,14 @@
     },
     "entity-transform-configs": [
       {
-        "json-path": "$.[*].lastName",
+        "json-path": "$.[*].LongName",
         "rps-class-name": "Person",
         "rps-property-name": "ShortString"
       },
       {
-        "json-path": "$.[*].firstName",
+        "json-path": "$.[*].ShortName",
         "rps-class-name": "Person",
         "rps-property-name": "ShortString"
-      },
-      {
-        "json-path": "$.[*].birthDate",
-        "rps-class-name": "Person",
-        "rps-property-name": "BirthDate"
-      },
-      {
-        "json-path": "$.lastName",
-        "rps-class-name": "Person",
-        "rps-property-name": "ShortString"
-      },
-      {
-        "json-path": "$.firstName",
-        "rps-class-name": "Person",
-        "rps-property-name": "ShortString"
-      },
-      {
-        "json-path": "$.birthDate",
-        "rps-class-name": "Person",
-        "rps-property-name": "BirthDate"
       }
     ]
   },
@@ -72,34 +52,14 @@
     },
     "entity-transform-configs": [
       {
-        "json-path": "$.[*].lastName",
+        "json-path": "$.[*].LongName",
         "rps-class-name": "Person",
         "rps-property-name": "ShortString"
       },
       {
-        "json-path": "$.[*].firstName",
+        "json-path": "$.[*].ShortName",
         "rps-class-name": "Person",
         "rps-property-name": "ShortString"
-      },
-      {
-        "json-path": "$.[*].birthDate",
-        "rps-class-name": "Person",
-        "rps-property-name": "BirthDate"
-      },
-      {
-        "json-path": "$.lastName",
-        "rps-class-name": "Person",
-        "rps-property-name": "ShortString"
-      },
-      {
-        "json-path": "$.firstName",
-        "rps-class-name": "Person",
-        "rps-property-name": "ShortString"
-      },
-      {
-        "json-path": "$.birthDate",
-        "rps-class-name": "Person",
-        "rps-property-name": "BirthDate"
       }
     ]
   }

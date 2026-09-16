@@ -1,89 +1,170 @@
 package com.ubp.rgd.proxy.tools;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ubp.rgd.proxy.transform.config.FileTransformConfig;
-
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.List;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 /**
- * Command-line application to trigger file transformation synchronously.
- * 
- * Usage: java -jar rgd-http-proxy.jar com.ubp.rgd.proxy.tools.FileTransformTriggerApp <config-name>
- * 
+ * Command-line application to trigger a file transformation synchronously on a <b>running</b>
+ * proxy server.
+ * <p>
+ * The transformation itself needs the application context (the transformer, the transformation
+ * configuration, the engine), so this app does not transform anything by itself: it calls the
+ * {@code POST /api/file-transform/trigger/{configName}} endpoint and reports what the server did.
+ * The server owns the configurations, so the configuration name given here only has to match one it
+ * has loaded from its own {@code proxy.file-transform.config-file}.
+ * <p>
+ * Usage:
+ * <pre>
+ *   java -jar rgd-http-proxy.jar com.ubp.rgd.proxy.tools.FileTransformTriggerApp &lt;config-name&gt; [host:port]
+ * </pre>
+ * <p>
  * Exit codes:
- * 0 - Success (files processed)
- * 1 - Configuration not found
- * 2 - Invalid arguments
- * 3 - Configuration file not found or invalid
- * 4 - Processing error
+ * <ul>
+ *   <li>0 - success, the files have been processed</li>
+ *   <li>1 - configuration not found on the server</li>
+ *   <li>2 - invalid arguments</li>
+ *   <li>3 - server unreachable</li>
+ *   <li>4 - processing error reported by the server</li>
+ * </ul>
  */
 public class FileTransformTriggerApp {
 
-    private static final int EXIT_SUCCESS = 0;
-    private static final int EXIT_CONFIG_NOT_FOUND = 1;
-    private static final int EXIT_INVALID_ARGS = 2;
-    private static final int EXIT_CONFIG_FILE_ERROR = 3;
-    private static final int EXIT_PROCESSING_ERROR = 4;
+    static final int EXIT_SUCCESS = 0;
+    static final int EXIT_CONFIG_NOT_FOUND = 1;
+    static final int EXIT_INVALID_ARGS = 2;
+    static final int EXIT_SERVER_UNREACHABLE = 3;
+    static final int EXIT_PROCESSING_ERROR = 4;
+
+    private static final String DEFAULT_HOST_PORT = "localhost:8080";
+    private static final String TRIGGER_PATH = "/api/file-transform/trigger/";
+    private static final Duration TIMEOUT = Duration.ofMinutes(10);
 
     public static void main(String[] args) {
-        if (args.length == 0) {
+        System.exit(run(args));
+    }
+
+    /**
+     * Run the trigger and return the exit code instead of terminating the JVM, so that the app can
+     * also be driven from a test.
+     *
+     * @param args the configuration name, then optionally {@code host:port}
+     * @return the exit code, see the class documentation
+     */
+    public static int run(String[] args) {
+        if (args.length == 0 || args[0] == null || args[0].isBlank()) {
             printUsage();
-            System.exit(EXIT_INVALID_ARGS);
+            return EXIT_INVALID_ARGS;
+        }
+
+        if (args.length > 2) {
+            System.err.println("ERROR: too many arguments.");
+            printUsage();
+            return EXIT_INVALID_ARGS;
         }
 
         String configName = args[0];
-        String configFile = System.getProperty("proxy.file-transform.config-file", "./config/file_transform_config.json");
+        String hostPort = args.length > 1 ? args[1] : DEFAULT_HOST_PORT;
+
+        URI uri;
+        try {
+            uri = triggerUri(hostPort, configName);
+        } catch (IllegalArgumentException e) {
+            System.err.println("ERROR: " + e.getMessage());
+            printUsage();
+            return EXIT_INVALID_ARGS;
+        }
 
         System.out.println("File Transform Trigger App");
         System.out.println("=========================");
-        System.out.println("Configuration file: " + configFile);
+        System.out.println("Server: " + hostPort);
         System.out.println("Configuration name: " + configName);
         System.out.println();
 
+        return trigger(uri);
+    }
+
+    /**
+     * Build the endpoint URI. The configuration name is URL encoded because the configurations are
+     * named in plain language and usually contain spaces.
+     *
+     * @param hostPort the {@code host:port} of the server
+     * @param configName the name of the configuration to trigger
+     * @return the URI of the trigger endpoint for that configuration
+     * @throws IllegalArgumentException if the {@code host:port} is malformed
+     */
+    static URI triggerUri(String hostPort, String configName) {
+        int separator = hostPort.lastIndexOf(':');
+        if (separator < 1 || separator == hostPort.length() - 1) {
+            throw new IllegalArgumentException("Expected a server as 'host:port' but got: " + hostPort);
+        }
+
+        String host = hostPort.substring(0, separator);
+        String port = hostPort.substring(separator + 1);
+
         try {
-            // Load configuration
-            List<FileTransformConfig> configs = loadConfigurations(configFile);
-            
-            // Find the requested configuration
-            FileTransformConfig targetConfig = configs.stream()
-                    .filter(cfg -> cfg.getName().equals(configName))
-                    .findFirst()
-                    .orElse(null);
-
-            if (targetConfig == null) {
-                System.err.println("ERROR: Configuration '" + configName + "' not found!");
-                System.err.println("Available configurations:");
-                configs.forEach(cfg -> System.err.println("  - " + cfg.getName()));
-                System.exit(EXIT_CONFIG_NOT_FOUND);
+            int portNumber = Integer.parseInt(port);
+            if (portNumber < 1 || portNumber > 65535) {
+                throw new IllegalArgumentException("Port out of range in: " + hostPort);
             }
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Port is not a number in: " + hostPort);
+        }
 
-            System.out.println("Found configuration: " + targetConfig.getName());
-            System.out.println("Source directory: " + targetConfig.getSourceDirectory());
-            System.out.println("Target directory: " + targetConfig.getTargetDirectory());
-            System.out.println("Error directory: " + targetConfig.getErrorDirectory());
-            System.out.println("Scan interval: " + targetConfig.getScanIntervalSeconds() + " seconds");
-            System.out.println();
+        return URI.create(String.format("http://%s:%s%s%s", host, port, TRIGGER_PATH,
+                URLEncoder.encode(configName, StandardCharsets.UTF_8).replace("+", "%20")));
+    }
 
-            // Process files synchronously
-            int processedCount = processConfiguration(targetConfig);
+    private static int trigger(URI uri) {
+        System.out.println("Triggering: POST " + uri);
 
-            System.out.println();
-            System.out.println("Processing complete!");
-            System.out.println("Files processed: " + processedCount);
-            System.exit(EXIT_SUCCESS);
+        HttpRequest request = HttpRequest.newBuilder(uri)
+                .header("Accept", "application/json")
+                .timeout(TIMEOUT)
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
 
-        } catch (ConfigurationException e) {
-            System.err.println("ERROR: " + e.getMessage());
-            System.exit(EXIT_CONFIG_FILE_ERROR);
-        } catch (Exception e) {
-            System.err.println("ERROR: Processing failed - " + e.getMessage());
-            e.printStackTrace();
-            System.exit(EXIT_PROCESSING_ERROR);
+        try (HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()) {
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            return report(response);
+        } catch (IOException e) {
+            System.err.println("ERROR: cannot reach the server at " + uri.getAuthority()
+                    + " - " + e.getMessage());
+            System.err.println("       Is the proxy running, and is its HTTP port the one given?");
+            return EXIT_SERVER_UNREACHABLE;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("ERROR: interrupted while waiting for the server.");
+            return EXIT_PROCESSING_ERROR;
+        }
+    }
+
+    private static int report(HttpResponse<String> response) {
+        String body = response.body();
+
+        switch (response.statusCode()) {
+            case 200 -> {
+                System.out.println();
+                System.out.println("Processing complete!");
+                System.out.println(body);
+                return EXIT_SUCCESS;
+            }
+            case 404 -> {
+                System.err.println("ERROR: the server does not know this configuration.");
+                System.err.println(body);
+                return EXIT_CONFIG_NOT_FOUND;
+            }
+            default -> {
+                System.err.println("ERROR: the server failed to process the configuration (HTTP "
+                        + response.statusCode() + ").");
+                System.err.println(body);
+                return EXIT_PROCESSING_ERROR;
+            }
         }
     }
 
@@ -91,116 +172,25 @@ public class FileTransformTriggerApp {
         System.out.println("File Transform Trigger App");
         System.out.println("=========================");
         System.out.println();
-        System.out.println("Usage:");
-        System.out.println("  java -jar rgd-http-proxy.jar com.ubp.rgd.proxy.tools.FileTransformTriggerApp <config-name>");
+        System.out.println("Triggers a file transformation on a RUNNING proxy server, through");
+        System.out.println("POST /api/file-transform/trigger/<config-name>.");
         System.out.println();
-        System.out.println("Options:");
-        System.out.println("  -Dproxy.file-transform.config-file=<path>  Path to config file (default: ./config/file_transform_config.json)");
+        System.out.println("Usage:");
+        System.out.println("  java -jar rgd-http-proxy.jar com.ubp.rgd.proxy.tools.FileTransformTriggerApp <config-name> [host:port]");
         System.out.println();
         System.out.println("Arguments:");
-        System.out.println("  config-name  Name of the file transform configuration to process");
+        System.out.println("  config-name  Name of the file transform configuration, as loaded by the server");
+        System.out.println("  host:port    Server to call (default: " + DEFAULT_HOST_PORT + ")");
         System.out.println();
         System.out.println("Exit codes:");
         System.out.println("  0 - Success");
-        System.out.println("  1 - Configuration not found");
+        System.out.println("  1 - Configuration not found on the server");
         System.out.println("  2 - Invalid arguments");
-        System.out.println("  3 - Configuration file error");
+        System.out.println("  3 - Server unreachable");
         System.out.println("  4 - Processing error");
         System.out.println();
         System.out.println("Examples:");
         System.out.println("  java -jar rgd-http-proxy.jar com.ubp.rgd.proxy.tools.FileTransformTriggerApp \"Person Data Protection\"");
-        System.out.println("  java -Dproxy.file-transform.config-file=/custom/path/config.json -jar rgd-http-proxy.jar com.ubp.rgd.proxy.tools.FileTransformTriggerApp \"My Config\"");
-    }
-
-    private static List<FileTransformConfig> loadConfigurations(String configFilePath) throws ConfigurationException {
-        try {
-            File configFile = new File(configFilePath);
-            if (!configFile.exists()) {
-                throw new ConfigurationException("Configuration file not found: " + configFilePath);
-            }
-
-            ObjectMapper objectMapper = new ObjectMapper();
-            List<FileTransformConfig> configs = objectMapper.readValue(configFile, new TypeReference<>() {});
-            
-            if (configs == null || configs.isEmpty()) {
-                throw new ConfigurationException("No configurations found in file: " + configFilePath);
-            }
-
-            return configs;
-        } catch (Exception e) {
-            throw new ConfigurationException("Failed to load configuration file: " + e.getMessage(), e);
-        }
-    }
-
-    private static int processConfiguration(FileTransformConfig config) throws Exception {
-        System.out.println("Starting file processing...");
-        
-        // Validate directories
-        validateDirectory(config.getSourceDirectory(), "Source");
-        ensureDirectory(config.getTargetDirectory(), "Target");
-        ensureDirectory(config.getErrorDirectory(), "Error");
-
-        // Create a simple processor (without RPS engine for standalone execution)
-        FileProcessor processor = new FileProcessor(config);
-        int count = processor.processFiles();
-        
-        return count;
-    }
-
-    private static void validateDirectory(String directory, String type) throws Exception {
-        Path path = Paths.get(directory);
-        if (!Files.exists(path)) {
-            throw new Exception(type + " directory does not exist: " + directory);
-        }
-        if (!Files.isDirectory(path)) {
-            throw new Exception(type + " path is not a directory: " + directory);
-        }
-    }
-
-    private static void ensureDirectory(String directory, String type) throws Exception {
-        Path path = Paths.get(directory);
-        if (!Files.exists(path)) {
-            System.out.println("Creating " + type.toLowerCase() + " directory: " + directory);
-            Files.createDirectories(path);
-        }
-    }
-
-    static class ConfigurationException extends Exception {
-        public ConfigurationException(String message) {
-            super(message);
-        }
-
-        public ConfigurationException(String message, Throwable cause) {
-            super(message, cause);
-        }
-    }
-
-    static class FileProcessor {
-        private final FileTransformConfig config;
-
-        public FileProcessor(FileTransformConfig config) {
-            this.config = config;
-        }
-
-        public int processFiles() throws Exception {
-            System.out.println("Note: This standalone app scans for files but requires the full application");
-            System.out.println("      context (with RPS engine) to perform actual transformations.");
-            System.out.println("      Please use the REST API or run within the Quarkus application.");
-            
-            // For now, just count files that would be processed
-            Path sourceDir = Paths.get(config.getSourceDirectory());
-            int[] count = {0};
-            
-            Files.walk(sourceDir)
-                .filter(Files::isRegularFile)
-                .filter(path -> path.getFileName().toString().matches(config.getFilePattern()))
-                .filter(path -> !path.getFileName().toString().endsWith(config.getWorkInProgressSuffix()))
-                .forEach(path -> {
-                    System.out.println("  Found: " + path.getFileName());
-                    count[0]++;
-                });
-            
-            return count[0];
-        }
+        System.out.println("  java -jar rgd-http-proxy.jar com.ubp.rgd.proxy.tools.FileTransformTriggerApp \"Person Data Protection\" proxy-host:8443");
     }
 }
