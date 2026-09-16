@@ -30,6 +30,11 @@ public class TestProfile implements QuarkusTestProfile {
 
         props.put("proxy.transform.config-file", "./src/test/resources/rps_transform_config.json");
 
+        props.putAll(Map.of("proxy.file-transform.enabled","true",
+                            "proxy.file-transform.config-file","./src/test/resources/file_transform_config.json"));
+
+        props.put("proxy.transform.impl", "FPE");
+
         return props;
     }
 }

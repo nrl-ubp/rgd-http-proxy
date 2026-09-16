@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
 import com.ubp.rgd.proxy.services.wdx1.WDX1ConcatRequest;
 import com.ubp.rgd.proxy.services.wdx1.WDX1ConcatResponse;
+import com.ubp.rgd.proxy.tools.FileTransformTriggerApp;
+import com.ubp.rgd.proxy.transform.config.FileTransformConfig;
 import com.ubp.rgd.proxy.utils.JSONFile;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -18,7 +20,11 @@ import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.List;
 
@@ -188,5 +194,64 @@ class ProxyServiceTest {
         String respToken = concatResponse.getConcatResponseToken();
         assertNotNull(respToken);
         assertFalse(respToken.isEmpty());
+    }
+
+    /**
+     * Drives {@link FileTransformTriggerApp} against the Quarkus server started by this test, to
+     * check that the app really triggers a transformation rather than merely reading a configuration.
+     * <p>
+     * The app is called through {@code run(...)} and not {@code main(...)}: {@code main} ends with
+     * {@code System.exit}, which would tear down the surefire JVM and lose the results of the whole
+     * test class.
+     */
+    @Test
+    public void testTriggerFileProtection() throws Exception {
+        FileTransformConfig config = fileTransformConfig("protect_random_persons");
+
+        Path sourceDir = Paths.get(config.getSourceDirectory());
+        Path targetDir = Paths.get(config.getTargetDirectory());
+        Files.createDirectories(sourceDir);
+        Files.createDirectories(targetDir);
+        Files.createDirectories(Paths.get(config.getErrorDirectory()));
+
+        // A fixture of our own, so the test proves a transformation happened instead of depending on
+        // whatever files may or may not be sitting in the source directory.
+        String fixtureName = "trigger-test-" + System.currentTimeMillis() + ".json";
+        Path fixture = sourceDir.resolve(fixtureName);
+        Files.writeString(fixture, "[{\"LongName\":\"Jean-Claude DUSSE\",\"ShortName\":\"JCD\"}]");
+
+        // The Quarkus test server does not listen on quarkus.http.port but on quarkus.http.test-port,
+        // which RestAssured is configured with.
+        String hostPort = "localhost:" + RestAssured.port;
+        LOG.info("Triggering file transformation on {}", hostPort);
+
+        int exitCode = FileTransformTriggerApp.run(new String[]{"protect_random_persons", hostPort});
+        assertEquals(0, exitCode, "The trigger app should report a successful transformation");
+
+        assertFalse(Files.exists(fixture), "The source file should have been moved out of the source directory");
+
+        Path transformed = targetDir.resolve(fixtureName);
+        assertTrue(Files.exists(transformed), "The transformed file should be in the target directory");
+
+        String content = Files.readString(transformed);
+        LOG.info("Transformed content: {}", content);
+        assertFalse(content.contains("Jean-Claude DUSSE"), "The clear value should not remain in the target file");
+        assertTrue(content.contains("RG{"), "The target file should hold tokens");
+
+        Files.deleteIfExists(transformed);
+    }
+
+    /**
+     * Read a configuration from the same file the server is configured with, to keep the test and the
+     * server in agreement about the directories being used.
+     */
+    private FileTransformConfig fileTransformConfig(String name) throws IOException {
+        List<FileTransformConfig> configs = objectMapper.readValue(
+                new File("./src/test/resources/file_transform_config.json"), new TypeReference<>() {});
+
+        return configs.stream()
+                .filter(cfg -> cfg.getName().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Test configuration not found: " + name));
     }
 }
