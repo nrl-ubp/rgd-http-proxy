@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
  * the tokens really come back detokenized.
  *
  * <p>This is the real-life counterpart of {@code ProxyFlightSqlProducerTest}: it talks to a running
- * Quarkus instance rather than to an embedded server, so it exercises the whole chain — Flight
+ * Quarkus instance rather than to an embedded server, so it exercises the whole chain â€” Flight
  * authentication, the proxied datasource, the RPS detokenization and the Arrow conversion.</p>
  *
  * <p>The table deliberately mirrors {@code config/flight_sql_mapping_config.json} so that the three
@@ -74,8 +74,8 @@ public class PersonFlightSqlLoader {
 
         String host = cliArgs.switchValue("--host", "localhost");
         String port = cliArgs.switchValue("--port", "32010");
-        String user = cliArgs.switchValue("--user", "sa");
-        String password = cliArgs.switchValue("--password", "");
+        String user = cliArgs.switchValue("--user", "CDM_DBO");
+        String password = cliArgs.switchValue("--password", "HIGnkjpihFhWjdvobHMiyz");
         String table = cliArgs.switchValue("--table", "PERSON");
         String locale = cliArgs.switchValue("--locale", "de-CH");
         String dataMode = cliArgs.switchValue("--data-mode", "tokens");
