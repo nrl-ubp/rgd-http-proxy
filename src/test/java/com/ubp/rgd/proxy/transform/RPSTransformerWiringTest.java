@@ -27,15 +27,17 @@ class RPSTransformerWiringTest {
     /**
      * Runs the proxy with the RPS engine and without any FPE key configured.
      */
-    public static class RPSWithoutFpeKeyProfile implements QuarkusTestProfile {
+    public static class RPSWithoutFpeKeyProfile extends com.ubp.rgd.proxy.services.TestProfile {
         @Override
         public Map<String, String> getConfigOverrides() {
-            return Map.of(
-                    "proxy.transform.impl", "RPS",
-                    "proxy.transform.fpe.key", "",
-                    "quarkus.log.console.json.enabled", "false",
-                    "proxy.prefilter.auth-enabled", "false",
-                    "proxy.transform.config-file", "./src/test/resources/rps_transform_config.json");
+            Map<String, String> props = super.getConfigOverrides();
+
+            // ensure we are using RPS implementation and FPE key is not configured.
+            props.remove("proxy.transform.fpe.key");
+            props.remove("proxy.transform.impl");
+            props.put("proxy.transform.impl", "RPS");
+
+            return props;
         }
     }
 
