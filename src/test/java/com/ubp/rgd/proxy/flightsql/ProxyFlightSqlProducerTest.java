@@ -10,6 +10,8 @@ import com.ubp.rgd.proxy.transform.config.FlightSqlMappingConfig;
 import org.apache.arrow.flight.CallOption;
 import org.apache.arrow.flight.FlightClient;
 import org.apache.arrow.flight.FlightInfo;
+import org.apache.arrow.flight.FlightRuntimeException;
+import org.apache.arrow.flight.FlightStatusCode;
 import org.apache.arrow.flight.FlightServer;
 import org.apache.arrow.flight.FlightStream;
 import org.apache.arrow.flight.Location;
@@ -34,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -52,6 +55,7 @@ class ProxyFlightSqlProducerTest {
     private static FlightServer server;
     private static ProxyFlightSqlProducer producer;
     private static FlightSqlDetokenizeService detokenizeService;
+    private static LocalTokenizeService tokenizeService;
     private static Connection keepAlive;
 
     private FlightClient flightClient;
@@ -70,6 +74,12 @@ class ProxyFlightSqlProducerTest {
                     + " 'Zurich', 'nothing sensitive', 'Mr RG{Bx99999999zz} at home')");
             statement.execute("INSERT INTO PERSON VALUES (3, NULL, 'RG{EF11111111cc}', NULL,"
                     + " 'RG{AB12345678aa}')");
+
+            // Holds tokens as the tokenizer of these tests produces them, so that a transform() call
+            // can be matched against a stored value.
+            statement.execute("CREATE TABLE ACCOUNT (ID INT, OWNER VARCHAR(255))");
+            statement.execute("INSERT INTO ACCOUNT VALUES (1, 'Person.shortString=Jean')");
+            statement.execute("INSERT INTO ACCOUNT VALUES (2, 'Person.shortString=Paul')");
         }
 
         FlightSqlMappingConfig config = new FlightSqlMappingConfig();
@@ -84,11 +94,14 @@ class ProxyFlightSqlProducerTest {
         detokenizeService.setTransformer(new RPSEndPointTransformer());
         detokenizeService.setMappingConfig(config);
 
+        tokenizeService = new LocalTokenizeService();
+
         FlightSqlConnectionManager connectionManager = new FlightSqlConnectionManager();
         connectionManager.jdbcUrl = JDBC_URL;
 
         allocator = new RootAllocator(Long.MAX_VALUE);
-        producer = new ProxyFlightSqlProducer(allocator, connectionManager, detokenizeService, 1024);
+        producer = new ProxyFlightSqlProducer(allocator, connectionManager, detokenizeService,
+                tokenizeService, 1024);
         server = FlightServer.builder(allocator, Location.forGrpcInsecure("localhost", 0), producer)
                 .headerAuthenticator(new GeneratedBearerTokenAuthenticator(
                         new BasicCallHeaderAuthenticator(connectionManager)))
@@ -172,6 +185,79 @@ class ProxyFlightSqlProducerTest {
         assertEquals("Mr Person.ShortString=RG{Bx99999999zz} at home", rows.get(1).get(0));
         // AB does not follow the mapping index encoding: the token is returned untouched.
         assertEquals("RG{AB12345678aa}", rows.get(2).get(0));
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // The transform() SQL extension
+    // ---------------------------------------------------------------------------------------------
+
+    @Test
+    void shouldRewriteATransformCallBeforeSendingTheQuery() throws Exception {
+        // The database never sees transform(): it receives the token as a plain SQL literal, which is
+        // why it can evaluate the statement at all.
+        List<List<String>> rows = query(
+                "SELECT transform('Person','shortString','CH','Jean') FROM PERSON WHERE ID = 1");
+
+        assertEquals(1, rows.size());
+        assertEquals("Person.shortString=Jean", rows.get(0).get(0));
+    }
+
+    @Test
+    void shouldMatchATokenizedColumnThroughTheExtension() throws Exception {
+        // The whole point of the extension: a clear value held by the client is tokenized so that it
+        // can be compared with a column that stores tokens.
+        List<List<String>> rows = query("SELECT ID FROM ACCOUNT"
+                + " WHERE OWNER = transform('Person','shortString','CH','Jean')");
+
+        assertEquals(1, rows.size());
+        assertEquals("1", rows.get(0).get(0));
+    }
+
+    @Test
+    void shouldRewriteATransformCallOfAPreparedStatement() throws Exception {
+        FlightSqlClient.PreparedStatement prepared = sqlClient.prepare(
+                "SELECT transform('Person','shortString','CH','Jean') FROM PERSON WHERE ID = 1",
+                credentials);
+
+        List<List<String>> rows = readRows(prepared.execute(credentials));
+
+        assertEquals(1, rows.size());
+        assertEquals("Person.shortString=Jean", rows.get(0).get(0));
+        // Closed with the credentials: the client's own close() sends no authentication.
+        prepared.close(credentials);
+    }
+
+    @Test
+    void shouldRewriteATransformCallOfAnUpdate() throws Exception {
+        long updated = sqlClient.executeUpdate(
+                "INSERT INTO ACCOUNT VALUES (3, transform('Person','shortString','CH','Marie'))",
+                credentials);
+
+        assertEquals(1, updated);
+        // Written tokenized, so a later query can find it back through the same extension.
+        List<List<String>> rows = query("SELECT ID FROM ACCOUNT"
+                + " WHERE OWNER = transform('Person','shortString','CH','Marie')");
+        assertEquals(1, rows.size());
+
+        sqlClient.executeUpdate("DELETE FROM ACCOUNT WHERE ID = 3", credentials);
+    }
+
+    @Test
+    void shouldRejectAMalformedTransformCall() {
+        FlightRuntimeException error = assertThrows(FlightRuntimeException.class,
+                () -> query("SELECT transform('Person','shortString') FROM PERSON"));
+
+        assertEquals(FlightStatusCode.INVALID_ARGUMENT, error.status().code());
+        assertTrue(error.status().description().contains("takes 4 arguments"),
+                error.status().description());
+    }
+
+    @Test
+    void shouldLeaveAQueryWithoutTheExtensionUntouched() throws Exception {
+        List<List<String>> rows = query("SELECT CITY FROM PERSON WHERE ID = 1");
+
+        assertEquals(1, rows.size());
+        assertEquals("Geneva", rows.get(0).get(0));
     }
 
     @Test

@@ -367,6 +367,24 @@ class FlightSqlDetokenizeServiceTest {
     }
 
     @Test
+    void shouldNotCallTheEngineWhenTheAfterPhaseIsInactive() throws Exception {
+        FlightSqlMappingConfig config = new FlightSqlMappingConfig();
+        config.getAfter().setActive(false);
+        config.setColumnMappings(
+                List.of(new FlightSqlColumnMapping("PERSON", "NAME", "Person", "shortString")));
+        service.setMappingConfig(config);
+
+        try (VectorSchemaRoot root = newRoot("RG{AB12345678aa}")) {
+            // The engine provider is not injected: reaching it would raise a NullPointerException.
+            service.detokenize(root,
+                    List.of(new FlightSqlColumnMapping("PERSON", "NAME", "Person", "shortString")),
+                    allocator);
+
+            assertEquals("RG{AB12345678aa}", readString((VarCharVector) root.getVector(0), 0));
+        }
+    }
+
+    @Test
     void shouldIgnoreAnEmptyOrNullBatch() throws Exception {
         service.detokenize(null, List.of(), allocator);
         try (VectorSchemaRoot root = newRoot()) {

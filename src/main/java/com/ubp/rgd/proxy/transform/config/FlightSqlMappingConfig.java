@@ -9,18 +9,37 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Configuration of the Flight SQL detokenization: the RPS contexts to use and the table/column to
- * RPS class/property mappings.
+ * Configuration of the Flight SQL transformation: the RPS contexts of each phase of an exchange and
+ * the table/column to RPS class/property mappings.
+ * <p>
+ * The contexts are grouped per phase, {@code before} the query reaches the database server and
+ * {@code after} the result set comes back, because the two directions use opposite actions. The
+ * {@code before} phase drives the {@code transform()} SQL extension, the {@code after} phase drives
+ * the detokenization of the result sets.
  * <p>
  * Loaded from the JSON file pointed to by {@code proxy.flight-sql.mapping-config-file}.
+ *
+ * @see FlightSqlPhaseConfig
  */
 public class FlightSqlMappingConfig {
 
-    @JsonProperty(value = "right-context")
-    private Map<String, String> rightContextEvidences = new HashMap<>();
+    /**
+     * Phase applied to the query on its way to the database server, that is the {@code transform()}
+     * SQL extension.
+     *
+     * @see com.ubp.rgd.proxy.services.FlightSqlTokenizeService
+     */
+    @JsonProperty(value = "before")
+    private FlightSqlPhaseConfig before = new FlightSqlPhaseConfig();
 
-    @JsonProperty(value = "processing-context")
-    private Map<String, String> processingContextEvidences = new HashMap<>();
+    /**
+     * Phase applied to the result set on its way back, that is the detokenization.
+     * <p>
+     * Defaults to an active phase rather than to {@code null}, so a configuration built in code, with
+     * no file behind it, transforms as it always did.
+     */
+    @JsonProperty(value = "after")
+    private FlightSqlPhaseConfig after = new FlightSqlPhaseConfig();
 
     @JsonProperty(value = "column-mappings")
     private List<FlightSqlColumnMapping> columnMappings = new ArrayList<>();
@@ -34,20 +53,29 @@ public class FlightSqlMappingConfig {
     /** Lazily filtered list of the data mappings that can actually be used. */
     private transient List<FlightSqlDataMapping> usableDataMappings;
 
-    public Map<String, String> getRightContextEvidences() {
-        return rightContextEvidences;
+    public FlightSqlPhaseConfig getBefore() {
+        return before;
     }
 
-    public void setRightContextEvidences(Map<String, String> rightContextEvidences) {
-        this.rightContextEvidences = rightContextEvidences;
+    public void setBefore(FlightSqlPhaseConfig before) {
+        this.before = before;
     }
 
-    public Map<String, String> getProcessingContextEvidences() {
-        return processingContextEvidences;
+    public FlightSqlPhaseConfig getAfter() {
+        return after;
     }
 
-    public void setProcessingContextEvidences(Map<String, String> processingContextEvidences) {
-        this.processingContextEvidences = processingContextEvidences;
+    public void setAfter(FlightSqlPhaseConfig after) {
+        this.after = after;
+    }
+
+    /**
+     * Whether the result set coming back from the database server has to be transformed at all.
+     *
+     * @return true when the {@code after} phase is declared and active
+     */
+    public boolean isAfterActive() {
+        return after != null && after.isActive();
     }
 
     public List<FlightSqlColumnMapping> getColumnMappings() {

@@ -290,12 +290,20 @@ database identity.
 
 Result sets carry no RPS metadata, so the RPS class and property names of each column are resolved
 from `config/flight_sql_mapping_config.json`. That file also holds the right-context and
-processing-context evidences sent to the engine:
+processing-context evidences sent to the engine, grouped by **phase** of the exchange:
 
 ```json
 {
-  "right-context": { "Target": "WDX1", "Module": "RoseGarden", "Right": "Transform" },
-  "processing-context": { "Action": "Unprotect", "Target": "WDX1" },
+  "before": {
+    "active": true,
+    "right-context": { "Target": "WDX1", "Module": "RoseGarden", "Right": "Transform" },
+    "processing-context": { "Action": "Protect", "Target": "WDX1" }
+  },
+  "after": {
+    "active": true,
+    "right-context": { "Target": "WDX1", "Module": "RoseGarden", "Right": "Transform" },
+    "processing-context": { "Action": "Unprotect", "Target": "WDX1" }
+  },
   "data-mappings": [
     { "regex": "RG\\{[A-Z2-7x]{2}[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+\\}@example\\.com",
       "rps-class-name": "Person", "rps-property-name": "email" }
@@ -308,6 +316,73 @@ processing-context evidences sent to the engine:
   ]
 }
 ```
+
+### Phases
+
+A query crosses the proxy twice, and the two directions do not use the same contexts:
+
+| Phase | Applies to | Typical action | Status |
+|---|---|---|---|
+| `before` | the statement on its way to the database server | `Protect` | used by the `transform()` extension |
+| `after` | the result set on its way back, i.e. the detokenization | `Unprotect` | in use |
+
+`active` defaults to **true**, so a phase that does not mention it is performed. Setting
+`"active": false` on `after` turns the detokenization off: result sets are handed back exactly as
+the database server returned them, tokens included. Setting it on `before` **rejects** any query
+using `transform()`, rather than letting clear data reach the database.
+
+The action of each phase is taken from its own `processing-context`. When none is declared, the
+phase falls back to the only action that makes sense for its direction: `Unprotect` for `after`,
+which only ever reads data back, and `Protect` for `before`, which only ever writes a value into a
+query.
+
+> **A mapping file that exists but cannot be used fails startup** when `proxy.flight-sql.enabled` is
+> `true` — a malformed file, or one with an explicitly null `after` section. This is on purpose: the
+> alternative is a proxy that silently hands tokens back to its clients. A **missing** file only logs
+> a warning, since that is the normal state of a deployment that does not use Flight SQL. Unknown
+> properties are ignored, so adding a key to the file can never wipe the rest of the configuration.
+
+### The `transform()` SQL extension
+
+A client holding a **clear** value cannot compare it with a column that stores tokens. It wraps the
+value in a `transform()` call, and the proxy replaces the call by the corresponding token **before**
+the statement leaves for the database server:
+
+```sql
+SELECT * FROM PERSON WHERE FIRST_NAME = transform('Person', 'shortString', 'CH', 'Jean-Claude')
+```
+
+reaches the database as:
+
+```sql
+SELECT * FROM PERSON WHERE FIRST_NAME = 'RG{AB12345678aa}'
+```
+
+The arguments are, in order:
+
+| # | Argument | Meaning |
+|---|---|---|
+| 1 | `className` | the RPS class name |
+| 2 | `propertyName` | the RPS property name |
+| 3 | `jurisdiction` | **parsed and validated, but ignored for now** |
+| 4 | `text` | the clear value to transform |
+
+It works in a query, in a prepared statement and in an update, so a value can be written tokenized
+and found back through the same call. The contexts are those of the **`before`** phase, and **all
+the calls of one statement are transformed in a single engine round trip**.
+
+Details that matter in practice:
+
+- the name is matched in any case, and `transform (...)` with a space is accepted; a column or a
+  longer identifier such as `my_transform(...)` or `transformed` is left alone;
+- a call written inside a **string literal, a quoted identifier or a comment** is *not* rewritten,
+  so an existing query cannot be corrupted by the feature;
+- the four arguments must be **single-quoted texts**, `''` being an escaped quote. A `?` parameter
+  placeholder is rejected: it has no value yet when the query is rewritten;
+- the token is substituted as a quoted SQL literal, so the call can sit anywhere a value is expected;
+- a malformed call **rejects the whole query** with `INVALID_ARGUMENT` and an explanatory message,
+  rather than passing meaningless SQL to the database. An engine failure returns `INTERNAL`;
+- a query containing no `transform()` is passed through untouched and never reaches the engine.
 
 ### Resolution order
 
@@ -391,11 +466,16 @@ parameter schema: statements without parameters keep working unchanged.
 into a `PERSON` table **through the proxy**, using the Arrow Flight SQL JDBC driver and plain SQL (no
 JPA). It then reads the rows back and reports how many values came back detokenized.
 
+By default it does not fabricate tokens: it generates clear values and wraps each of them in a
+[`transform()` call](#the-transform-sql-extension), so the proxy tokenizes them for real on the way
+in. The round trip is therefore a genuine one — tokenized by the engine on the way in, detokenized on
+the way out.
+
 Start the proxy with `proxy.flight-sql.enabled=true`, then:
 
 ```
 mvn -Pflight-sql-loader test-compile exec:exec \
-    -Dloader.args="--user sa --password secret --rows 1000 --create-table"
+    -Dloader.args="--user sa --password secret --rows 1000 --create-table --insert-mode literal"
 ```
 
 The profile uses `exec:exec` so the forked JVM gets the required `--add-opens` flag.
@@ -407,32 +487,34 @@ The profile uses `exec:exec` so the forked JVM gets the required `--add-opens` f
 | `--table` | `PERSON` | Target table name. |
 | `--rows` | `10000` | Number of persons to generate. |
 | `--locale` | `de-CH` | Faker locale for the generated data. |
-| `--data-mode` | `tokens` | `tokens` emits token-shaped values, `clear` emits plain faker data. |
-| `--insert-mode` | `prepared` | `prepared` uses parameter binding, `literal` uses quote-escaped literals. |
+| `--data-mode` | `transform` | `transform` wraps every value in a `transform()` call so the proxy tokenizes it; `clear` emits plain faker data. |
+| `--insert-mode` | `prepared` | `prepared` uses parameter binding, `literal` uses quote-escaped literals. **`--data-mode transform` requires `literal`.** |
+| `--transform-class` | `Person` | RPS class name of the generated `transform()` calls. |
+| `--transform-property` | `ShortString` | RPS property name of the generated `transform()` calls. |
+| `--transform-jurisdiction` | `LU` | Jurisdiction argument, ignored by the proxy for now. |
 | `--batch-size` | `1000` | Rows per batch, prepared mode only. |
 | `--create-table` | off | Drops and recreates the table first, with portable DDL (H2 and SQL Server). |
 | `--no-read-back` | off | Skips the read-back phase. |
 | `--read-back-rows` | `10` | Number of rows printed during read-back. |
 | `--help` | | Prints the usage. |
 
-The generated columns are chosen to exercise **all three** resolution tiers at once:
-
-| Column | Resolved through |
-| --- | --- |
-| `FIRST_NAME`, `LAST_NAME`, `BIRTH_DATE` | column mapping on `PERSON` |
-| `EMAIL` | column mapping on `*` |
-| `CITY` | data-mappings regex |
-| `NOTES` | token mapping index, tokens embedded in free text |
+Every sensitive column is written with the **same** class and property, since a `transform()` call
+states its mapping explicitly; the column mappings of the configuration only serve the *implicit*
+detokenization of the columns that declare nothing.
 
 All token-bearing columns are `VARCHAR`, including `BIRTH_DATE`: a tokenized date does not fit a
 `DATE` column.
 
-> **Caveat.** `--data-mode tokens` produces *synthetic* tokens. Their shape is valid, so they fully
-> exercise recognition and mapping resolution, but a real RPS engine has never issued them and will
-> not return meaningful clear values. The Flight SQL proxy only ever detokenizes, so real tokens have
-> to be obtained beforehand from the `/transform` endpoint.
+> **Reading back is a different matter.** The read-back resolves each column through the configured
+> **column mappings**, so `BIRTH_DATE` and `EMAIL`, mapped to `Person.birthDate` and `Person.email`,
+> come back detokenized with a different mapping than the one they were tokenized with. Align
+> `--transform-property` with the column mappings, or expect those two columns not to round-trip.
 
-`PersonFlightSqlLoaderTest` runs this same `main()` end to end against an in-memory H2 database
+> **`--data-mode tokens` no longer exists.** It fabricated synthetic tokens no engine had ever
+> issued, so the read-back could only ever report them as still tokenized. The loader refuses the
+> value and points at `transform`.
+
+`PersonFlightSqlLoaderTest` runs this same program end to end against an in-memory H2 database
 fronted by a real Flight SQL server, which is the reproducible version of the above.
 
 ## Useful commands

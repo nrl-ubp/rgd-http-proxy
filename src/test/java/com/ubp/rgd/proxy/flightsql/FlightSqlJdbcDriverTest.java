@@ -79,7 +79,8 @@ class FlightSqlJdbcDriverTest {
         connectionManager.jdbcUrl = JDBC_URL;
 
         allocator = new RootAllocator(Long.MAX_VALUE);
-        producer = new ProxyFlightSqlProducer(allocator, connectionManager, detokenizeService, 1024);
+        producer = new ProxyFlightSqlProducer(allocator, connectionManager, detokenizeService,
+                new LocalTokenizeService(), 1024);
         server = FlightServer.builder(allocator, Location.forGrpcInsecure("localhost", 0), producer)
                 .headerAuthenticator(new GeneratedBearerTokenAuthenticator(
                         new BasicCallHeaderAuthenticator(connectionManager)))
