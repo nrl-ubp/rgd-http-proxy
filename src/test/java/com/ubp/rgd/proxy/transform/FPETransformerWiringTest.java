@@ -35,15 +35,17 @@ class FPETransformerWiringTest {
     /**
      * Runs the proxy with Format Preserving Encryption instead of the RPS engine.
      */
-    public static class FPEProfile implements QuarkusTestProfile {
+    public static class FPEProfile extends com.ubp.rgd.proxy.services.TestProfile {
         @Override
         public Map<String, String> getConfigOverrides() {
-            return Map.of(
-                    "proxy.transform.impl", "FPE",
-                    "proxy.transform.fpe.key", "2b7e151628aed2a6abf7158809cf4f3c",
-                    "quarkus.log.console.json.enabled", "false",
-                    "proxy.prefilter.auth-enabled", "false",
-                    "proxy.transform.config-file", "./src/test/resources/rps_transform_config.json");
+            Map<String, String> props = super.getConfigOverrides();
+            props.remove("proxy.transform.impl");
+            props.remove("proxy.transform.fpe.key");
+
+            props.put("proxy.transform.impl", "FPE");
+            props.put("proxy.transform.fpe.key", "2b7e151628aed2a6abf7158809cf4f3c");
+
+            return props;
         }
     }
 
