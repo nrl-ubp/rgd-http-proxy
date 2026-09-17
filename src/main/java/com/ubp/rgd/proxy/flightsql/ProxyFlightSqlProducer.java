@@ -4,6 +4,8 @@ import com.google.protobuf.Any;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Message;
 import com.ubp.rgd.proxy.services.FlightSqlDetokenizeService;
+import com.ubp.rgd.proxy.services.FlightSqlTokenizeService;
+import com.ubp.rgd.proxy.transform.RPSTransformException;
 import com.ubp.rgd.proxy.transform.config.FlightSqlColumnMapping;
 import org.apache.arrow.adapter.jdbc.JdbcParameterBinder;
 import org.apache.arrow.adapter.jdbc.JdbcToArrow;
@@ -15,6 +17,7 @@ import org.apache.arrow.flight.CallStatus;
 import org.apache.arrow.flight.FlightDescriptor;
 import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.FlightInfo;
+import org.apache.arrow.flight.FlightRuntimeException;
 import org.apache.arrow.flight.FlightStream;
 import org.apache.arrow.flight.PutResult;
 import org.apache.arrow.flight.Result;
@@ -65,6 +68,7 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
     private final BufferAllocator allocator;
     private final FlightSqlConnectionManager connectionManager;
     private final FlightSqlDetokenizeService detokenizeService;
+    private final FlightSqlTokenizeService tokenizeService;
     private final int batchSize;
     private final SqlInfoBuilder sqlInfoBuilder = new SqlInfoBuilder();
 
@@ -74,10 +78,12 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
     public ProxyFlightSqlProducer(BufferAllocator allocator,
                                   FlightSqlConnectionManager connectionManager,
                                   FlightSqlDetokenizeService detokenizeService,
+                                  FlightSqlTokenizeService tokenizeService,
                                   int batchSize) {
         this.allocator = allocator;
         this.connectionManager = connectionManager;
         this.detokenizeService = detokenizeService;
+        this.tokenizeService = tokenizeService;
         this.batchSize = batchSize > 0 ? batchSize : 1024;
         this.sqlInfoBuilder
                 .withFlightSqlServerName("UBP RGD HTTP Proxy Flight SQL")
@@ -110,8 +116,9 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
     public FlightInfo getFlightInfoStatement(FlightSql.CommandStatementQuery command, CallContext context,
                                              FlightDescriptor descriptor) {
         String handle = UUID.randomUUID().toString();
-        Schema schema = describeQuery(context.peerIdentity(), command.getQuery());
-        statements.put(handle, new StatementHandle(context.peerIdentity(), command.getQuery()));
+        String query = rewrite(command.getQuery());
+        Schema schema = describeQuery(context.peerIdentity(), query);
+        statements.put(handle, new StatementHandle(context.peerIdentity(), query));
 
         FlightSql.TicketStatementQuery ticket = FlightSql.TicketStatementQuery.newBuilder()
                 .setStatementHandle(ByteString.copyFromUtf8(handle))
@@ -123,7 +130,7 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
     @Override
     public SchemaResult getSchemaStatement(FlightSql.CommandStatementQuery command, CallContext context,
                                            FlightDescriptor descriptor) {
-        return new SchemaResult(describeQuery(context.peerIdentity(), command.getQuery()));
+        return new SchemaResult(describeQuery(context.peerIdentity(), rewrite(command.getQuery())));
     }
 
     @Override
@@ -146,11 +153,15 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
         return () -> {
             try (Connection connection = connectionManager.openConnection(peerIdentity);
                  Statement statement = connection.createStatement()) {
-                long updated = statement.executeLargeUpdate(command.getQuery());
+                long updated = statement.executeLargeUpdate(rewrite(command.getQuery()));
                 sendUpdateResult(ackStream, updated);
             } catch (SQLException e) {
                 ackStream.onError(CallStatus.INTERNAL
                         .withDescription(e.getMessage()).withCause(e).toRuntimeException());
+            } catch (FlightRuntimeException e) {
+                // A rejected transform() call: report it on the stream rather than letting it escape
+                // the Runnable, where the client would only see a broken connection.
+                ackStream.onError(e);
             }
         };
     }
@@ -164,9 +175,10 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
                                         CallContext context, StreamListener<Result> listener) {
         try {
             String handle = UUID.randomUUID().toString();
-            Schema datasetSchema = describeQuery(context.peerIdentity(), request.getQuery());
-            Schema parameterSchema = describeParameters(context.peerIdentity(), request.getQuery());
-            statements.put(handle, new StatementHandle(context.peerIdentity(), request.getQuery()));
+            String query = rewrite(request.getQuery());
+            Schema datasetSchema = describeQuery(context.peerIdentity(), query);
+            Schema parameterSchema = describeParameters(context.peerIdentity(), query);
+            statements.put(handle, new StatementHandle(context.peerIdentity(), query));
 
             FlightSql.ActionCreatePreparedStatementResult result =
                     FlightSql.ActionCreatePreparedStatementResult.newBuilder()
@@ -376,6 +388,34 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
     // ---------------------------------------------------------------------------------------------
     // Execution
     // ---------------------------------------------------------------------------------------------
+
+    /**
+     * Apply the {@code transform()} SQL extension to a statement arriving from a client, before
+     * anything else looks at it.
+     * <p>
+     * Called once per entry point receiving a raw query, so the token of a statement is computed once
+     * rather than once per use: the schema description, the parameter description and the execution
+     * all work on the rewritten text held by the {@link StatementHandle}.
+     *
+     * @param query the statement as the client wrote it
+     * @return the statement to hand to the database server
+     */
+    private String rewrite(String query) {
+        try {
+            return tokenizeService.rewrite(query);
+        } catch (FlightSqlTokenizeService.FlightSqlTransformSyntaxException e) {
+            // The client wrote something the proxy cannot make sense of: say so, rather than letting
+            // the database complain about a function it has never heard of.
+            LOG.warn("Rejecting a query using the transform() extension: {}", e.getMessage());
+            throw CallStatus.INVALID_ARGUMENT
+                    .withDescription(e.getMessage()).withCause(e).toRuntimeException();
+        } catch (RPSTransformException e) {
+            LOG.error("Failed to apply the transform() extension to: {}", query, e);
+            throw CallStatus.INTERNAL
+                    .withDescription("Cannot transform the values of the query: " + e.getMessage())
+                    .withCause(e).toRuntimeException();
+        }
+    }
 
     /**
      * Execute the query on the proxied database and stream the detokenized Arrow batches back.

@@ -47,6 +47,9 @@ public class FlightSqlServerService {
     @Inject
     FlightSqlDetokenizeService detokenizeService;
 
+    @Inject
+    FlightSqlTokenizeService tokenizeService;
+
     private BufferAllocator allocator;
     private ProxyFlightSqlProducer producer;
     private FlightServer server;
@@ -62,7 +65,8 @@ public class FlightSqlServerService {
             LOG.info("Flight SQL detokenizer ready with {} column mapping(s)",
                     detokenizeService.getMappingConfig().getColumnMappings().size());
             allocator = new RootAllocator(Long.MAX_VALUE);
-            producer = new ProxyFlightSqlProducer(allocator, connectionManager, detokenizeService, batchSize);
+            producer = new ProxyFlightSqlProducer(allocator, connectionManager, detokenizeService,
+                    tokenizeService, batchSize);
             server = FlightServer.builder(allocator, Location.forGrpcInsecure(host, port), producer)
                     .headerAuthenticator(new GeneratedBearerTokenAuthenticator(
                             new BasicCallHeaderAuthenticator(connectionManager)))

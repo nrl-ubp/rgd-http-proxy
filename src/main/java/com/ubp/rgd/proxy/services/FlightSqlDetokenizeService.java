@@ -6,13 +6,13 @@ import ch.regdata.rps.engine.client.enginecontext.ProcessingContext;
 import ch.regdata.rps.engine.client.enginecontext.RightContext;
 import ch.regdata.rps.engine.client.mapping.RPSMapping;
 import ch.regdata.rps.engine.client.model.api.value.RPSValue;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.RPSClientEngineProvider;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
 import com.ubp.rgd.proxy.transform.config.FlightSqlColumnMapping;
 import com.ubp.rgd.proxy.transform.config.FlightSqlDataMapping;
 import com.ubp.rgd.proxy.transform.config.FlightSqlMappingConfig;
+import com.ubp.rgd.proxy.transform.config.FlightSqlPhaseConfig;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -25,8 +25,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -75,9 +73,9 @@ public class FlightSqlDetokenizeService {
     @Inject
     RPSClientEngineProvider rpsClientEngineProvider;
 
-    @ConfigProperty(name = "proxy.flight-sql.mapping-config-file",
-            defaultValue = "./config/flight_sql_mapping_config.json")
-    String mappingConfigFile;
+    /** Owner of the mapping file; this service only consumes its {@code after} phase. */
+    @Inject
+    FlightSqlMappingConfigProvider mappingConfigProvider;
 
     @ConfigProperty(name = "proxy.transform.client-id")
     String transformClientId;
@@ -86,26 +84,8 @@ public class FlightSqlDetokenizeService {
 
     @PostConstruct
     void init() {
-        loadMappingConfig();
+        mappingConfig = mappingConfigProvider.get();
         loadTokenIndexMappings();
-    }
-
-    /** Read the column and data mappings from {@code proxy.flight-sql.mapping-config-file}. */
-    private void loadMappingConfig() {
-        File configFile = new File(mappingConfigFile);
-        if (!configFile.exists()) {
-            LOG.warn("Flight SQL mapping config file not found: {}. No column will be detokenized.",
-                    mappingConfigFile);
-            return;
-        }
-        try {
-            mappingConfig = new ObjectMapper().readValue(configFile, FlightSqlMappingConfig.class);
-            LOG.info("Loaded {} Flight SQL column mapping(s) from {}",
-                    mappingConfig.getColumnMappings().size(), mappingConfigFile);
-        } catch (IOException e) {
-            LOG.error("Failed to load the Flight SQL mapping configuration from {}", mappingConfigFile, e);
-            mappingConfig = new FlightSqlMappingConfig();
-        }
     }
 
     /**
@@ -234,6 +214,13 @@ public class FlightSqlDetokenizeService {
     public void detokenize(VectorSchemaRoot root, List<FlightSqlColumnMapping> mappings,
                            BufferAllocator allocator) throws RPSTransformException {
         if (root == null || mappings == null || root.getRowCount() == 0) {
+            return;
+        }
+
+        if (!mappingConfig.isAfterActive()) {
+            // The 'after' phase is switched off: the result set is handed back as the database
+            // server returned it, tokens included.
+            LOG.debug("The Flight SQL 'after' phase is not active, the result set is left untouched.");
             return;
         }
 
@@ -490,23 +477,33 @@ public class FlightSqlDetokenizeService {
 
     private RightContext buildRightContext() {
         RightContext context = new RightContext();
-        addEvidences(context, mappingConfig.getRightContextEvidences());
+        addEvidences(context, afterPhase().getRightContextEvidences());
         return context;
     }
 
     private ProcessingContext buildProcessingContext() {
         ProcessingContext context = new ProcessingContext();
-        addEvidences(context, mappingConfig.getProcessingContextEvidences());
+        addEvidences(context, afterPhase().getProcessingContextEvidences());
 
         boolean hasAction = context.getEvidences().stream()
                 .anyMatch(evidence -> "Action".equalsIgnoreCase(evidence.getName()));
         if (!hasAction) {
             // This service only ever reads data back, and a transformer takes its direction from the
             // action: without it nothing would be detokenized.
-            LOG.warn("The Flight SQL mapping configuration declares no Action evidence. Using Unprotect.");
+            LOG.warn("The Flight SQL 'after' phase declares no Action evidence. Using Unprotect.");
             context.addEvidence(new Evidence("Action", "Unprotect"));
         }
         return context;
+    }
+
+    /**
+     * The phase that applies to a result set coming back from the database server.
+     *
+     * @return the configured {@code after} phase, never null
+     */
+    private FlightSqlPhaseConfig afterPhase() {
+        FlightSqlPhaseConfig phase = mappingConfig.getAfter();
+        return phase == null ? new FlightSqlPhaseConfig() : phase;
     }
 
     private void addEvidences(Context context, Map<String, String> evidences) {

@@ -25,6 +25,7 @@ import java.sql.Statement;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -60,7 +61,8 @@ class PersonFlightSqlLoaderTest {
         connectionManager.jdbcUrl = JDBC_URL;
 
         allocator = new RootAllocator(Long.MAX_VALUE);
-        producer = new ProxyFlightSqlProducer(allocator, connectionManager, detokenizeService, 1024);
+        producer = new ProxyFlightSqlProducer(allocator, connectionManager, detokenizeService,
+                new LocalTokenizeService(), 1024);
         server = FlightServer.builder(allocator, Location.forGrpcInsecure("localhost", 0), producer)
                 .headerAuthenticator(new GeneratedBearerTokenAuthenticator(
                         new BasicCallHeaderAuthenticator(connectionManager)))
@@ -87,37 +89,105 @@ class PersonFlightSqlLoaderTest {
     }
 
     @Test
-    @DisplayName("The loader creates the table and inserts tokens with prepared statements")
-    void shouldLoadTokensWithPreparedStatements() throws Exception {
-        PersonFlightSqlLoader.main(args("--rows", "50", "--batch-size", "20",
-                "--insert-mode", "prepared", "--data-mode", "tokens", "--table", "PERSON"));
+    @DisplayName("The loader tokenizes its values through the transform() extension")
+    void shouldLoadValuesThroughTheTransformExtension() throws Exception {
+        assertEquals(0, PersonFlightSqlLoader.run(args("--rows", "50",
+                "--insert-mode", "literal", "--data-mode", "transform", "--table", "PERSON")));
 
         assertEquals(50, count("PERSON"));
-        // Every generated token must match the pattern the detokenize service looks for, otherwise
-        // the whole exercise silently proves nothing.
-        assertTrue(storedValue("PERSON", "FIRST_NAME").matches("RG\\{[A-Z2-7x]{2}[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+\\}"),
-                "the generated tokens must match the detokenizer's token pattern");
+        // What H2 holds is what the proxy produced from the call, not the call itself: the rewriting
+        // really happened before the statement reached the database.
+        String stored = storedValue("PERSON", "FIRST_NAME");
+        assertTrue(stored.startsWith("Person.ShortString="), stored);
+        assertFalse(stored.contains("transform("), stored);
+    }
+
+    @Test
+    @DisplayName("Every sensitive column is tokenized, the identifier is left alone")
+    void shouldTokenizeEverySensitiveColumn() throws Exception {
+        assertEquals(0, PersonFlightSqlLoader.run(args("--rows", "5", "--insert-mode", "literal",
+                "--data-mode", "transform", "--table", "PERSON_ALL")));
+
+        for (String column : List.of("FIRST_NAME", "LAST_NAME", "BIRTH_DATE", "EMAIL", "CITY", "NOTES")) {
+            assertTrue(storedValue("PERSON_ALL", column).startsWith("Person.ShortString="),
+                    column + " should have been tokenized");
+        }
+        assertEquals(5, count("PERSON_ALL"));
+    }
+
+    @Test
+    @DisplayName("The class, property and jurisdiction of the calls are overridable")
+    void shouldHonourTheOverriddenMapping() throws Exception {
+        assertEquals(0, PersonFlightSqlLoader.run(args("--rows", "3", "--insert-mode", "literal",
+                "--data-mode", "transform", "--table", "PERSON_MAPPING",
+                "--transform-class", "Account", "--transform-property", "iban",
+                "--transform-jurisdiction", "CH")));
+
+        assertTrue(storedValue("PERSON_MAPPING", "FIRST_NAME").startsWith("Account.iban="));
+    }
+
+    @Test
+    @DisplayName("A name carrying an apostrophe does not break the call")
+    void shouldEscapeAQuoteOfTheClearValue() {
+        // Faker really does generate names with apostrophes; an unescaped one would end the literal
+        // in the middle of the transform() call.
+        PersonFlightSqlLoader.Generator generator = new PersonFlightSqlLoader.Generator(
+                "de-CH", "transform", "Person", "ShortString", "LU");
+
+        assertEquals("transform('Person', 'ShortString', 'LU', 'O''Brian')",
+                PersonFlightSqlLoader.literal(generator.transformCall("O'Brian")));
     }
 
     @Test
     @DisplayName("The loader inserts clear data with literal statements, quotes included")
     void shouldLoadClearDataWithLiteralStatements() throws Exception {
-        PersonFlightSqlLoader.main(args("--rows", "25", "--insert-mode", "literal",
-                "--data-mode", "clear", "--table", "PERSON_LITERAL"));
+        assertEquals(0, PersonFlightSqlLoader.run(args("--rows", "25", "--insert-mode", "literal",
+                "--data-mode", "clear", "--table", "PERSON_LITERAL")));
 
         assertEquals(25, count("PERSON_LITERAL"));
     }
 
     @Test
+    @DisplayName("Clear data still loads through prepared statements")
+    void shouldLoadClearDataWithPreparedStatements() throws Exception {
+        assertEquals(0, PersonFlightSqlLoader.run(args("--rows", "25", "--batch-size", "10",
+                "--insert-mode", "prepared", "--data-mode", "clear", "--table", "PERSON_PREPARED")));
+
+        assertEquals(25, count("PERSON_PREPARED"));
+    }
+
+    @Test
     @DisplayName("The read back sees the values detokenized by the proxy")
     void shouldReadBackDetokenizedValues() throws Exception {
-        PersonFlightSqlLoader.main(args("--rows", "5", "--insert-mode", "prepared",
-                "--data-mode", "tokens", "--table", "PERSON_READBACK"));
+        assertEquals(0, PersonFlightSqlLoader.run(args("--rows", "5", "--insert-mode", "literal",
+                "--data-mode", "transform", "--table", "PERSON_READBACK")));
 
         // Reading through the proxy detokenizes, reading H2 directly does not: the difference is
         // exactly what the loader reports.
-        assertTrue(storedValue("PERSON_READBACK", "FIRST_NAME").startsWith("RG{"));
+        assertTrue(storedValue("PERSON_READBACK", "FIRST_NAME").startsWith("Person.ShortString="));
         assertEquals(5, count("PERSON_READBACK"));
+    }
+
+    @Test
+    @DisplayName("The transform mode is refused with prepared statements")
+    void shouldRefuseTheTransformModeWithPreparedStatements() {
+        // A bound parameter is never evaluated: the call would be stored as text.
+        assertEquals(-1, PersonFlightSqlLoader.run(args("--rows", "1", "--insert-mode", "prepared",
+                "--data-mode", "transform", "--table", "PERSON_REFUSED")));
+    }
+
+    @Test
+    @DisplayName("The former tokens mode is refused")
+    void shouldRefuseTheFormerTokensMode() {
+        assertEquals(-1, PersonFlightSqlLoader.run(args("--rows", "1", "--insert-mode", "literal",
+                "--data-mode", "tokens", "--table", "PERSON_REFUSED")));
+    }
+
+    @Test
+    @DisplayName("An unknown data mode is refused")
+    void shouldRefuseAnUnknownDataMode() {
+        assertEquals(-1, PersonFlightSqlLoader.run(args("--rows", "1", "--insert-mode", "literal",
+                "--data-mode", "nonsense", "--table", "PERSON_REFUSED")));
     }
 
     /** Builds the loader's command line, pointing it at the embedded server. */

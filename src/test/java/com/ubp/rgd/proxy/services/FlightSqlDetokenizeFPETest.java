@@ -106,7 +106,7 @@ class FlightSqlDetokenizeFPETest {
     private static FlightSqlMappingConfig configWith(List<FlightSqlDataMapping> dataMappings) {
         FlightSqlMappingConfig config = new FlightSqlMappingConfig();
         config.setDataMappings(dataMappings);
-        config.setProcessingContextEvidences(new HashMap<>(Map.of("Action", "Unprotect")));
+        config.getAfter().setProcessingContextEvidences(new HashMap<>(Map.of("Action", "Unprotect")));
         return config;
     }
 
