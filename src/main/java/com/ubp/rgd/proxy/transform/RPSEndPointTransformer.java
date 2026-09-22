@@ -9,7 +9,6 @@ import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
 import java.util.regex.Pattern;
 
 @ApplicationScoped
@@ -27,7 +26,7 @@ public class RPSEndPointTransformer extends AbstractEndPointTransformer {
      * SQL result set, without mistaking an ordinary value for a token.
      */
     public static final Pattern TOKEN_PATTERN =
-            Pattern.compile("(RG\\{[A-Z2-7x]{2}[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+\\})");
+            Pattern.compile("(RG\\{[A-Z2-7x]{2}[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+})");
 
     @Inject
     RPSClientEngineProvider engineProvider;
