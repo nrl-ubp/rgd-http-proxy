@@ -43,11 +43,11 @@ import java.util.regex.Pattern;
  * Result sets carry no RPS metadata, so the RPS class / property names are resolved from the mapping
  * file configured by {@code proxy.flight-sql.mapping-config-file}, in this order:
  * <ol>
- *     <li><b>Column mappings</b> — when the table/column of a result-set column is mapped, its
+ *     <li><b>Column mappings</b> â€” when the table/column of a result-set column is mapped, its
  *     tokens are all detokenized with that mapping.</li>
- *     <li><b>Data mappings</b> — otherwise the column is detokenized implicitly: each configured
+ *     <li><b>Data mappings</b> â€” otherwise the column is detokenized implicitly: each configured
  *     regex locates its own segments in the values and supplies their class / property names.</li>
- *     <li><b>Token mapping index</b> — the tokens no data mapping claimed are finally resolved from
+ *     <li><b>Token mapping index</b> â€” the tokens no data mapping claimed are finally resolved from
  *     the mapping index they carry in their first two characters, see
  *     {@link FlightSqlTokenIndexResolver}. This tier is <b>RPS only</b>: it is skipped when the
  *     selected transformer produces tokens without a mapping index.</li>
@@ -124,7 +124,7 @@ public class FlightSqlDetokenizeService {
      * {@link FlightSqlTokenIndexResolver#register(String, String)} for each of them with the index
      * symbol and its {@code "ClassName.PropertyName"}.
      * <p>
-     * A symbol may be declared padded ({@code "Bx"}) or not ({@code "B"}), both being the same index —
+     * A symbol may be declared padded ({@code "Bx"}) or not ({@code "B"}), both being the same index â€”
      * see {@link FlightSqlTokenIndexResolver} for the encoding.
      * <p>
      * The implementation may query the RPS engine through {@link #rpsClientEngineProvider} to discover
@@ -143,7 +143,28 @@ public class FlightSqlDetokenizeService {
         //      FlightSqlTokenIndexResolver.register("C", "Person.BirthDate");
         //      FlightSqlTokenIndexResolver.register("ZA", "Account.Number");  // index 26, escaped form
         // -------------------------------------------------------------------------------------------
+
         FlightSqlTokenIndexResolver.register("B", "Person.ShortString");
+        FlightSqlTokenIndexResolver.register("C", "Person.Date");
+        FlightSqlTokenIndexResolver.register("D", "Person.Email");
+        FlightSqlTokenIndexResolver.register("E", "Person.PhoneNumber");
+        FlightSqlTokenIndexResolver.register("G", "Person.LongString");
+        FlightSqlTokenIndexResolver.register("J", "Other.Number");
+        FlightSqlTokenIndexResolver.register("K", "Other.LongText");
+        FlightSqlTokenIndexResolver.register("L", "Other.ShortText");
+        FlightSqlTokenIndexResolver.register("M", "Other.UID");
+        FlightSqlTokenIndexResolver.register("N", "Person.TIN");
+        FlightSqlTokenIndexResolver.register("O", "Person.VAT");
+        FlightSqlTokenIndexResolver.register("P", "Person.SocialSecurityNumber");
+        FlightSqlTokenIndexResolver.register("Q", "Address.AddPart");
+        FlightSqlTokenIndexResolver.register("R", "Address.PostalCode");
+        FlightSqlTokenIndexResolver.register("S", "Address.RegionOrState");
+        FlightSqlTokenIndexResolver.register("T", "Address.City");
+        FlightSqlTokenIndexResolver.register("U", "Address.GeoCoding");
+        FlightSqlTokenIndexResolver.register("V", "Financial.SwiftPart");
+        FlightSqlTokenIndexResolver.register("W", "Financial.IBAN");
+        FlightSqlTokenIndexResolver.register("X", "Financial.CreditCard");
+        FlightSqlTokenIndexResolver.register("Y", "Person.AccountName");
     }
 
     FlightSqlMappingConfig getMappingConfig() {
@@ -338,7 +359,7 @@ public class FlightSqlDetokenizeService {
 
     /**
      * Locate the {@code RG{...}} tokens of a value whose RPS class / property is resolved from the
-     * mapping index they carry — the last resort, applied to the tokens that neither a column mapping
+     * mapping index they carry â€” the last resort, applied to the tokens that neither a column mapping
      * nor a data mapping could resolve.
      *
      * @param value the value to scan
@@ -367,7 +388,7 @@ public class FlightSqlDetokenizeService {
     }
 
     /**
-     * Locate the segments of a value using the data mappings — the implicit detokenization applied to
+     * Locate the segments of a value using the data mappings â€” the implicit detokenization applied to
      * the columns without an explicit {@link FlightSqlColumnMapping}.
      * <p>
      * Every mapping is applied in declaration order, which is therefore its priority: a match
@@ -546,8 +567,9 @@ public class FlightSqlDetokenizeService {
                 RPSValue rpsValue = segment.rpsValue();
                 String transformed = rpsValue.getTransformed();
                 if (transformed == null) {
-                    throw new RPSTransformException(
-                            "Detokenization did not return a value for: " + rpsValue.getOriginal());
+                    LOG.error("Detokenization did not return a value for: {} with property as {}.{}",
+                            rpsValue.getOriginal(), rpsValue.getMapping().getClassName(), rpsValue.getMapping().getPropertyName());
+                    transformed = rpsValue.getOriginal();
                 }
                 clearValues.add(transformed);
             }
