@@ -40,8 +40,30 @@ import java.util.Map;
  * text to transform. <b>The jurisdiction is parsed and validated but deliberately ignored</b> for
  * now; it is a later step, not an oversight.
  * <p>
- * All the calls of a statement are transformed in a <b>single</b> engine call, and the contexts come
- * from the {@code before} phase of the mapping configuration.
+ * {@code transform_search(...)} takes exactly the same arguments and obeys exactly the same rules,
+ * but produces a <b>{@code LIKE} pattern</b> rather than the token: the token is truncated to its
+ * first {@value #SEARCH_PREFIX_LENGTH} characters and a {@code %} is appended, so that a value whose
+ * tokenization is only stable on its prefix can still be searched for:
+ *
+ * <pre>
+ * SELECT * FROM PERSON WHERE FIRST_NAME LIKE transform_search('Person', 'shortString', 'CH', 'Jean')
+ * </pre>
+ *
+ * becomes
+ *
+ * <pre>
+ * SELECT * FROM PERSON WHERE FIRST_NAME LIKE 'RG{AB1234%'
+ * </pre>
+ *
+ * <b>A {@code %} or a {@code _} occurring inside the token itself is escaped</b> with a backslash,
+ * and the pattern is then followed by an {@code ESCAPE '\'} clause, so that a token carrying one is
+ * searched for literally rather than as a wildcard. The clause is appended <b>only</b> when the
+ * prefix really holds one: it is valid in a {@code LIKE} predicate and nowhere else, so a call
+ * written anywhere else keeps working as long as its token is free of wildcards. An RPS token always
+ * is; a format-preserving token may not be.
+ * <p>
+ * All the calls of a statement, of both functions, are transformed in a <b>single</b> engine call,
+ * and the contexts come from the {@code before} phase of the mapping configuration.
  */
 @ApplicationScoped
 public class FlightSqlTokenizeService {
@@ -50,6 +72,31 @@ public class FlightSqlTokenizeService {
 
     /** The name of the extension, matched case-insensitively. */
     static final String FUNCTION_NAME = "transform";
+
+    /** The name of the search variant, matched case-insensitively. */
+    static final String SEARCH_FUNCTION_NAME = "transform_search";
+
+    /** How many characters of the token the search variant keeps before the wildcard. */
+    static final int SEARCH_PREFIX_LENGTH = 9;
+
+    /** The {@code LIKE} wildcard appended by the search variant, and escaped inside its prefix. */
+    private static final char LIKE_WILDCARD_ANY = '%';
+
+    /** The single-character {@code LIKE} wildcard, escaped inside the prefix. */
+    private static final char LIKE_WILDCARD_ONE = '_';
+
+    /** The character declared by the emitted {@code ESCAPE} clause. */
+    private static final char LIKE_ESCAPE_CHARACTER = '\\';
+
+    /**
+     * The recognized function names, <b>longest first</b>: the whole-word rule already keeps
+     * {@code transform} from matching the start of {@code transform_search(}, but the order makes
+     * the behaviour explicit rather than dependent on that subtlety.
+     */
+    private static final String[] FUNCTION_NAMES = {SEARCH_FUNCTION_NAME, FUNCTION_NAME};
+
+    /** How both functions are named together, for the messages that concern the extension itself. */
+    private static final String EXTENSION_NAMES = FUNCTION_NAME + "()/" + SEARCH_FUNCTION_NAME + "()";
 
     /** Writing a value into a query can only mean tokenizing it. */
     private static final String DEFAULT_ACTION = "Protect";
@@ -63,10 +110,12 @@ public class FlightSqlTokenizeService {
     FlightSqlMappingConfigProvider mappingConfigProvider;
 
     /**
-     * Replace every {@code transform(...)} call of a statement by the token of its transformed text.
+     * Replace every {@code transform(...)} and {@code transform_search(...)} call of a statement:
+     * the former by the token of its transformed text, the latter by a {@code LIKE} pattern made of
+     * the first {@value #SEARCH_PREFIX_LENGTH} characters of that token.
      * <p>
-     * A statement that uses no {@code transform()} is returned as it is, without ever reaching the
-     * engine, whatever the {@code before} phase says.
+     * A statement that uses neither is returned as it is, without ever reaching the engine, whatever
+     * the {@code before} phase says.
      *
      * @param sql the statement as the client sent it
      * @return the statement to send to the database server
@@ -87,8 +136,8 @@ public class FlightSqlTokenizeService {
             // Leaving the call in place would only produce an obscure syntax error from the database,
             // and substituting the clear text would send unprotected data to it.
             throw new FlightSqlTransformSyntaxException(String.format(
-                    "The query uses %s() but the 'before' phase of the Flight SQL mapping"
-                            + " configuration is not active.", FUNCTION_NAME));
+                    "The query uses %s but the 'before' phase of the Flight SQL mapping"
+                            + " configuration is not active.", EXTENSION_NAMES));
         }
 
         RPSValue[] values = new RPSValue[calls.size()];
@@ -97,14 +146,16 @@ public class FlightSqlTokenizeService {
             values[i] = new RPSValue(new RPSMapping(call.className(), call.propertyName()), call.text());
         }
 
-        LOG.debug("Transforming {} {}() call(s) of the statement", values.length, FUNCTION_NAME);
+        LOG.debug("Transforming {} extension call(s) of the statement", values.length);
         transformValues(values);
 
         // Right to left, so that the offsets of the calls still to replace stay valid.
         StringBuilder rewritten = new StringBuilder(sql);
         for (int i = calls.size() - 1; i >= 0; i--) {
             FunctionCall call = calls.get(i);
-            rewritten.replace(call.start(), call.end(), toSqlLiteral(values[i].getTransformed()));
+            String transformed = values[i].getTransformed();
+            rewritten.replace(call.start(), call.end(),
+                    call.isSearch() ? toSqlLikePattern(transformed) : toSqlLiteral(transformed));
         }
         return rewritten.toString();
     }
@@ -119,7 +170,7 @@ public class FlightSqlTokenizeService {
         try {
             transformer.transformData(values, buildRightContext(), buildProcessingContext());
         } catch (Exception e) {
-            LOG.error("Failed to transform the {}() calls of the statement", FUNCTION_NAME, e);
+            LOG.error("Failed to transform the extension calls of the statement", e);
             throw new RPSTransformException(e);
         }
     }
@@ -129,11 +180,12 @@ public class FlightSqlTokenizeService {
     // ---------------------------------------------------------------------------------------------
 
     /**
-     * Locate every {@code transform(...)} call of a statement, in the order they appear.
+     * Locate every {@code transform(...)} and {@code transform_search(...)} call of a statement, in
+     * the order they appear.
      * <p>
-     * The statement is walked once, skipping what is not code: a {@code transform(} sitting inside a
-     * string literal, a quoted identifier or a comment is left alone, since rewriting it would corrupt
-     * the query.
+     * The statement is walked once, skipping what is not code: a call sitting inside a string
+     * literal, a quoted identifier or a comment is left alone, since rewriting it would corrupt the
+     * query.
      *
      * @param sql the statement to scan
      * @return the located calls with their arguments and their position in {@code sql}
@@ -148,21 +200,34 @@ public class FlightSqlTokenizeService {
                 index = skipped;
                 continue;
             }
-            if (startsFunctionName(sql, index)) {
-                int afterName = index + FUNCTION_NAME.length();
+            String name = matchFunctionName(sql, index);
+            if (name != null) {
+                int afterName = index + name.length();
                 int parenthesis = skipWhitespace(sql, afterName);
                 if (parenthesis < sql.length() && sql.charAt(parenthesis) == '(') {
-                    calls.add(readCall(sql, index, parenthesis));
+                    calls.add(readCall(sql, index, parenthesis, name));
                     index = calls.get(calls.size() - 1).end();
                     continue;
                 }
-                // A column or an alias that merely happens to be named "transform".
+                // A column or an alias that merely happens to be named after the extension.
                 index = afterName;
                 continue;
             }
             index++;
         }
         return calls;
+    }
+
+    /**
+     * @return the recognized function name starting at {@code index}, or null when none does
+     */
+    private static String matchFunctionName(String sql, int index) {
+        for (String name : FUNCTION_NAMES) {
+            if (startsFunctionName(sql, index, name)) {
+                return name;
+            }
+        }
+        return null;
     }
 
     /**
@@ -206,17 +271,17 @@ public class FlightSqlTokenizeService {
     }
 
     /**
-     * Whether the function name starts at {@code index}, as a whole word: {@code my_transform(...)}
-     * and {@code transformed} are not calls of the extension.
+     * Whether {@code name} starts at {@code index}, as a whole word: {@code my_transform(...)} and
+     * {@code transformed} are not calls of the extension.
      */
-    private static boolean startsFunctionName(String sql, int index) {
-        if (!sql.regionMatches(true, index, FUNCTION_NAME, 0, FUNCTION_NAME.length())) {
+    private static boolean startsFunctionName(String sql, int index, String name) {
+        if (!sql.regionMatches(true, index, name, 0, name.length())) {
             return false;
         }
         if (index > 0 && isNamePart(sql.charAt(index - 1))) {
             return false;
         }
-        int after = index + FUNCTION_NAME.length();
+        int after = index + name.length();
         return after >= sql.length() || !isNamePart(sql.charAt(after));
     }
 
@@ -235,17 +300,18 @@ public class FlightSqlTokenizeService {
     /**
      * Read one call, from the start of its name to the closing parenthesis.
      *
-     * @param nameStart the index of the {@code t} of the function name
+     * @param nameStart the index of the first character of the function name
      * @param parenthesis the index of the opening parenthesis
+     * @param name the recognized function name, as written in the statement
      */
-    private static FunctionCall readCall(String sql, int nameStart, int parenthesis) {
+    private static FunctionCall readCall(String sql, int nameStart, int parenthesis, String name) {
         List<String> arguments = new ArrayList<>();
         int index = parenthesis + 1;
 
         while (true) {
             index = skipWhitespace(sql, index);
             if (index >= sql.length()) {
-                throw new FlightSqlTransformSyntaxException(unterminated(sql, nameStart));
+                throw new FlightSqlTransformSyntaxException(unterminated(sql, nameStart, name));
             }
             if (sql.charAt(index) == ')' && arguments.isEmpty()) {
                 index++;
@@ -256,17 +322,17 @@ public class FlightSqlTokenizeService {
                         "Argument %d of %s() must be a single-quoted text, found \"%s\". A parameter"
                                 + " placeholder cannot be used: it has no value yet when the query is"
                                 + " rewritten.",
-                        arguments.size() + 1, FUNCTION_NAME, peek(sql, index)));
+                        arguments.size() + 1, name, peek(sql, index)));
             }
             int literalEnd = skipQuoted(sql, index, '\'');
             if (literalEnd > sql.length() || sql.charAt(literalEnd - 1) != '\'' || literalEnd == index + 1) {
-                throw new FlightSqlTransformSyntaxException(unterminated(sql, nameStart));
+                throw new FlightSqlTransformSyntaxException(unterminated(sql, nameStart, name));
             }
             arguments.add(sql.substring(index + 1, literalEnd - 1).replace("''", "'"));
 
             index = skipWhitespace(sql, literalEnd);
             if (index >= sql.length()) {
-                throw new FlightSqlTransformSyntaxException(unterminated(sql, nameStart));
+                throw new FlightSqlTransformSyntaxException(unterminated(sql, nameStart, name));
             }
             if (sql.charAt(index) == ',') {
                 index++;
@@ -278,30 +344,29 @@ public class FlightSqlTokenizeService {
             }
             throw new FlightSqlTransformSyntaxException(String.format(
                     "Expected a comma or a closing parenthesis in %s(), found \"%s\".",
-                    FUNCTION_NAME, peek(sql, index)));
+                    name, peek(sql, index)));
         }
 
         if (arguments.size() != ARGUMENT_COUNT) {
             throw new FlightSqlTransformSyntaxException(String.format(
                     "%s() takes %d arguments (className, propertyName, jurisdiction, text) but %d"
                             + " were given in \"%s\".",
-                    FUNCTION_NAME, ARGUMENT_COUNT, arguments.size(), sql.substring(nameStart, index)));
+                    name, ARGUMENT_COUNT, arguments.size(), sql.substring(nameStart, index)));
         }
         String className = arguments.get(0);
         String propertyName = arguments.get(1);
         if (className.isBlank() || propertyName.isBlank()) {
             throw new FlightSqlTransformSyntaxException(String.format(
                     "The className and the propertyName of %s() cannot be empty, in \"%s\".",
-                    FUNCTION_NAME, sql.substring(nameStart, index)));
+                    name, sql.substring(nameStart, index)));
         }
         // arguments.get(2) is the jurisdiction: read and validated, but not used yet.
-        return new FunctionCall(nameStart, index, className, propertyName,
+        return new FunctionCall(nameStart, index, name, className, propertyName,
                 arguments.get(2), arguments.get(3));
     }
 
-    private static String unterminated(String sql, int nameStart) {
-        return String.format("Unterminated %s() call in \"%s\".",
-                FUNCTION_NAME, peek(sql, nameStart));
+    private static String unterminated(String sql, int nameStart, String name) {
+        return String.format("Unterminated %s() call in \"%s\".", name, peek(sql, nameStart));
     }
 
     private static String peek(String sql, int index) {
@@ -315,6 +380,51 @@ public class FlightSqlTokenizeService {
             return "NULL";
         }
         return "'" + value.replace("'", "''") + "'";
+    }
+
+    /**
+     * Turn a token into the {@code LIKE} pattern of the search variant: its first
+     * {@value #SEARCH_PREFIX_LENGTH} characters followed by a {@code %}. A shorter token is kept
+     * whole.
+     * <p>
+     * A {@code %} or a {@code _} of the token itself would act as a wildcard and widen the search,
+     * so it is escaped and the pattern is followed by an {@code ESCAPE} clause. The clause is only
+     * appended when the prefix really holds one, since it is valid in a {@code LIKE} predicate and
+     * nowhere else.
+     *
+     * @param token the transformed value, possibly null
+     * @return the quoted pattern, or {@code NULL} when the engine returned no value
+     */
+    static String toSqlLikePattern(String token) {
+        if (token == null) {
+            return "NULL";
+        }
+        String prefix = token.length() <= SEARCH_PREFIX_LENGTH
+                ? token
+                : token.substring(0, SEARCH_PREFIX_LENGTH);
+        if (!holdsWildcard(prefix)) {
+            return toSqlLiteral(prefix + "%");
+        }
+        StringBuilder escaped = new StringBuilder(prefix.length() + 4);
+        for (int i = 0; i < prefix.length(); i++) {
+            char current = prefix.charAt(i);
+            if (current == LIKE_WILDCARD_ANY || current == LIKE_WILDCARD_ONE
+                    || current == LIKE_ESCAPE_CHARACTER) {
+                escaped.append(LIKE_ESCAPE_CHARACTER);
+            }
+            escaped.append(current);
+        }
+        return toSqlLiteral(escaped.append(LIKE_WILDCARD_ANY).toString())
+                + " ESCAPE " + toSqlLiteral(String.valueOf(LIKE_ESCAPE_CHARACTER));
+    }
+
+    /**
+     * Whether the prefix holds a character that {@code LIKE} would read as a wildcard. The escape
+     * character alone does not count: without the clause it is an ordinary character, and escaping
+     * it would change what the pattern matches.
+     */
+    private static boolean holdsWildcard(String prefix) {
+        return prefix.indexOf(LIKE_WILDCARD_ANY) >= 0 || prefix.indexOf(LIKE_WILDCARD_ONE) >= 0;
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -378,17 +488,24 @@ public class FlightSqlTokenizeService {
     }
 
     /**
-     * One located {@code transform(...)} call.
+     * One located call of the extension.
      *
      * @param start the index of the first character of the call in the statement
      * @param end the index just after its closing parenthesis
+     * @param functionName the name as written in the statement, used by the error messages and to
+     *        decide how the token is written back
      * @param jurisdiction read and validated, but not used yet
      */
-    record FunctionCall(int start, int end, String className, String propertyName,
-                        String jurisdiction, String text) {
+    record FunctionCall(int start, int end, String functionName, String className,
+                        String propertyName, String jurisdiction, String text) {
+
+        /** Whether the call is a {@code transform_search()}, producing a {@code LIKE} pattern. */
+        boolean isSearch() {
+            return SEARCH_FUNCTION_NAME.equalsIgnoreCase(functionName);
+        }
     }
 
-    /** A {@code transform()} call the proxy cannot make sense of. */
+    /** A call of the extension the proxy cannot make sense of. */
     public static class FlightSqlTransformSyntaxException extends IllegalArgumentException {
         public FlightSqlTransformSyntaxException(String message) {
             super(message);

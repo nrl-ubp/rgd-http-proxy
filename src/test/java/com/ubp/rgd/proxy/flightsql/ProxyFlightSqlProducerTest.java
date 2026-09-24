@@ -260,6 +260,75 @@ class ProxyFlightSqlProducerTest {
         assertEquals("Geneva", rows.get(0).get(0));
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // The transform_search() SQL extension
+    // ---------------------------------------------------------------------------------------------
+
+    @Test
+    void shouldRewriteASearchCallAsATruncatedLikePattern() throws Exception {
+        // "Person.shortString=Jean" cut after its 9th character, then the wildcard.
+        List<List<String>> rows = query(
+                "SELECT transform_search('Person','shortString','CH','Jean') FROM PERSON WHERE ID = 1");
+
+        assertEquals(1, rows.size());
+        assertEquals("Person.sh%", rows.get(0).get(0));
+    }
+
+    @Test
+    void shouldMatchATokenizedColumnByPrefixThroughTheSearchVariant() throws Exception {
+        // The database really evaluates the pattern: the rows are selected by a LIKE it understands.
+        List<List<String>> rows = query("SELECT ID FROM ACCOUNT"
+                + " WHERE OWNER LIKE transform_search('Person','shortString','CH','Jean')"
+                + " ORDER BY ID");
+
+        // A 9-character prefix of these fake tokens stops before the value, so both owners match.
+        // That is the point of the variant: it matches on the stable head of the token, not on the
+        // whole of it.
+        assertEquals(2, rows.size());
+        assertEquals("1", rows.get(0).get(0));
+        assertEquals("2", rows.get(1).get(0));
+    }
+
+    @Test
+    void shouldRewriteBothExtensionsInTheSameQuery() throws Exception {
+        List<List<String>> rows = query("SELECT ID FROM ACCOUNT"
+                + " WHERE OWNER LIKE transform_search('Person','shortString','CH','Jean')"
+                + " AND OWNER = transform('Person','shortString','CH','Paul')");
+
+        assertEquals(1, rows.size());
+        assertEquals("2", rows.get(0).get(0));
+    }
+
+    @Test
+    void shouldRejectAMalformedSearchCall() {
+        FlightRuntimeException error = assertThrows(FlightRuntimeException.class,
+                () -> query("SELECT transform_search('Person','shortString') FROM PERSON"));
+
+        assertEquals(FlightStatusCode.INVALID_ARGUMENT, error.status().code());
+        assertTrue(error.status().description().contains("transform_search()"),
+                error.status().description());
+    }
+
+    @Test
+    void shouldEscapeAWildcardOfTheTokenAgainstARealDatabase() throws Exception {
+        // The fake tokenizer builds the token out of the class and the property, so a property named
+        // with a percent is the way to obtain a token holding a LIKE wildcard here.
+        sqlClient.executeUpdate("INSERT INTO ACCOUNT VALUES (4, 'Person.x%yes')", credentials);
+        sqlClient.executeUpdate("INSERT INTO ACCOUNT VALUES (5, 'Person.xQyes')", credentials);
+        try {
+            // Rewritten as LIKE 'Person.x\%%' ESCAPE '\', which the database has to parse and apply.
+            List<List<String>> rows = query("SELECT ID FROM ACCOUNT"
+                    + " WHERE OWNER LIKE transform_search('Person','x%y','CH','Jean')"
+                    + " ORDER BY ID");
+
+            // Only the literal percent matches: unescaped, the pattern would have caught both rows.
+            assertEquals(1, rows.size());
+            assertEquals("4", rows.get(0).get(0));
+        } finally {
+            sqlClient.executeUpdate("DELETE FROM ACCOUNT WHERE ID IN (4, 5)", credentials);
+        }
+    }
+
     @Test
     void shouldReturnAnEmptyResultSetWithItsSchema() throws Exception {
         FlightInfo info = sqlClient.execute("SELECT FIRST_NAME, CITY FROM PERSON WHERE ID = 999",

@@ -323,13 +323,13 @@ A query crosses the proxy twice, and the two directions do not use the same cont
 
 | Phase | Applies to | Typical action | Status |
 |---|---|---|---|
-| `before` | the statement on its way to the database server | `Protect` | used by the `transform()` extension |
+| `before` | the statement on its way to the database server | `Protect` | used by the `transform()` and `transform_search()` extensions |
 | `after` | the result set on its way back, i.e. the detokenization | `Unprotect` | in use |
 
 `active` defaults to **true**, so a phase that does not mention it is performed. Setting
 `"active": false` on `after` turns the detokenization off: result sets are handed back exactly as
 the database server returned them, tokens included. Setting it on `before` **rejects** any query
-using `transform()`, rather than letting clear data reach the database.
+using `transform()` or `transform_search()`, rather than letting clear data reach the database.
 
 The action of each phase is taken from its own `processing-context`. When none is declared, the
 phase falls back to the only action that makes sense for its direction: `Unprotect` for `after`,
@@ -342,7 +342,7 @@ query.
 > a warning, since that is the normal state of a deployment that does not use Flight SQL. Unknown
 > properties are ignored, so adding a key to the file can never wipe the rest of the configuration.
 
-### The `transform()` SQL extension
+### The `transform()` SQL extensions
 
 A client holding a **clear** value cannot compare it with a column that stores tokens. It wraps the
 value in a `transform()` call, and the proxy replaces the call by the corresponding token **before**
@@ -371,18 +371,65 @@ It works in a query, in a prepared statement and in an update, so a value can be
 and found back through the same call. The contexts are those of the **`before`** phase, and **all
 the calls of one statement are transformed in a single engine round trip**.
 
-Details that matter in practice:
+#### `transform_search()`, for a `LIKE` comparison
+
+`transform_search()` takes **exactly the same four arguments** and obeys exactly the same rules, but
+produces a `LIKE` **pattern** instead of the token: the token is truncated to its **first 9
+characters** and a `%` is appended.
+
+```sql
+SELECT * FROM PERSON WHERE FIRST_NAME LIKE transform_search('Person', 'shortString', 'CH', 'Jean')
+```
+
+reaches the database as:
+
+```sql
+SELECT * FROM PERSON WHERE FIRST_NAME LIKE 'RG{AB1234%'
+```
+
+It exists for the cases where only the **head** of the token is stable, so that an equality on the
+whole token would miss the rows a prefix match finds. Use it with `LIKE`, not with `=`: written
+after an `=`, it would compare the column with the literal text `RG{AB1234%`.
+
+- a token **shorter** than 9 characters is used whole, still followed by the `%`;
+- a value the engine could not transform yields `NULL`, and `LIKE NULL` matches nothing;
+- the two functions can be **mixed in the same statement**, and still cost one engine round trip for
+  the whole of it.
+
+##### Wildcards inside the token
+
+A `%` or a `_` **of the token itself** would act as a wildcard and widen the search, so it is escaped
+with a backslash and the pattern is followed by an `ESCAPE` clause:
+
+```sql
+WHERE OWNER LIKE 'RG{10\%20%' ESCAPE '\'
+```
+
+An RPS token never contains either, but a format-preserving one (`proxy.transform.impl=FPE`) can,
+since it keeps the shape of the source value. A backslash of the token is escaped too, but only once
+the clause is emitted — without it, a backslash is an ordinary character and escaping it would change
+what the pattern matches.
+
+> **The clause is appended only when the prefix really holds a wildcard.** `ESCAPE` is valid after
+> the pattern of a `LIKE` predicate and **nowhere else**, so a `transform_search()` written somewhere
+> else — in a `SELECT` list, to see what it produces — keeps working as long as its token is free of
+> wildcards, and becomes a syntax error when it is not.
+
+Details that matter in practice, for both functions:
 
 - the name is matched in any case, and `transform (...)` with a space is accepted; a column or a
-  longer identifier such as `my_transform(...)` or `transformed` is left alone;
+  longer identifier such as `my_transform(...)`, `transformed` or `transform_searches(...)` is left
+  alone;
 - a call written inside a **string literal, a quoted identifier or a comment** is *not* rewritten,
   so an existing query cannot be corrupted by the feature;
 - the four arguments must be **single-quoted texts**, `''` being an escaped quote. A `?` parameter
   placeholder is rejected: it has no value yet when the query is rewritten;
-- the token is substituted as a quoted SQL literal, so the call can sit anywhere a value is expected;
-- a malformed call **rejects the whole query** with `INVALID_ARGUMENT` and an explanatory message,
-  rather than passing meaningless SQL to the database. An engine failure returns `INTERNAL`;
-- a query containing no `transform()` is passed through untouched and never reaches the engine.
+- the token, or the pattern, is substituted as a quoted SQL literal, so the call can sit anywhere a
+  value is expected;
+- a malformed call **rejects the whole query** with `INVALID_ARGUMENT` and an explanatory message
+  naming the function actually written, rather than passing meaningless SQL to the database. An
+  engine failure returns `INTERNAL`;
+- a query containing neither function is passed through untouched and never reaches the engine.
 
 ### Resolution order
 
@@ -467,7 +514,7 @@ into a `PERSON` table **through the proxy**, using the Arrow Flight SQL JDBC dri
 JPA). It then reads the rows back and reports how many values came back detokenized.
 
 By default it does not fabricate tokens: it generates clear values and wraps each of them in a
-[`transform()` call](#the-transform-sql-extension), so the proxy tokenizes them for real on the way
+[`transform()` call](#the-transform-sql-extensions), so the proxy tokenizes them for real on the way
 in. The round trip is therefore a genuine one — tokenized by the engine on the way in, detokenized on
 the way out.
 
