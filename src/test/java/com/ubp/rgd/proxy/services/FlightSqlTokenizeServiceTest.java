@@ -17,13 +17,14 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The {@code transform()} SQL extension: what the scanner recognizes, what it refuses, and what
- * reaches the engine.
+ * The {@code transform()} and {@code transform_search()} SQL extensions: what the scanner
+ * recognizes, what it refuses, and what reaches the engine.
  */
 class FlightSqlTokenizeServiceTest {
 
@@ -191,6 +192,210 @@ class FlightSqlTokenizeServiceTest {
     }
 
     // ---------------------------------------------------------------------------------------------
+    // The search variant
+    // ---------------------------------------------------------------------------------------------
+
+    @Test
+    void shouldReplaceASearchCallByATruncatedLikePattern() throws Exception {
+        String rewritten = service.rewrite(
+                "SELECT * FROM PERSON WHERE FIRST_NAME LIKE"
+                        + " transform_search('Person','shortString','CH','Jean')");
+
+        // "TOK(Person.shortString:Jean)" truncated after its 9th character, then the wildcard.
+        assertEquals("SELECT * FROM PERSON WHERE FIRST_NAME LIKE 'TOK(Perso%'", rewritten);
+    }
+
+    @Test
+    void shouldTokenizeTheTextOfASearchCallLikeAnyOther() throws Exception {
+        service.rewrite("SELECT transform_search('Person','firstName','CH','Jean')");
+
+        // The search variant differs only in the substitution: the engine sees the same value.
+        assertEquals(1, service.callCount);
+        assertEquals("Jean", service.submitted.get(0).getOriginal());
+        assertEquals("Person", service.submitted.get(0).getMapping().getClassName());
+        assertEquals("firstName", service.submitted.get(0).getMapping().getPropertyName());
+    }
+
+    @Test
+    void shouldKeepATokenShorterThanThePrefixWhole() throws Exception {
+        service.fixedToken = "RG{12}";
+
+        assertEquals("SELECT 'RG{12}%'",
+                service.rewrite("SELECT transform_search('Person','p','CH','Jean')"));
+    }
+
+    @Test
+    void shouldNotTruncateATokenOfExactlyThePrefixLength() throws Exception {
+        service.fixedToken = "RG{123456";
+
+        assertEquals(9, service.fixedToken.length());
+        assertEquals("SELECT 'RG{123456%'",
+                service.rewrite("SELECT transform_search('Person','p','CH','Jean')"));
+    }
+
+    @Test
+    void shouldEscapeAQuoteOfTheProducedPattern() throws Exception {
+        service.fixedToken = "it's a token";
+
+        // The quote is doubled inside the pattern, exactly as for a plain token.
+        assertEquals("SELECT 'it''s a to%'",
+                service.rewrite("SELECT transform_search('Person','p','CH','x')"));
+    }
+
+    @Test
+    void shouldRecognizeTheSearchNameInAnyCaseAndWithSpaces() throws Exception {
+        String rewritten = service.rewrite(
+                "SELECT * FROM PERSON WHERE NAME LIKE Transform_Search ('Person','p','CH','Jean')");
+
+        assertEquals("SELECT * FROM PERSON WHERE NAME LIKE 'TOK(Perso%'", rewritten);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Wildcards inside the token
+    // ---------------------------------------------------------------------------------------------
+
+    @Test
+    void shouldEscapeAPercentOfTheTokenAndDeclareTheEscapeCharacter() throws Exception {
+        service.fixedToken = "RG{10%20}";
+
+        // Left alone, the percent would match anything and widen the search.
+        assertEquals("SELECT 'RG{10\\%20}%' ESCAPE '\\'",
+                service.rewrite("SELECT transform_search('Person','p','CH','x')"));
+    }
+
+    @Test
+    void shouldEscapeAnUnderscoreOfTheToken() throws Exception {
+        service.fixedToken = "RG{a_b_c}";
+
+        assertEquals("SELECT 'RG{a\\_b\\_c}%' ESCAPE '\\'",
+                service.rewrite("SELECT transform_search('Person','p','CH','x')"));
+    }
+
+    @Test
+    void shouldEscapeTheEscapeCharacterItselfWhenTheClauseIsEmitted() throws Exception {
+        service.fixedToken = "RG{a\\%b}";
+
+        // Once the clause is there, a backslash of the token would swallow the character after it.
+        assertEquals("SELECT 'RG{a\\\\\\%b}%' ESCAPE '\\'",
+                service.rewrite("SELECT transform_search('Person','p','CH','x')"));
+    }
+
+    @Test
+    void shouldLeaveABackslashAloneWhenNoClauseIsEmitted() throws Exception {
+        service.fixedToken = "RG{a\\b}";
+
+        // Without the clause a backslash is an ordinary character: escaping it would change the match.
+        assertEquals("SELECT 'RG{a\\b}%'",
+                service.rewrite("SELECT transform_search('Person','p','CH','x')"));
+    }
+
+    @Test
+    void shouldNotEmitTheEscapeClauseWhenTheTokenHoldsNoWildcard() throws Exception {
+        String rewritten = service.rewrite("SELECT transform_search('Person','p','CH','Jean')");
+
+        // The clause is valid in a LIKE predicate and nowhere else, so it is only added when needed.
+        assertFalse(rewritten.contains("ESCAPE"), rewritten);
+    }
+
+    @Test
+    void shouldOnlyEscapeTheWildcardsOfThePrefixNotThoseBeyondIt() throws Exception {
+        service.fixedToken = "RG{123456789%}";
+
+        // The percent sits past the 9th character, so it is truncated away rather than escaped.
+        assertEquals("SELECT 'RG{123456%'",
+                service.rewrite("SELECT transform_search('Person','p','CH','x')"));
+    }
+
+    @Test
+    void shouldEscapeAWildcardAndAQuoteTogether() throws Exception {
+        service.fixedToken = "it's 50%";
+
+        assertEquals("SELECT 'it''s 50\\%%' ESCAPE '\\'",
+                service.rewrite("SELECT transform_search('Person','p','CH','x')"));
+    }
+
+    @Test
+    void shouldNotEscapeTheWildcardOfAPlainTransformCall() throws Exception {
+        service.fixedToken = "RG{10%20}";
+
+        // A plain token is a value, not a pattern: it is quoted as it is.
+        assertEquals("SELECT 'RG{10%20}'",
+                service.rewrite("SELECT transform('Person','p','CH','x')"));
+    }
+
+    @Test
+    void shouldNotMistakeASearchCallForAPlainTransformCall() throws Exception {
+        // "transform" is the prefix of "transform_search": the whole-word rule must not split it.
+        String rewritten = service.rewrite("SELECT transform_search('Person','p','CH','Jean')");
+
+        assertTrue(rewritten.endsWith("%'"), rewritten);
+        assertEquals(1, service.callCount);
+    }
+
+    @Test
+    void shouldNotTreatALongerNameThanTheSearchVariantAsACall() throws Exception {
+        String sql = "SELECT transform_searches('a','b','c','d'), my_transform_search('x') FROM DUAL";
+
+        assertEquals(sql, service.rewrite(sql));
+        assertEquals(0, service.callCount);
+    }
+
+    @Test
+    void shouldLeaveAColumnNamedTransformSearchAlone() throws Exception {
+        String sql = "SELECT transform_search FROM PERSON ORDER BY transform_search";
+
+        assertEquals(sql, service.rewrite(sql));
+    }
+
+    @Test
+    void shouldMixBothFunctionsInASingleEngineCall() throws Exception {
+        String rewritten = service.rewrite(
+                "SELECT * FROM PERSON WHERE LAST_NAME = transform('Person','lastName','CH','Dusse')"
+                        + " AND FIRST_NAME LIKE transform_search('Person','firstName','CH','Jean')");
+
+        assertEquals(1, service.callCount);
+        assertEquals(2, service.submitted.size());
+        assertEquals("SELECT * FROM PERSON WHERE LAST_NAME = 'TOK(Person.lastName:Dusse)'"
+                + " AND FIRST_NAME LIKE 'TOK(Perso%'", rewritten);
+    }
+
+    @Test
+    void shouldKeepTheOffsetsValidWhenASearchCallPrecedesAPlainOne() throws Exception {
+        // The pattern is shorter than the token it replaces, so a left-to-right substitution would
+        // shift the following call.
+        String rewritten = service.rewrite(
+                "SELECT transform_search('Person','p','CH','Jean'), transform('Person','q','CH','Dusse')");
+
+        assertEquals("SELECT 'TOK(Perso%', 'TOK(Person.q:Dusse)'", rewritten);
+    }
+
+    @Test
+    void shouldNotRewriteASearchCallWrittenInsideAStringLiteralOrAComment() throws Exception {
+        String sql = "SELECT 'transform_search(1)' -- transform_search('a','b','c','d')\nFROM DUAL";
+
+        assertEquals(sql, service.rewrite(sql));
+        assertEquals(0, service.callCount);
+    }
+
+    @Test
+    void shouldNameTheSearchFunctionInTheErrorOfAMalformedCall() {
+        FlightSqlTransformSyntaxException error = assertThrows(FlightSqlTransformSyntaxException.class,
+                () -> service.rewrite("SELECT transform_search('Person','p','Jean')"));
+
+        // Reporting the error against transform() would send the user looking at the wrong call.
+        assertTrue(error.getMessage().contains("transform_search()"), error.getMessage());
+    }
+
+    @Test
+    void shouldRejectTheSearchVariantWhenTheBeforePhaseIsInactive() {
+        config.getBefore().setActive(false);
+
+        assertThrows(FlightSqlTransformSyntaxException.class,
+                () -> service.rewrite("SELECT transform_search('Person','p','CH','Jean')"));
+        assertEquals(0, service.callCount);
+    }
+
+    // ---------------------------------------------------------------------------------------------
     // Malformed calls
     // ---------------------------------------------------------------------------------------------
 
@@ -355,6 +560,7 @@ class FlightSqlTokenizeServiceTest {
         private final List<RPSValue> submitted = new ArrayList<>();
         private int callCount;
         private String tokenPrefix = "";
+        private String fixedToken;
         private RuntimeException failure;
 
         @Override
@@ -365,6 +571,10 @@ class FlightSqlTokenizeServiceTest {
                 throw new RPSTransformException(failure);
             }
             for (RPSValue value : values) {
+                if (fixedToken != null) {
+                    value.setTransformed(fixedToken);
+                    continue;
+                }
                 RPSMapping mapping = value.getMapping();
                 value.setTransformed(tokenPrefix + "TOK(" + mapping.getClassName() + "."
                         + mapping.getPropertyName() + ":" + value.getOriginal() + ")");
