@@ -1,0 +1,37 @@
+{
+  // The GraphQL schema is generated from this file at startup.
+  // Each entity is a table, each field a column. Fields holding RegData tokens declare a
+  // "transform": their filter values are then tokenized by the rgd-http-proxy, through the
+  // transform() and transform_search() SQL extensions, before being compared with the column.
+  "entities": [
+    {
+      "name": "Person",
+      "description": "A person, the sensitive attributes of which are stored tokenized.",
+      "table": "PERSON",
+      "defaultPageSize": 100,
+      "maxPageSize": 1000,
+      "fields": [
+        { "name": "id", "column": "ID", "type": "Int", "key": true },
+        {
+          "name": "firstName", "column": "FIRST_NAME", "type": "String",
+          "transform": { "className": "Person", "propertyName": "shortString", "jurisdiction": "CH" }
+        },
+        {
+          "name": "lastName", "column": "LAST_NAME", "type": "String",
+          "transform": { "className": "Person", "propertyName": "shortString", "jurisdiction": "CH" }
+        },
+        {
+          "name": "birthDate", "column": "BIRTH_DATE", "type": "String",
+          "description": "Stored as text since a tokenized date is not a date.",
+          "transform": { "className": "Person", "propertyName": "birthDate", "jurisdiction": "CH" }
+        },
+        {
+          "name": "email", "column": "EMAIL", "type": "String",
+          "transform": { "className": "Person", "propertyName": "email", "jurisdiction": "CH" }
+        },
+        { "name": "city", "column": "CITY", "type": "String" },
+        { "name": "notes", "column": "NOTES", "type": "String", "filterable": false, "sortable": false }
+      ]
+    }
+  ]
+}
