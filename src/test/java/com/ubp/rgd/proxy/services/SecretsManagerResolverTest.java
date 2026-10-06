@@ -95,13 +95,13 @@ class SecretsManagerResolverTest {
     @Test
     void failsWithoutDefault() throws IOException {
         assertStartupFailure(write("""
-                {"mappings":[{"LU":"b9f72aef-6c1b-4556-bf65-9813f122cf8b"}]}"""), "no 'default-mapping'");
+                {"mappings":[{"LU":"f234b749-1415-4c94-ac91-accf9f6ce5d2"}]}"""), "no 'default-mapping'");
     }
 
     @Test
     void failsOnUnknownDefault() throws IOException {
         assertStartupFailure(write("""
-                {"default-mapping":"CH","mappings":[{"LU":"b9f72aef-6c1b-4556-bf65-9813f122cf8b"}]}"""),
+                {"default-mapping":"CH","mappings":[{"LU":"f234b749-1415-4c94-ac91-accf9f6ce5d2"}]}"""),
                 "is not one of its mappings");
     }
 
@@ -109,7 +109,7 @@ class SecretsManagerResolverTest {
     void failsOnDuplicateKeyIgnoringCase() throws IOException {
         assertStartupFailure(write("""
                 {"default-mapping":"LU","mappings":[
-                  {"LU":"b9f72aef-6c1b-4556-bf65-9813f122cf8b"},
+                  {"LU":"f234b749-1415-4c94-ac91-accf9f6ce5d2"},
                   {"lu":"16ec8462-e8d5-4a2c-b8df-f253e09bd274"}]}"""), "more than once");
     }
 
@@ -117,14 +117,14 @@ class SecretsManagerResolverTest {
     void failsOnBlankKey() throws IOException {
         assertStartupFailure(write("""
                 {"default-mapping":"LU","mappings":[
-                  {"LU":"b9f72aef-6c1b-4556-bf65-9813f122cf8b"},
+                  {"LU":"f234b749-1415-4c94-ac91-accf9f6ce5d2"},
                   {" ":"16ec8462-e8d5-4a2c-b8df-f253e09bd274"}]}"""), "blank key");
     }
 
     @Test
     void defaultMatchedIgnoringCase() throws IOException {
         SecretsManagerResolver lower = TestSecretsManagers.resolver(write("""
-                {"default-mapping":"lu","mappings":[{"LU":"b9f72aef-6c1b-4556-bf65-9813f122cf8b"}]}"""));
+                {"default-mapping":"lu","mappings":[{"LU":"f234b749-1415-4c94-ac91-accf9f6ce5d2"}]}"""));
         assertEquals(LU, lower.defaultSecretsManager());
     }
 
