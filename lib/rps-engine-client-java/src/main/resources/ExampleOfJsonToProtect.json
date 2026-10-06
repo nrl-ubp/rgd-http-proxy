@@ -1,0 +1,12 @@
+{
+  "user1": {
+    "FirstName": "Jonny",
+    "LastName": "Silverhand",
+    "BirthDate": "16.11.1988"
+  },
+  "user2": {
+    "FirstName": "Mark",
+    "LastName": "Blacksmith",
+    "BirthDate": "12.01.1998"
+  }
+}
