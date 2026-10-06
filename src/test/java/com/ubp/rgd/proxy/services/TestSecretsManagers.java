@@ -9,8 +9,8 @@ public final class TestSecretsManagers {
 
     public static final String HEADER = "X-Proxy-Jurisdiction";
     public static final String MAPPING_FILE = "./src/test/resources/secrets_manager_mapping.json";
-    public static final UUID CH = UUID.fromString("16ec8462-e8d5-4a2c-b8df-f253e09bd274");
-    public static final UUID LU = UUID.fromString("b9f72aef-6c1b-4556-bf65-9813f122cf8b");
+    public static final UUID CH = UUID.fromString("479d4a15-1412-4fc1-9498-efee9dc4af3a");
+    public static final UUID LU = UUID.fromString("f234b749-1415-4c94-ac91-accf9f6ce5d2");
 
     private TestSecretsManagers() {
     }
