@@ -9,6 +9,7 @@ import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 @ApplicationScoped
@@ -52,9 +53,13 @@ public class RPSEndPointTransformer extends AbstractEndPointTransformer {
     }
 
     /**
-     * This method calls REGDATA to get the values transformed
+     * This method calls REGDATA to get the values transformed.
+     *
+     * @param secretsManager the secrets manager the engine must use, {@code null} for its default one
      */
-    public void transformData(IRPSValue<String>[] values, Context rightContext, ProcessingContext processingContext) throws Exception {
+    @Override
+    public void transformData(IRPSValue<String>[] values, Context rightContext, ProcessingContext processingContext,
+                              UUID secretsManager) throws Exception {
         RPSEngine engine = new RPSEngine(engineProvider.getClientEngineProvider(),
                 new RPSEngineConverter(),
                 new RPSEngineContextResolver(null));
@@ -66,7 +71,8 @@ public class RPSEndPointTransformer extends AbstractEndPointTransformer {
                         values,
                         rightContext,
                         processingContext,
-                        null);
+                        null,
+                        secretsManager);
 
         // Calls the transformation API -> will lead to protect the data
         requestContext.transform();

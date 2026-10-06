@@ -39,7 +39,8 @@ public abstract class AbstractEndPointTransformer implements EndPointTransformer
     private static final Logger LOG = LoggerFactory.getLogger(AbstractEndPointTransformer.class);
 
     @Override
-    public abstract void transformData(IRPSValue<String>[] values, Context rightContext, ProcessingContext processingContext) throws Exception;
+    public abstract void transformData(IRPSValue<String>[] values, Context rightContext, ProcessingContext processingContext,
+                                       UUID secretsManager) throws Exception;
 
     /**
      * Makes {@code read()} return the concrete path of every match instead of its value.
@@ -379,6 +380,7 @@ public abstract class AbstractEndPointTransformer implements EndPointTransformer
      * Apply the transformation using the given endpoint transformation configuration
      * @param json original JSON payload
      * @param headers is a multi valued map
+     * @param secretsManager the secrets manager to use, {@code null} for the tokenizer's default
      * @return JSON object String with transformed data for the request body
      * @throws RPSTransformException in case of any problem with RPS transform
      * @see #getEndpointTransformConfig(String, String, String) to get a proper config
@@ -387,7 +389,8 @@ public abstract class AbstractEndPointTransformer implements EndPointTransformer
     public String transform(String json,
                             MultivaluedMap<String, String> headers,
                             MultivaluedMap<String, String> queryParameters,
-                            EndPointTransformConfig cfg) throws RPSTransformException {
+                            EndPointTransformConfig cfg,
+                            UUID secretsManager) throws RPSTransformException {
 
         Map<String, EntityTransformConfig> attributesConfigs = cfg.sortAttributeTransformsConfig();
         Map<String, HeaderTransformConfig> headersTransformConfigs = cfg.sortHeaderTransformConfig();
@@ -411,7 +414,8 @@ public abstract class AbstractEndPointTransformer implements EndPointTransformer
             transformData(
                     flatList.toArray(new RPSValue[0]),
                     getRightContext(cfg),
-                    getProcessingContext(cfg)
+                    getProcessingContext(cfg),
+                    secretsManager
             );
         } catch (Exception e) {
             LOG.error("Transform exception: ", e);
@@ -443,6 +447,7 @@ public abstract class AbstractEndPointTransformer implements EndPointTransformer
      * @param attributeConfigs           the entity transformations, keyed by configured JSON path
      * @param rightContextEvidences      the evidences of the right context
      * @param processingContextEvidences the evidences of the processing context, carrying the action
+     * @param secretsManager             the secrets manager to use, {@code null} for the default
      * @return the transformed JSON document
      * @throws RPSTransformException when the transformation fails
      */
@@ -450,7 +455,8 @@ public abstract class AbstractEndPointTransformer implements EndPointTransformer
     public String transformJson(String json,
                                 Map<String, EntityTransformConfig> attributeConfigs,
                                 Map<String, String> rightContextEvidences,
-                                Map<String, String> processingContextEvidences) throws RPSTransformException {
+                                Map<String, String> processingContextEvidences,
+                                UUID secretsManager) throws RPSTransformException {
 
         if (attributeConfigs == null || attributeConfigs.isEmpty()) {
             LOG.debug("No entity transform config, returning the document unchanged.");
@@ -474,7 +480,8 @@ public abstract class AbstractEndPointTransformer implements EndPointTransformer
             transformData(
                     flatList.toArray(new RPSValue[0]),
                     toRightContext(rightContextEvidences),
-                    toProcessingContext(processingContextEvidences)
+                    toProcessingContext(processingContextEvidences),
+                    secretsManager
             );
         } catch (Exception e) {
             LOG.error("Transform exception: ", e);

@@ -72,6 +72,10 @@ public class ProxyService {
     @ConfigProperty(name = "proxy.kerberos.delegation-enabled", defaultValue = "false")
     boolean delegationEnabled;
 
+    /** Header selecting the RPS secrets manager: meant for the proxy only, never forwarded. */
+    @ConfigProperty(name = "proxy.transform.http-secrets-manager-header", defaultValue = "X-Proxy-Jurisdiction")
+    String secretsManagerHeader;
+
     /**
      * Prometheus metrics registry.
      */
@@ -278,8 +282,8 @@ public class ProxyService {
         return String.format(format, targetBaseUrl, path);
     }
 
-    private void copyHeaders(HttpHeaders headers,
-                             jakarta.ws.rs.client.Invocation.Builder requestBuilder) {
+    void copyHeaders(HttpHeaders headers,
+                     jakarta.ws.rs.client.Invocation.Builder requestBuilder) {
 
         // Headers Ã  exclure du proxy
         // "authorization" is excluded here because the downstream Authorization header is set
@@ -288,7 +292,8 @@ public class ProxyService {
         List<String> excludedHeaders = List.of(
                 "host", "content-length", "connection", "transfer-encoding",
                 "authorization", "x-proxy-processed", "x-proxy-timestamp",
-                TransformBypass.HEADER_NAME.toLowerCase()
+                TransformBypass.HEADER_NAME.toLowerCase(),
+                Objects.requireNonNullElse(secretsManagerHeader, "X-Proxy-Jurisdiction").toLowerCase()
         );
 
         for (Map.Entry<String, List<String>> header : headers.getRequestHeaders().entrySet()) {

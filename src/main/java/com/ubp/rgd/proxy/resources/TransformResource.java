@@ -1,5 +1,6 @@
 package com.ubp.rgd.proxy.resources;
 
+import com.ubp.rgd.proxy.services.SecretsManagerResolver;
 import com.ubp.rgd.proxy.services.TransformService;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
 import com.ubp.rgd.proxy.transform.api.TransformRequest;
@@ -45,12 +46,17 @@ public class TransformResource {
     @Inject
     TransformService transformService;
 
+    @Inject
+    SecretsManagerResolver secretsManagerResolver;
+
     @POST
     @Operation(summary = "Transform (Protect / Unprotect) a list of value sets.",
             description = "Each set carries an action (e.g. Protect, Unprotect), a target (e.g. WDX1) and a jurisdiction " +
                     "code (CH, LU, MC, ...). Each value provides its class name and property name and, optionally, an " +
                     "extract-regex used to tokenize the value word by word (protection only) while preserving its format. " +
-                    "Returns the transformed values grouped per set, in input order.")
+                    "Returns the transformed values grouped per set, in input order. The RPS secrets manager is " +
+                    "selected by the proxy.transform.http-secrets-manager-header header (X-Proxy-Jurisdiction by " +
+                    "default), or the default mapping when the header is absent.")
     @APIResponses({
             @APIResponse(
                     responseCode = "200",
@@ -59,7 +65,7 @@ public class TransformResource {
             ),
             @APIResponse(
                     responseCode = "400",
-                    description = "RPS Transformation error",
+                    description = "RPS Transformation error, or unknown secrets manager header value",
                     content = @Content(schema = @Schema(implementation = String.class))
             ),
             @APIResponse(
@@ -108,6 +114,6 @@ public class TransformResource {
         int setCount = body == null || body.getSets() == null ? 0 : body.getSets().size();
         LOG.info("Transform request with {} set(s)", setCount);
 
-        return transformService.transform(body);
+        return transformService.transform(body, secretsManagerResolver.resolve(headers));
     }
 }

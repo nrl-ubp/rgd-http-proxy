@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
@@ -83,12 +84,21 @@ public class TransformService {
     String preFilterAuthEnabled;
 
     /**
+     * {@link #transform(TransformRequest, UUID)} with the tokenizer's default secrets manager.
+     */
+    public TransformResponse transform(TransformRequest request) throws RPSTransformException {
+        return transform(request, null);
+    }
+
+    /**
      * Transform every value of every set through the configured transformer.
      * @param request the transform request (list of sets)
+     * @param secretsManager the secrets manager every set is transformed with, {@code null} for the
+     *                       tokenizer's default
      * @return the transformed values grouped per set, in input order
      * @throws RPSTransformException on invalid input or any transformation error
      */
-    public TransformResponse transform(TransformRequest request) throws RPSTransformException {
+    public TransformResponse transform(TransformRequest request, UUID secretsManager) throws RPSTransformException {
         // Only authorized SPNs / usernames may call the transform endpoint.
         checkAuthorization();
 
@@ -98,7 +108,7 @@ public class TransformService {
 
         TransformResponse response = new TransformResponse();
         for (TransformSet set : request.getSets()) {
-            response.getResults().add(transformSet(set));
+            response.getResults().add(transformSet(set, secretsManager));
         }
         return response;
     }
@@ -168,7 +178,7 @@ public class TransformService {
         return user != null && authorized.contains(user.toLowerCase());
     }
 
-    private TransformResultSet transformSet(TransformSet set) throws RPSTransformException {
+    private TransformResultSet transformSet(TransformSet set, UUID secretsManager) throws RPSTransformException {
         if (set == null || set.getValues() == null) {
             throw new RPSTransformException("A transform set or its values are null.");
         }
@@ -190,7 +200,8 @@ public class TransformService {
                 transformer.transformData(
                         flatValues.toArray(new RPSValue[0]),
                         buildRightContext(),
-                        buildProcessingContext(set));
+                        buildProcessingContext(set),
+                        secretsManager);
             } catch (RPSTransformException e) {
                 throw e;
             } catch (Exception e) {
