@@ -5,8 +5,11 @@ import com.ubp.rgd.proxy.services.TransformService;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
 import com.ubp.rgd.proxy.transform.api.TransformRequest;
 import com.ubp.rgd.proxy.transform.api.TransformResponse;
+import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.Timer;
+import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
@@ -49,6 +52,20 @@ public class TransformResource {
     @Inject
     SecretsManagerResolver secretsManagerResolver;
 
+    /**
+     * Duration timer to measure min, avg and max duration of transformation endpoint
+     */
+    private Timer durationTimer;
+
+    @PostConstruct
+    public void setupTimer() {
+        this.durationTimer = Timer.builder("ubp_transform_duration")
+                .description("Time taken by a transformation endpoint call.")
+                .publishPercentiles(0.5, 0.95, 0.99)
+                .publishPercentileHistogram()
+                .register(metricsRegistry);
+    }
+
     @POST
     @Operation(summary = "Transform (Protect / Unprotect) a list of value sets.",
             description = "Each set carries an action (e.g. Protect, Unprotect), a target (e.g. WDX1) and a jurisdiction " +
@@ -65,7 +82,7 @@ public class TransformResource {
             ),
             @APIResponse(
                     responseCode = "400",
-                    description = "RPS Transformation error, or unknown secrets manager header value",
+                    description = "RPS Transformation error",
                     content = @Content(schema = @Schema(implementation = String.class))
             ),
             @APIResponse(
@@ -74,6 +91,11 @@ public class TransformResource {
                     content = @Content(schema = @Schema(implementation = String.class))
             )
     })
+    @Timed(
+            value = "ubp_transform_duration",
+            description = "Transform resource duration.",
+            histogram = true
+    )
     public TransformResponse transform(
             @RequestBody(required = true,
                          description = "Sample request payload",
@@ -109,9 +131,17 @@ public class TransformResource {
             TransformRequest body,
            @Context UriInfo uriInfo,
            @Context HttpHeaders headers) throws RPSTransformException {
-        Objects.requireNonNull(metricsRegistry.counter("ubp_proxy_counter", Tags.of("name", "transform"))).increment();
 
-        int setCount = body == null || body.getSets() == null ? 0 : body.getSets().size();
+        // count the transformations
+        body.getSets().forEach(transformSet -> {
+            Objects.requireNonNull(metricsRegistry.counter("ubp_transform_counter", Tags.of("transformations", transformSet.getAction()))).increment(transformSet.getValues().size());
+        });
+
+        // used to get the top callers.
+        String userName = securityContext.getToken() == null ? "NO_LOGIN" : securityContext.getToken().getUser();
+        Objects.requireNonNull(metricsRegistry.counter("ubp_transform_counter", Tags.of("user", userName))).increment();
+
+        int setCount = body.getSets() == null ? 0 : body.getSets().size();
         LOG.info("Transform request with {} set(s)", setCount);
 
         return transformService.transform(body, secretsManagerResolver.resolve(headers));
