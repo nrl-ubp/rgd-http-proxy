@@ -283,10 +283,42 @@ Configuration (see `config/application.properties`):
 | `proxy.flight-sql.jdbc-url` | JDBC URL of the proxied database. |
 | `proxy.flight-sql.batch-size` | Rows per Arrow record batch, i.e. per detokenization call. |
 | `proxy.flight-sql.mapping-config-file` | Column and data to RPS class/property mapping file. |
+| `proxy.flight-sql.tls.enabled` | Serves Flight SQL over TLS (default `false`, plaintext). See [TLS](#tls). |
+| `proxy.flight-sql.tls.key-store-file` / `.key-store-password` / `.key-store-alias` | PKCS12 keystore holding the server key and certificate chain. |
+| `proxy.flight-sql.tls.cert-chain-file` / `.private-key-file` | Or a PEM certificate chain and an unencrypted PKCS#8 PEM key. |
 
 Clients authenticate with **basic credentials that are forwarded to the proxied database**: the
 credentials are validated by opening a real connection, then every query runs under the caller's own
 database identity.
+
+### TLS
+
+The Flight SQL server is plaintext by default. Since clients send their database password at login,
+**enable TLS for anything but local tests**, which is also what the ODBC driver expects by default
+(see [Using Flight SQL through ODBC on Windows](#using-flight-sql-through-odbc-on-windows)):
+
+```properties
+proxy.flight-sql.tls.enabled=true
+# Either a PKCS12 keystore, possibly the very one used for HTTPS...
+proxy.flight-sql.tls.key-store-file=./config/certs/serverkeystore.p12
+proxy.flight-sql.tls.key-store-password=changeit
+#proxy.flight-sql.tls.key-store-alias=flightsql   # only when the keystore holds several keys
+# ...or a PEM pair (the key must be PKCS#8: "BEGIN PRIVATE KEY")
+#proxy.flight-sql.tls.cert-chain-file=./config/certs/flightsql-chain.pem
+#proxy.flight-sql.tls.private-key-file=./config/certs/flightsql-key.pem
+```
+
+- A keystore is converted in memory: no unencrypted key is ever written to disk.
+- **A TLS configuration that cannot be used fails startup** rather than falling back to plaintext:
+  neither or both sources given, a missing file, a wrong password, several keys without an alias, an
+  encrypted or PKCS#1 PEM key (convert it with `openssl pkcs8 -topk8 -nocrypt -in key.pem -out
+  key-pkcs8.pem`).
+- An expired or not yet valid certificate only logs a warning.
+- The startup log states the transport: `Flight SQL server listening on 0.0.0.0:32010 (TLS, CN=...)`
+  or `(plaintext)`, plus a warning while TLS is disabled.
+- The certificate must name the host clients connect to (subject alternative name), e.g.
+  `tokenization-secure-gvz-e01.corp.ubp.ch`, and be issued by a CA the clients trust. The
+  certificates produced by `tools/generate-certs.*` are self-signed for `localhost`: tests only.
 
 Result sets carry no RPS metadata, so the RPS class and property names of each column are resolved
 from `config/flight_sql_mapping_config.json`. That file also holds the right-context and
@@ -563,6 +595,94 @@ All token-bearing columns are `VARCHAR`, including `BIRTH_DATE`: a tokenized dat
 
 `PersonFlightSqlLoaderTest` runs this same program end to end against an in-memory H2 database
 fronted by a real Flight SQL server, which is the reproducible version of the above.
+
+## Using Flight SQL through ODBC on Windows
+
+Windows tools (64-bit Excel, Power BI, Access, any ODBC application) reach the Flight SQL server
+through the official, generic **Apache Arrow Flight SQL ODBC Driver** (Apache License 2.0). Its login
+is our server's: the `UID`/`PWD` of the connection are the database credentials, sent in the standard
+Flight handshake.
+
+### The client package
+
+```bash
+mvn -Podbc-package -DskipTests package
+# -> target/rgd-flightsql-odbc-<version>.zip
+```
+
+The `odbc-package` profile downloads the driver MSI from the Apache Arrow GitHub release (with Arrow's
+`LICENSE.txt` and `NOTICE.txt`), **fails the build if its SHA-256 differs** from the pinned one, and
+zips it with the scripts of `src/odbc/`. It is kept out of the default build so that it does not
+depend on GitHub. Properties:
+
+| Property | Default |
+|---|---|
+| `odbc.dsn.name` | `RGD Flight SQL` |
+| `odbc.dsn.host` / `odbc.dsn.port` | `tokenization-secure-gvz-e01.corp.ubp.ch` / `32010` |
+| `odbc.dsn.use-encryption` | `true` |
+| `odbc.driver.version` / `odbc.driver.sha256` | `25.0.1` / the checksum published with the release asset |
+| `odbc.driver.url` | the GitHub release asset; point it to a mirror (Artifactory) when GitHub is not reachable |
+
+e.g. `mvn -Podbc-package -DskipTests package -Dodbc.dsn.host=flightsql-test.example.com`. When
+upgrading the driver, update `odbc.driver.version` and `odbc.driver.sha256` together.
+
+The zip holds:
+
+| File | Role |
+|---|---|
+| `install.cmd`, `Install-RgdFlightSqlDsn.ps1` | Installs the driver if missing or older (UAC prompt for that step only), then creates the DSN. |
+| `test.cmd`, `Test-RgdFlightSqlDsn.ps1` | Asks for a user name and password, connects, runs `SELECT 1`, reads the data types and tables. |
+| `uninstall.cmd`, `Uninstall-RgdFlightSqlDsn.ps1` | Removes the DSN; `-RemoveDriver` also uninstalls the driver. |
+| `datasource.psd1` | The defaults above, editable by the client before installing. |
+| `README.txt` | Client instructions. |
+| `driver\` | The MSI, `LICENSE.txt`, `NOTICE.txt`. |
+
+The client unzips it and double-clicks `install.cmd`, then `test.cmd`. Highlights:
+
+- **User DSN by default** (`-DsnType System` for every user of the machine, from an elevated prompt).
+  Only the `msiexec` step is elevated, so the DSN lands in the calling user's registry, not the
+  administrator's.
+- **No credentials are stored in the DSN**: each application supplies `UID`/`PWD`.
+- Idempotent: running it again changes nothing; a DSN with other settings is only replaced with
+  `-Force`.
+- `-TrustedCerts <pem>` for a private CA (the file is copied under `%LOCALAPPDATA%`/`%ProgramData%`,
+  and the Windows store is then turned off, since the driver ignores `trustedCerts` otherwise);
+  `-DisableCertificateVerification` for troubleshooting only.
+- Exit codes for deployment tools: `0` OK, `1` failure, `2` invalid settings, `3` administrator rights
+  required, `4` driver installation failed, `5` DSN exists with other settings. A transcript of every
+  run goes to `logs\`.
+
+A DSN-less connection string works too:
+
+```text
+Driver={Apache Arrow Flight SQL ODBC Driver};HOST=tokenization-secure-gvz-e01.corp.ubp.ch;PORT=32010;useEncryption=true;UID=<user>;PWD=<password>
+```
+
+### Points to know
+
+- **64-bit only**: Apache publishes no 32-bit driver, so **32-bit Office cannot use it**.
+- **The DSN uses TLS by default, the server does not**: enable [TLS](#tls) on the server, or build the
+  package with `-Dodbc.dsn.use-encryption=false` for a test environment. A mismatch shows as a failed
+  or hanging connection; `test.cmd` lists the likely causes.
+- **The server certificate must name the DSN host**, and its CA must be trusted by the Windows
+  certificate store of the client machines (normally the case for a corporate CA), or be given with
+  `-TrustedCerts`.
+
+### Metadata
+
+ODBC tools browse the database through catalog calls. The Flight SQL server answers, under the
+caller's own database identity:
+
+| ODBC call | Flight SQL command | Source |
+|---|---|---|
+| `SQLGetInfo` | `GetSqlInfo` | server and database properties |
+| `SQLTables`, `SQLColumns`, ... | `GetCatalogs`, `GetDbSchemas`, `GetTables`, `GetTableTypes` | `DatabaseMetaData` |
+| `SQLGetTypeInfo` | `GetXdbcTypeInfo` | `DatabaseMetaData.getTypeInfo()`, translated to ODBC type codes |
+| `SQLPrimaryKeys` | `GetPrimaryKeys` | `getPrimaryKeys()`, in key order |
+| `SQLForeignKeys` | `GetImportedKeys`, `GetExportedKeys`, `GetCrossReference` | `getImportedKeys()`, `getExportedKeys()`, `getCrossReference()` |
+
+JDBC types ODBC cannot represent (`ARRAY`, `STRUCT`, `OTHER`, vendor codes...) are left out of the
+type list rather than mislabelled; notably JDBC `ROWID` (-8), whose code means `WCHAR` in ODBC.
 
 ## Useful commands
 

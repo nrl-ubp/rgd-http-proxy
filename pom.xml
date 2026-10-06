@@ -323,5 +323,88 @@
                 </plugins>
             </build>
         </profile>
+
+        <!-- Builds target/rgd-flightsql-odbc-<version>.zip, the package clients unzip on Windows to install
+             the Apache Arrow Flight SQL ODBC driver and an ODBC datasource pointing to our Flight SQL server:
+               mvn -Podbc-package -DskipTests package
+             The driver MSI is downloaded from GitHub (or from -Dodbc.driver.url=<mirror>) and checked
+             against odbc.driver.sha256. Datasource defaults can be overridden, e.g. -Dodbc.dsn.host=...
+             Kept out of the default build so that it does not depend on GitHub being reachable. -->
+        <profile>
+            <id>odbc-package</id>
+            <properties>
+                <!-- When upgrading the driver, update the checksum (published with the GitHub release
+                     asset) and check the upgrade code and driver name in the MSI. -->
+                <odbc.driver.version>25.0.1</odbc.driver.version>
+                <odbc.driver.sha256>27f761673abd12c28d304233f569b90f42e7a4e41fee5ec224c8eef04e419f15</odbc.driver.sha256>
+                <odbc.driver.name>Apache Arrow Flight SQL ODBC Driver</odbc.driver.name>
+                <odbc.driver.upgrade-code>{DBF27A18-F8BF-423F-9E3A-957414D52C4B}</odbc.driver.upgrade-code>
+                <odbc.driver.msi>Apache-Arrow-Flight-SQL-ODBC-${odbc.driver.version}-win64.msi</odbc.driver.msi>
+                <odbc.driver.url>https://github.com/apache/arrow/releases/download/apache-arrow-${odbc.driver.version}/${odbc.driver.msi}</odbc.driver.url>
+                <odbc.driver.license-url>https://raw.githubusercontent.com/apache/arrow/apache-arrow-${odbc.driver.version}/LICENSE.txt</odbc.driver.license-url>
+                <odbc.driver.notice-url>https://raw.githubusercontent.com/apache/arrow/apache-arrow-${odbc.driver.version}/NOTICE.txt</odbc.driver.notice-url>
+                <odbc.driver.dir>${project.build.directory}/odbc-driver</odbc.driver.dir>
+
+                <odbc.dsn.name>RGD Flight SQL</odbc.dsn.name>
+                <odbc.dsn.host>tokenization-secure-gvz-e01.corp.ubp.ch</odbc.dsn.host>
+                <odbc.dsn.port>32010</odbc.dsn.port>
+                <odbc.dsn.use-encryption>true</odbc.dsn.use-encryption>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>download-odbc-driver</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${odbc.driver.dir}"/>
+                                        <get src="${odbc.driver.url}" dest="${odbc.driver.dir}/${odbc.driver.msi}" skipexisting="true"/>
+                                        <get src="${odbc.driver.license-url}" dest="${odbc.driver.dir}/LICENSE.txt" skipexisting="true"/>
+                                        <get src="${odbc.driver.notice-url}" dest="${odbc.driver.dir}/NOTICE.txt" skipexisting="true"/>
+                                        <checksum file="${odbc.driver.dir}/${odbc.driver.msi}" algorithm="SHA-256"
+                                                  property="${odbc.driver.sha256}" verifyproperty="odbc.driver.checksum.ok"/>
+                                        <fail message="${odbc.driver.msi} does not match the expected SHA-256 ${odbc.driver.sha256}. Delete ${odbc.driver.dir} (or run mvn clean) and build again, or check -Dodbc.driver.url.">
+                                            <condition>
+                                                <isfalse value="${odbc.driver.checksum.ok}"/>
+                                            </condition>
+                                        </fail>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <version>3.7.1</version>
+                        <executions>
+                            <execution>
+                                <id>odbc-datasource-zip</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <descriptors>
+                                        <descriptor>src/assembly/odbc-datasource.xml</descriptor>
+                                    </descriptors>
+                                    <finalName>rgd-flightsql-odbc-${project.version}</finalName>
+                                    <appendAssemblyId>false</appendAssemblyId>
+                                    <attach>false</attach>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 </project>
