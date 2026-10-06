@@ -1,9 +1,11 @@
 package com.ubp.rgd.proxy.filters;
 
+import com.ubp.rgd.proxy.exception.UnknownSecretsManagerException;
 import com.ubp.rgd.proxy.resources.ProxyResource;
 import com.ubp.rgd.proxy.security.BasicToken;
 import com.ubp.rgd.proxy.security.KerberosToken;
 import com.ubp.rgd.proxy.security.SecurityContext;
+import com.ubp.rgd.proxy.services.SecretsManagerResolver;
 import com.ubp.rgd.proxy.transform.config.EndPointTransformConfig;
 import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
@@ -23,6 +25,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * PreFilter is authenticating users against the proxy service.
@@ -66,6 +69,12 @@ public class PreFilter implements ContainerRequestFilter {
      */
     @Inject
     EndPointTransformer endpointTransformer;
+
+    /**
+     * Selects the RPS secrets manager from the request header.
+     */
+    @Inject
+    SecretsManagerResolver secretsManagerResolver;
 
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
@@ -117,6 +126,17 @@ public class PreFilter implements ContainerRequestFilter {
             return;
         }
 
+        // Resolved even when nothing is transformed BEFORE: an unknown value must never reach the
+        // proxied API, whose response may have to be transformed AFTER with that secrets manager.
+        UUID secretsManager;
+        try {
+            secretsManager = secretsManagerResolver.resolve(requestContext);
+        } catch (UnknownSecretsManagerException e) {
+            requestContext.abortWith(e.getResponse());
+            return;
+        }
+        requestContext.setProperty(SecretsManagerResolver.REQUEST_PROPERTY, secretsManager);
+
         // now check if we should transform payload BEFORE invoking proxified target url
         String proxyUrlPath = requestPath.substring(ProxyResource.PROXY_BASE_PATH.length()).replaceAll("//","/").toLowerCase();
         LOG.info("PRE-FILTER: Comparing if we need to transform url path: BEFORE: {} > {}", requestContext.getMethod(), proxyUrlPath);
@@ -140,7 +160,7 @@ public class PreFilter implements ContainerRequestFilter {
                 MultivaluedMap<String, String> requestParams = requestContext.getUriInfo().getQueryParameters();
 
                 // perform actual transformation
-                String finalJson = endpointTransformer.transform(originalBody, requestHeaders, requestParams, cfg);
+                String finalJson = endpointTransformer.transform(originalBody, requestHeaders, requestParams, cfg, secretsManager);
 
                 InputStream modifiedInputStream = new ByteArrayInputStream(finalJson.getBytes(StandardCharsets.UTF_8));
                 requestContext.setEntityStream(modifiedInputStream);

@@ -8,6 +8,7 @@ import com.ubp.rgd.proxy.transform.config.EntityTransformConfig;
 import jakarta.ws.rs.core.MultivaluedMap;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
@@ -17,6 +18,10 @@ import java.util.regex.Pattern;
  * values to transform in the payload, the headers and the query parameters, and writing the results
  * back, is implemented once in {@link AbstractEndPointTransformer}. An implementation only has to
  * provide {@link #transformData}, which is where the values are actually protected or unprotected.
+ *
+ * <p>
+ * Every transformation can name the RPS secrets manager to use. {@code null} lets the tokenizer
+ * use its default one; the signatures without that parameter are shortcuts for {@code null}.
  *
  * @see RPSEndPointTransformer tokenization through the RegData RPS engine
  * @see FPEEndPointTransformer encryption through Format Preserving Encryption
@@ -33,9 +38,20 @@ public interface EndPointTransformer {
      * @param values            the values to transform
      * @param rightContext      the right context of the endpoint
      * @param processingContext the processing context of the endpoint, carrying the action
+     * @param secretsManager    the secrets manager to use, {@code null} for the tokenizer's default
      * @throws Exception when the transformation cannot be performed
      */
-    void transformData(IRPSValue<String>[] values, Context rightContext, ProcessingContext processingContext) throws Exception;
+    void transformData(IRPSValue<String>[] values, Context rightContext, ProcessingContext processingContext,
+                       UUID secretsManager) throws Exception;
+
+    /**
+     * {@link #transformData(IRPSValue[], Context, ProcessingContext, UUID)} with the default secrets
+     * manager.
+     */
+    default void transformData(IRPSValue<String>[] values, Context rightContext, ProcessingContext processingContext)
+            throws Exception {
+        transformData(values, rightContext, processingContext, null);
+    }
 
     /**
      * Get the transformation configuration matching an endpoint.
@@ -54,6 +70,7 @@ public interface EndPointTransformer {
      * @param headers         the headers, transformed in place
      * @param queryParameters the query parameters, transformed in place
      * @param cfg             the endpoint transformation configuration
+     * @param secretsManager  the secrets manager to use, {@code null} for the tokenizer's default
      * @return the transformed JSON payload
      * @throws RPSTransformException when the transformation fails
      * @see #getEndpointTransformConfig(String, String, String)
@@ -61,13 +78,25 @@ public interface EndPointTransformer {
     String transform(String json,
                      MultivaluedMap<String, String> headers,
                      MultivaluedMap<String, String> queryParameters,
-                     EndPointTransformConfig cfg) throws RPSTransformException;
+                     EndPointTransformConfig cfg,
+                     UUID secretsManager) throws RPSTransformException;
+
+    /**
+     * {@link #transform(String, MultivaluedMap, MultivaluedMap, EndPointTransformConfig, UUID)} with
+     * the default secrets manager.
+     */
+    default String transform(String json,
+                             MultivaluedMap<String, String> headers,
+                             MultivaluedMap<String, String> queryParameters,
+                             EndPointTransformConfig cfg) throws RPSTransformException {
+        return transform(json, headers, queryParameters, cfg, null);
+    }
 
     /**
      * Apply the transformation to a standalone JSON document.
      * <p>
      * This is the payload-only counterpart of
-     * {@link #transform(String, MultivaluedMap, MultivaluedMap, EndPointTransformConfig)}, for the
+     * {@link #transform(String, MultivaluedMap, MultivaluedMap, EndPointTransformConfig, UUID)}, for the
      * callers holding a JSON document rather than an HTTP exchange, such as the file transformation.
      * The action is read from the {@code Action} processing context evidence.
      *
@@ -75,13 +104,25 @@ public interface EndPointTransformer {
      * @param attributeConfigs            the entity transformations, keyed by configured JSON path
      * @param rightContextEvidences       the evidences of the right context
      * @param processingContextEvidences  the evidences of the processing context, carrying the action
+     * @param secretsManager              the secrets manager to use, {@code null} for the default
      * @return the transformed JSON document
      * @throws RPSTransformException when the transformation fails
      */
     String transformJson(String json,
                          Map<String, EntityTransformConfig> attributeConfigs,
                          Map<String, String> rightContextEvidences,
-                         Map<String, String> processingContextEvidences) throws RPSTransformException;
+                         Map<String, String> processingContextEvidences,
+                         UUID secretsManager) throws RPSTransformException;
+
+    /**
+     * {@link #transformJson(String, Map, Map, Map, UUID)} with the default secrets manager.
+     */
+    default String transformJson(String json,
+                                 Map<String, EntityTransformConfig> attributeConfigs,
+                                 Map<String, String> rightContextEvidences,
+                                 Map<String, String> processingContextEvidences) throws RPSTransformException {
+        return transformJson(json, attributeConfigs, rightContextEvidences, processingContextEvidences, null);
+    }
 
     /**
      * The pattern recognising a token this transformer produces.

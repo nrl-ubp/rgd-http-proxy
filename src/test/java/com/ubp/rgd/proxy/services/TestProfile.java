@@ -29,6 +29,8 @@ public class TestProfile implements QuarkusTestProfile {
         ));
 
         props.put("proxy.transform.config-file", "./src/test/resources/rps_transform_config.json");
+        props.put("proxy.transform.http-secrets-manager-header", "X-Proxy-Jurisdiction");
+        props.put("proxy.transform.http-secrets-manager-mapping-file", "./src/test/resources/secrets_manager_mapping.json");
 
         props.putAll(Map.of("proxy.file-transform.enabled","true",
                             "proxy.file-transform.config-file","./src/test/resources/file_transform_config.json"));

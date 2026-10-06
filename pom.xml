@@ -16,6 +16,8 @@
         <quarkus.platform.version>3.25.0</quarkus.platform.version>
         <arrow.version>19.0.0</arrow.version>
         <protobuf.version>4.33.4</protobuf.version>
+        <rps.client.version>4.0.0-hironico</rps.client.version>
+        <jackson.annotations.version>2.22</jackson.annotations.version>
 
         <quarkus.package.jar.type>uber-jar</quarkus.package.jar.type>
     </properties>
@@ -39,6 +41,15 @@
                 <groupId>com.google.protobuf</groupId>
                 <artifactId>protobuf-java-util</artifactId>
                 <version>${protobuf.version}</version>
+            </dependency>
+            <!-- The RPS client 4.x is built on Jackson 3, which still reads the 2.x annotations but
+                 needs at least the 2.22 ones (JsonSerializeAs...). Override the Quarkus BOM 2.19.x,
+                 otherwise the RPS HTTP client cannot even be loaded. Annotations are backward
+                 compatible, so the Jackson 2 stack of Quarkus is unaffected. -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.annotations.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -111,7 +122,7 @@
         <dependency>
             <groupId>ch.regdata.rps.engine.client</groupId>
             <artifactId>rps-engine-api-client</artifactId>
-            <version>3.10.0</version>
+            <version>${rps.client.version}</version>
         </dependency>
 
         <dependency>

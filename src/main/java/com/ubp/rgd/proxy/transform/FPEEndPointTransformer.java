@@ -19,6 +19,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
@@ -231,9 +232,11 @@ public class FPEEndPointTransformer extends AbstractEndPointTransformer {
      * @param values            the values to transform
      * @param rightContext      unused, FPE grants no right of its own
      * @param processingContext carries the {@code Action} evidence driving the direction
+     * @param secretsManager    unused, FPE works with the single configured key
      */
     @Override
-    public void transformData(IRPSValue<String>[] values, Context rightContext, ProcessingContext processingContext) {
+    public void transformData(IRPSValue<String>[] values, Context rightContext, ProcessingContext processingContext,
+                              UUID secretsManager) {
         String action = actionOf(processingContext);
         boolean protect = !ACTION_UNPROTECT.equalsIgnoreCase(action);
         if (!ACTION_PROTECT.equalsIgnoreCase(action) && !ACTION_UNPROTECT.equalsIgnoreCase(action)) {

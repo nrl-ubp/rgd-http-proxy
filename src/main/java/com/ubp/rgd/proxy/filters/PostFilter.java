@@ -1,7 +1,9 @@
 package com.ubp.rgd.proxy.filters;
 
+import com.ubp.rgd.proxy.exception.UnknownSecretsManagerException;
 import com.ubp.rgd.proxy.resources.ProxyResource;
 import com.ubp.rgd.proxy.security.SecurityContext;
+import com.ubp.rgd.proxy.services.SecretsManagerResolver;
 import com.ubp.rgd.proxy.transform.config.EndPointTransformConfig;
 import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
@@ -18,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * The PostFilter will actually make the RegData transformation depending on the configuration
@@ -38,6 +41,12 @@ public class PostFilter implements ContainerResponseFilter {
 
     @Inject
     EndPointTransformer endPointTransformer;
+
+    /**
+     * Selects the RPS secrets manager when {@link PreFilter} has not already done it.
+     */
+    @Inject
+    SecretsManagerResolver secretsManagerResolver;
 
     /**
      * Whether a caller is allowed to skip the RPS transformation with the
@@ -83,6 +92,16 @@ public class PostFilter implements ContainerResponseFilter {
         if (cfg != null) {
             LOG.info("POST filter: Transforming {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
 
+            UUID secretsManager;
+            try {
+                secretsManager = secretsManagerOf(requestContext);
+            } catch (UnknownSecretsManagerException e) {
+                LOG.error("POST filter: {}", e.getMessage());
+                responseContext.setStatus(Response.Status.BAD_REQUEST.getStatusCode());
+                responseContext.setEntity(e.getResponse().getEntity());
+                return;
+            }
+
             try {
                 // entity of the response can be transformed
                 String responseJson = responseContext.getEntity().toString();
@@ -102,7 +121,7 @@ public class PostFilter implements ContainerResponseFilter {
                 MultivaluedMap<String, String> requestParams = requestContext.getUriInfo().getQueryParameters();
 
                 // perform actual transform
-                String finalJson = endPointTransformer.transform(responseJson, responseHeadersStr, requestParams, cfg);
+                String finalJson = endPointTransformer.transform(responseJson, responseHeadersStr, requestParams, cfg, secretsManager);
 
                 // replacing the transformed values in the response
                 responseContext.setEntity(finalJson);
@@ -114,5 +133,18 @@ public class PostFilter implements ContainerResponseFilter {
         } else {
             LOG.info("POST filter: No need to transform: {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
         }
+    }
+
+    /**
+     * @return the secrets manager {@link PreFilter} resolved for this request, or a fresh resolution
+     *         when it did not run
+     * @throws UnknownSecretsManagerException when the header names an unknown secrets manager
+     */
+    private UUID secretsManagerOf(ContainerRequestContext requestContext) {
+        Object resolved = requestContext.getProperty(SecretsManagerResolver.REQUEST_PROPERTY);
+        if (resolved instanceof UUID uuid) {
+            return uuid;
+        }
+        return secretsManagerResolver.resolve(requestContext);
     }
 }

@@ -91,11 +91,20 @@ public class WDX1UtilsService {
     }
 
     /**
-     * Token concatenation : will tokenize and format the concatenation of the clear values in the request
-     * @param request the concat request from WDx1 services. Format is applied to conform to WDX1 specifications
-     * @return the token representing the concat of the values of the request.
+     * {@link #tokenConcat(WDX1ConcatRequest, UUID)} with the tokenizer's default secrets manager.
      */
     public String tokenConcat(WDX1ConcatRequest request) throws RPSTransformException {
+        return tokenConcat(request, null);
+    }
+
+    /**
+     * Token concatenation : will tokenize and format the concatenation of the clear values in the request
+     * @param request the concat request from WDx1 services. Format is applied to conform to WDX1 specifications
+     * @param secretsManager the secrets manager used both to read the input tokens and to tokenize the
+     *                       concatenation, {@code null} for the tokenizer's default
+     * @return the token representing the concat of the values of the request.
+     */
+    public String tokenConcat(WDX1ConcatRequest request, UUID secretsManager) throws RPSTransformException {
 
         // check calling service is WDX1
         checkAuthorization();
@@ -106,7 +115,7 @@ public class WDX1UtilsService {
         }
 
         // unprotect the token
-        WDX1ConcatRequest unprotectedRequest = unprotect(request);
+        WDX1ConcatRequest unprotectedRequest = unprotect(request, secretsManager);
 
         // sanitize the names
         WDX1ConcatRequest sanitizedRequest = sanitize(unprotectedRequest);
@@ -119,7 +128,7 @@ public class WDX1UtilsService {
                 StringUtils.firstFiveWithHash(sanitizedRequest.getLastName()));
 
 
-        return protect(clearFormat);
+        return protect(clearFormat, secretsManager);
     }
 
     /**
@@ -160,7 +169,7 @@ public class WDX1UtilsService {
         return request;
     }
 
-    private String protect(String clear) throws RPSTransformException {
+    private String protect(String clear, UUID secretsManager) throws RPSTransformException {
         RPSValue[] rpsValues = new RPSValue[1];
         rpsValues[0] = new RPSValue(new RPSMapping(concatConfig.getConcatResultClassName(), concatConfig.getConcatResultPropertyName()), clear);
 
@@ -169,7 +178,8 @@ public class WDX1UtilsService {
             transformer.transformData(
                     rpsValues,
                     getRightContext(),
-                    getProcessingContext("protect")
+                    getProcessingContext("protect"),
+                    secretsManager
             );
         } catch (Throwable e) {
             LOG.error("Transform exception: ", e);
@@ -179,7 +189,7 @@ public class WDX1UtilsService {
         return rpsValues[0].getTransformed();
     }
 
-    private WDX1ConcatRequest unprotect(WDX1ConcatRequest request) throws RPSTransformException {
+    private WDX1ConcatRequest unprotect(WDX1ConcatRequest request, UUID secretsManager) throws RPSTransformException {
         // generate RPS Values to transform
         Map<String, RPSValue[]> rpsValues = getRPSValues(request);
 
@@ -193,7 +203,8 @@ public class WDX1UtilsService {
             transformer.transformData(
                     flatRPSValues,
                     getRightContext(),
-                    getProcessingContext("Unprotect")
+                    getProcessingContext("Unprotect"),
+                    secretsManager
             );
         } catch (Throwable e) {
             LOG.error("Transform exception: ", e);

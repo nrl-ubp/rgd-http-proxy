@@ -240,6 +240,48 @@ transformed silently.
 > retrieve untransformed payloads**. It bypasses the tokenization, not the authentication or the
 > authorization.
 
+## Selecting the RPS secrets manager
+
+The RPS engine can protect each request with a different secrets manager, typically one per
+jurisdiction. The caller picks it with a request header:
+
+```
+X-Proxy-Jurisdiction: LU
+```
+
+The header name is `proxy.transform.http-secrets-manager-header`, and its value is looked up in the
+JSON file named by `proxy.transform.http-secrets-manager-mapping-file`:
+
+```json
+{
+  "default-mapping": "LU",
+  "mappings": [
+    {"CH": "16ec8462-e8d5-4a2c-b8df-f253e09bd274"},
+    {"LU": "b9f72aef-6c1b-4556-bf65-9813f122cf8b"}
+  ]
+}
+```
+
+- Each mapping associates a header value with the **UUID** of an RPS secrets manager. Values are
+  compared **ignoring case** (`lu` selects `LU`).
+- A request **without the header** uses the `default-mapping` entry.
+- A request naming a value **absent from the file** is rejected with a **400**: nothing is transformed
+  nor forwarded, since tokens produced with another secrets manager could not be read back.
+- The header is **stripped** before the request reaches the proxied service.
+- It applies to `/proxy` (both the request and the response transformation use the same secrets
+  manager), `/transform` and `/utils/wdx1/concat`. On `/transform`, the header selects the secrets
+  manager for every set; the `jurisdiction` of a set is still sent to the engine as a processing
+  context evidence.
+- The Flight SQL server and the file transformation do not use it yet: they let the engine pick its
+  default secrets manager.
+- The file is read at startup, and the application **refuses to start** when it is missing or
+  unreadable, when an id is not a UUID, when a value is mapped twice, or when `default-mapping` is
+  absent or is not one of the mappings.
+- The FPE transformer has a single key and ignores the secrets manager.
+
+> The ids shipped in `config/secrets_manager_mapping.json` are placeholders: replace them with the ids
+> of your RPS secrets managers.
+
 ## Monitoring 
 This anonymization proxy uses micrometer and prometheus endpoint is available.
 - Health endpoint : https://your-server-hostname/health
