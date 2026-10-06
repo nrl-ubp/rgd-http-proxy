@@ -1,0 +1,18 @@
+{
+  "Protect": {
+    "Evidences": [
+      {
+        "Name": "Action",
+        "Value": "Protect"
+      }
+    ]
+  },
+  "Deprotect": {
+    "Evidences": [
+      {
+        "Name": "Action",
+        "Value": "Deprotect"
+      }
+    ]
+  }
+}
