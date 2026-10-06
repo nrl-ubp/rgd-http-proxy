@@ -19,6 +19,7 @@ import org.apache.arrow.flight.auth2.BasicCallHeaderAuthenticator;
 import org.apache.arrow.flight.auth2.GeneratedBearerTokenAuthenticator;
 import org.apache.arrow.flight.grpc.CredentialCallOption;
 import org.apache.arrow.flight.sql.FlightSqlClient;
+import org.apache.arrow.flight.sql.util.TableRef;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.VectorSchemaRoot;
@@ -32,6 +33,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -80,6 +82,15 @@ class ProxyFlightSqlProducerTest {
             statement.execute("CREATE TABLE ACCOUNT (ID INT, OWNER VARCHAR(255))");
             statement.execute("INSERT INTO ACCOUNT VALUES (1, 'Person.shortString=Jean')");
             statement.execute("INSERT INTO ACCOUNT VALUES (2, 'Person.shortString=Paul')");
+
+            // A composite primary key whose key order (REGION, NUM) differs from the alphabetical
+            // order JDBC lists it in, and a foreign key referencing it.
+            statement.execute("CREATE TABLE CUSTOMER (REGION VARCHAR(2), NUM INT, NAME VARCHAR(50),"
+                    + " CONSTRAINT PK_CUSTOMER PRIMARY KEY (REGION, NUM))");
+            statement.execute("CREATE TABLE PURCHASE (ID INT PRIMARY KEY, CUSTOMER_REGION VARCHAR(2),"
+                    + " CUSTOMER_NUM INT, CONSTRAINT FK_PURCHASE_CUSTOMER"
+                    + " FOREIGN KEY (CUSTOMER_REGION, CUSTOMER_NUM) REFERENCES CUSTOMER (REGION, NUM)"
+                    + " ON DELETE CASCADE)");
         }
 
         FlightSqlMappingConfig config = new FlightSqlMappingConfig();
@@ -358,6 +369,103 @@ class ProxyFlightSqlProducerTest {
         assertTrue(readRows(sqlClient.getCatalogs(credentials)).size() >= 0);
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // Type info and keys, the metadata ODBC applications ask for
+    // ---------------------------------------------------------------------------------------------
+
+    @Test
+    void shouldListTheDataTypesSortedByOdbcCode() throws Exception {
+        List<Map<String, Object>> types = readRecords(sqlClient.getXdbcTypeInfo(credentials));
+
+        assertTrue(types.size() > 5, "types: " + types.size());
+        assertTrue(types.stream().anyMatch(type -> Integer.valueOf(4).equals(type.get("data_type"))),
+                "an INTEGER type is listed");
+        List<Integer> codes = types.stream().map(type -> (Integer) type.get("data_type")).toList();
+        assertEquals(codes.stream().sorted().toList(), codes, "SQLGetTypeInfo is ordered by DATA_TYPE");
+        // Only codes an ODBC application understands.
+        List<Integer> xdbcCodes = List.of(1, 2, 3, 4, 5, 6, 7, 8, 12, 91, 92, 93, -1, -2, -3, -4, -5, -6,
+                -7, -8, -9);
+        assertTrue(xdbcCodes.containsAll(codes), "codes: " + codes);
+    }
+
+    @Test
+    void shouldFilterTheDataTypesByCode() throws Exception {
+        List<Map<String, Object>> types = readRecords(sqlClient.getXdbcTypeInfo(12, credentials));
+
+        assertTrue(!types.isEmpty());
+        assertTrue(types.stream().allMatch(type -> Integer.valueOf(12).equals(type.get("data_type"))),
+                "types: " + types);
+    }
+
+    @Test
+    void shouldDescribeTheDatetimeTypesTheOdbcWay() throws Exception {
+        Map<String, Object> timestamp = readRecords(sqlClient.getXdbcTypeInfo(93, credentials)).get(0);
+        Map<String, Object> integer = readRecords(sqlClient.getXdbcTypeInfo(4, credentials)).get(0);
+
+        // The generic SQL_DATETIME and its subcode, rather than whatever the JDBC driver left there.
+        assertEquals(9, timestamp.get("sql_data_type"));
+        assertEquals(3, timestamp.get("datetime_subcode"));
+        assertEquals(4, integer.get("sql_data_type"));
+        assertNull(integer.get("datetime_subcode"));
+    }
+
+    @Test
+    void shouldDescribeACompositePrimaryKeyInKeyOrder() throws Exception {
+        List<Map<String, Object>> keys = readRecords(
+                sqlClient.getPrimaryKeys(TableRef.of(null, "PUBLIC", "CUSTOMER"), credentials));
+
+        assertEquals(2, keys.size());
+        assertEquals("REGION", keys.get(0).get("column_name").toString());
+        assertEquals(1, keys.get(0).get("key_sequence"));
+        assertEquals("NUM", keys.get(1).get("column_name").toString());
+        assertEquals(2, keys.get(1).get("key_sequence"));
+        assertEquals("PK_CUSTOMER", keys.get(0).get("key_name").toString());
+    }
+
+    @Test
+    void shouldDescribeTheForeignKeysOfATable() throws Exception {
+        List<Map<String, Object>> keys = readRecords(
+                sqlClient.getImportedKeys(TableRef.of(null, "PUBLIC", "PURCHASE"), credentials));
+
+        assertEquals(2, keys.size());
+        assertForeignKeyColumn(keys.get(0), "REGION", "CUSTOMER_REGION", 1);
+        assertForeignKeyColumn(keys.get(1), "NUM", "CUSTOMER_NUM", 2);
+        assertEquals("FK_PURCHASE_CUSTOMER", keys.get(0).get("fk_key_name").toString());
+        // ON DELETE CASCADE: the JDBC rule code is the Flight SQL one.
+        assertEquals((byte) 0, ((Number) keys.get(0).get("delete_rule")).byteValue());
+    }
+
+    @Test
+    void shouldDescribeTheForeignKeysReferencingATable() throws Exception {
+        List<Map<String, Object>> keys = readRecords(
+                sqlClient.getExportedKeys(TableRef.of(null, "PUBLIC", "CUSTOMER"), credentials));
+
+        assertEquals(2, keys.size());
+        assertTrue(keys.stream().allMatch(key -> "PURCHASE".equals(key.get("fk_table_name").toString())));
+    }
+
+    @Test
+    void shouldDescribeTheCrossReferenceOfTwoTables() throws Exception {
+        List<Map<String, Object>> related = readRecords(sqlClient.getCrossReference(
+                TableRef.of(null, "PUBLIC", "CUSTOMER"), TableRef.of(null, "PUBLIC", "PURCHASE"),
+                credentials));
+        List<Map<String, Object>> unrelated = readRecords(sqlClient.getCrossReference(
+                TableRef.of(null, "PUBLIC", "CUSTOMER"), TableRef.of(null, "PUBLIC", "PERSON"),
+                credentials));
+
+        assertEquals(2, related.size());
+        assertTrue(unrelated.isEmpty());
+    }
+
+    private static void assertForeignKeyColumn(Map<String, Object> key, String pkColumn, String fkColumn,
+                                               int sequence) {
+        assertEquals("CUSTOMER", key.get("pk_table_name").toString());
+        assertEquals(pkColumn, key.get("pk_column_name").toString());
+        assertEquals("PURCHASE", key.get("fk_table_name").toString());
+        assertEquals(fkColumn, key.get("fk_column_name").toString());
+        assertEquals(sequence, key.get("key_sequence"));
+    }
+
     @Test
     void shouldExecuteAnUpdateStatement() throws Exception {
         long updated = sqlClient.executeUpdate("UPDATE PERSON SET CITY = 'Bern' WHERE ID = 1",
@@ -375,6 +483,25 @@ class ProxyFlightSqlProducerTest {
 
     private List<List<String>> query(String sql) throws Exception {
         return readRows(sqlClient.execute(sql, credentials));
+    }
+
+    /** The rows with their native Arrow values, keyed by field name. */
+    private List<Map<String, Object>> readRecords(FlightInfo info) throws Exception {
+        List<Map<String, Object>> records = new ArrayList<>();
+        try (FlightStream stream = sqlClient.getStream(info.getEndpoints().get(0).getTicket(),
+                (CallOption) credentials)) {
+            while (stream.next()) {
+                VectorSchemaRoot root = stream.getRoot();
+                for (int row = 0; row < root.getRowCount(); row++) {
+                    Map<String, Object> record = new HashMap<>();
+                    for (var vector : root.getFieldVectors()) {
+                        record.put(vector.getName(), vector.getObject(row));
+                    }
+                    records.add(record);
+                }
+            }
+        }
+        return records;
     }
 
     private List<List<String>> readRows(FlightInfo info) throws Exception {

@@ -51,6 +51,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -385,6 +386,118 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
         }
     }
 
+    /**
+     * The data types of the database, which back the ODBC {@code SQLGetTypeInfo} call.
+     * <p>
+     * JDBC and ODBC type codes coincide for the classic types, but JDBC also has codes ODBC does not
+     * know ({@code NCHAR}, {@code BOOLEAN}, the LOBs, the time zone types...). Those are translated,
+     * see {@link XdbcTypes}, and a type that has no ODBC equivalent at all is left out: an ODBC
+     * application could do nothing with it. The rows are sorted by data type, as ODBC requires.
+     */
+    @Override
+    public void getStreamTypeInfo(FlightSql.CommandGetXdbcTypeInfo command, CallContext context,
+                                  ServerStreamListener listener) {
+        streamTypedMetaData(context, listener, Schemas.GET_TYPE_INFO_SCHEMA, metaData -> {
+            List<Object[]> rows = new ArrayList<>();
+            try (ResultSet resultSet = metaData.getTypeInfo()) {
+                while (resultSet.next()) {
+                    XdbcTypes.typeInfoRow(resultSet).ifPresent(rows::add);
+                }
+            }
+            if (command.hasDataType()) {
+                rows.removeIf(row -> (Integer) row[XdbcTypes.DATA_TYPE_COLUMN] != command.getDataType());
+            }
+            // Stable: JDBC lists the types of one code from the closest match to the farthest.
+            rows.sort(Comparator.comparingInt(row -> (Integer) row[XdbcTypes.DATA_TYPE_COLUMN]));
+            return rows;
+        });
+    }
+
+    @Override
+    public void getStreamPrimaryKeys(FlightSql.CommandGetPrimaryKeys command, CallContext context,
+                                     ServerStreamListener listener) {
+        streamTypedMetaData(context, listener, Schemas.GET_PRIMARY_KEYS_SCHEMA, metaData -> {
+            List<Object[]> rows = new ArrayList<>();
+            try (ResultSet resultSet = metaData.getPrimaryKeys(
+                    command.hasCatalog() ? command.getCatalog() : null,
+                    command.hasDbSchema() ? command.getDbSchema() : null,
+                    command.getTable())) {
+                while (resultSet.next()) {
+                    rows.add(new Object[]{
+                            resultSet.getString("TABLE_CAT"),
+                            resultSet.getString("TABLE_SCHEM"),
+                            resultSet.getString("TABLE_NAME"),
+                            resultSet.getString("COLUMN_NAME"),
+                            resultSet.getInt("KEY_SEQ"),
+                            resultSet.getString("PK_NAME")});
+                }
+            }
+            // JDBC orders by column name, Flight SQL clients expect the key order.
+            rows.sort(Comparator.comparingInt(row -> (Integer) row[4]));
+            return rows;
+        });
+    }
+
+    @Override
+    public void getStreamImportedKeys(FlightSql.CommandGetImportedKeys command, CallContext context,
+                                      ServerStreamListener listener) {
+        streamTypedMetaData(context, listener, Schemas.GET_IMPORTED_KEYS_SCHEMA, metaData ->
+                keyRows(metaData.getImportedKeys(
+                        command.hasCatalog() ? command.getCatalog() : null,
+                        command.hasDbSchema() ? command.getDbSchema() : null,
+                        command.getTable())));
+    }
+
+    @Override
+    public void getStreamExportedKeys(FlightSql.CommandGetExportedKeys command, CallContext context,
+                                      ServerStreamListener listener) {
+        streamTypedMetaData(context, listener, Schemas.GET_EXPORTED_KEYS_SCHEMA, metaData ->
+                keyRows(metaData.getExportedKeys(
+                        command.hasCatalog() ? command.getCatalog() : null,
+                        command.hasDbSchema() ? command.getDbSchema() : null,
+                        command.getTable())));
+    }
+
+    @Override
+    public void getStreamCrossReference(FlightSql.CommandGetCrossReference command, CallContext context,
+                                        ServerStreamListener listener) {
+        streamTypedMetaData(context, listener, Schemas.GET_CROSS_REFERENCE_SCHEMA, metaData ->
+                keyRows(metaData.getCrossReference(
+                        command.hasPkCatalog() ? command.getPkCatalog() : null,
+                        command.hasPkDbSchema() ? command.getPkDbSchema() : null,
+                        command.getPkTable(),
+                        command.hasFkCatalog() ? command.getFkCatalog() : null,
+                        command.hasFkDbSchema() ? command.getFkDbSchema() : null,
+                        command.getFkTable())));
+    }
+
+    /**
+     * Read a JDBC foreign key description into the Flight SQL layout. The JDBC update and delete
+     * rule codes are, by design, the Flight SQL {@code UpdateDeleteRules} values.
+     */
+    private static List<Object[]> keyRows(ResultSet resultSet) throws SQLException {
+        List<Object[]> rows = new ArrayList<>();
+        try (resultSet) {
+            while (resultSet.next()) {
+                rows.add(new Object[]{
+                        resultSet.getString("PKTABLE_CAT"),
+                        resultSet.getString("PKTABLE_SCHEM"),
+                        resultSet.getString("PKTABLE_NAME"),
+                        resultSet.getString("PKCOLUMN_NAME"),
+                        resultSet.getString("FKTABLE_CAT"),
+                        resultSet.getString("FKTABLE_SCHEM"),
+                        resultSet.getString("FKTABLE_NAME"),
+                        resultSet.getString("FKCOLUMN_NAME"),
+                        resultSet.getInt("KEY_SEQ"),
+                        resultSet.getString("FK_NAME"),
+                        resultSet.getString("PK_NAME"),
+                        resultSet.getInt("UPDATE_RULE"),
+                        resultSet.getInt("DELETE_RULE")});
+            }
+        }
+        return rows;
+    }
+
     // ---------------------------------------------------------------------------------------------
     // Execution
     // ---------------------------------------------------------------------------------------------
@@ -587,6 +700,17 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
         }
     }
 
+    /** The counterpart of {@link #streamJdbcMetaData} for schemas whose columns are not all text. */
+    private void streamTypedMetaData(CallContext context, ServerStreamListener listener, Schema schema,
+                                     TypedMetaDataReader reader) {
+        try (Connection connection = connectionManager.openConnection(context.peerIdentity())) {
+            MetadataRowWriter.stream(allocator, listener, schema, reader.read(connection.getMetaData()));
+        } catch (SQLException e) {
+            listener.error(CallStatus.INTERNAL
+                    .withDescription(e.getMessage()).withCause(e).toRuntimeException());
+        }
+    }
+
     /**
      * Stream rows made only of (nullable) UTF-8 values, following the given Flight SQL schema.
      */
@@ -764,5 +888,10 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
     @FunctionalInterface
     private interface MetaDataReader {
         List<List<String>> read(DatabaseMetaData metaData) throws SQLException;
+    }
+
+    @FunctionalInterface
+    private interface TypedMetaDataReader {
+        List<Object[]> read(DatabaseMetaData metaData) throws SQLException;
     }
 }
