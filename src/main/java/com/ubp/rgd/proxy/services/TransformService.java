@@ -67,6 +67,12 @@ public class TransformService {
     @Inject
     EndPointTransformer transformer;
 
+    /**
+     * Maps the {@code jurisdiction} of each set to its RPS secrets manager.
+     */
+    @Inject
+    SecretsManagerResolver secretsManagerResolver;
+
     @Inject
     SecurityContext securityContext;
 
@@ -84,21 +90,20 @@ public class TransformService {
     String preFilterAuthEnabled;
 
     /**
-     * {@link #transform(TransformRequest, UUID)} with the tokenizer's default secrets manager.
-     */
-    public TransformResponse transform(TransformRequest request) throws RPSTransformException {
-        return transform(request, null);
-    }
-
-    /**
      * Transform every value of every set through the configured transformer.
+     * <p>
+     * Each set is transformed with the secrets manager its {@code jurisdiction} maps to, or the
+     * default mapping when it has none. Every jurisdiction is resolved before the first set is
+     * transformed, so a request naming an unknown one is rejected without anything being sent to
+     * the tokenizer.
+     *
      * @param request the transform request (list of sets)
-     * @param secretsManager the secrets manager every set is transformed with, {@code null} for the
-     *                       tokenizer's default
      * @return the transformed values grouped per set, in input order
      * @throws RPSTransformException on invalid input or any transformation error
+     * @throws com.ubp.rgd.proxy.exception.UnknownSecretsManagerException (400) when a set names a
+     *         jurisdiction absent from the secrets manager mapping file
      */
-    public TransformResponse transform(TransformRequest request, UUID secretsManager) throws RPSTransformException {
+    public TransformResponse transform(TransformRequest request) throws RPSTransformException {
         // Only authorized SPNs / usernames may call the transform endpoint.
         checkAuthorization();
 
@@ -106,9 +111,17 @@ public class TransformService {
             throw new RPSTransformException("The transform request or its sets are null.");
         }
 
+        List<UUID> secretsManagers = new ArrayList<>(request.getSets().size());
+        for (int i = 0; i < request.getSets().size(); i++) {
+            TransformSet set = request.getSets().get(i);
+            secretsManagers.add(secretsManagerResolver.resolve(
+                    set == null ? null : set.getJurisdiction(),
+                    String.format("jurisdiction of set #%d", i + 1)));
+        }
+
         TransformResponse response = new TransformResponse();
-        for (TransformSet set : request.getSets()) {
-            response.getResults().add(transformSet(set, secretsManager));
+        for (int i = 0; i < request.getSets().size(); i++) {
+            response.getResults().add(transformSet(request.getSets().get(i), secretsManagers.get(i)));
         }
         return response;
     }

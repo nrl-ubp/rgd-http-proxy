@@ -33,16 +33,30 @@ class SecretsManagerEndpointTest {
     }
 
     @Test
-    @DisplayName("/transform rejects an unknown secrets manager")
-    void transformRejectsUnknownValue() {
+    @DisplayName("/transform rejects a set with an unknown jurisdiction")
+    void transformRejectsUnknownJurisdiction() {
         RestAssured.given()
-                .header(TestSecretsManagers.HEADER, "MC")
                 .contentType(ContentType.JSON)
-                .body("{\"sets\":[]}")
+                .body(transformBody("\"jurisdiction\":\"CH\",", "\"jurisdiction\":\"MC\","))
                 .post("/transform")
                 .then()
                 .statusCode(400)
-                .body(containsString("Unknown " + TestSecretsManagers.HEADER + " value: MC"));
+                .body(containsString("Unknown jurisdiction of set #2 value: MC"));
+    }
+
+    @Test
+    @DisplayName("/transform ignores the header, even with an unknown value")
+    void transformIgnoresTheHeader() {
+        RestAssured.given()
+                .header(TestSecretsManagers.HEADER, "MC")
+                .contentType(ContentType.JSON)
+                // no value, so that no tokenizer is needed whatever proxy.transform.impl says
+                .body("{\"sets\":[{\"action\":\"Protect\",\"target\":\"WDX1\",\"module\":\"WDX1Proxy\","
+                        + "\"jurisdiction\":\"lu\",\"values\":[]},"
+                        + "{\"action\":\"Protect\",\"target\":\"WDX1\",\"module\":\"WDX1Proxy\",\"values\":[]}]}")
+                .post("/transform")
+                .then()
+                .statusCode(200);
     }
 
     @Test
@@ -69,15 +83,12 @@ class SecretsManagerEndpointTest {
                 .body(containsString("MC"));
     }
 
-    @Test
-    @DisplayName("/transform accepts a known value, whatever its case")
-    void transformAcceptsKnownValue() {
-        RestAssured.given()
-                .header(TestSecretsManagers.HEADER, "lu")
-                .contentType(ContentType.JSON)
-                .body("{\"sets\":[]}")
-                .post("/transform")
-                .then()
-                .statusCode(200);
+    /** Two protect sets, each with the given jurisdiction fragment. Rejected before any tokenizer call. */
+    private static String transformBody(String firstJurisdiction, String secondJurisdiction) {
+        String set = """
+                {"action":"Protect","target":"WDX1","module":"WDX1Proxy",%s
+                 "values":[{"value":"John","class-name":"Person","property-name":"ShortString"}]}""";
+        return "{\"sets\":[" + String.format(set, firstJurisdiction) + ","
+                + String.format(set, secondJurisdiction) + "]}";
     }
 }

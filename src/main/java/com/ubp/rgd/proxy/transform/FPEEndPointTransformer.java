@@ -1,7 +1,6 @@
 package com.ubp.rgd.proxy.transform;
 
 import ch.regdata.rps.engine.client.Context;
-import ch.regdata.rps.engine.client.Evidence;
 import ch.regdata.rps.engine.client.enginecontext.ProcessingContext;
 import ch.regdata.rps.engine.client.mapping.RPSMapping;
 import ch.regdata.rps.engine.client.model.api.value.IRPSValue;
@@ -485,23 +484,6 @@ public class FPEEndPointTransformer extends AbstractEndPointTransformer {
             // SHA-256 is mandated by the JDK, so this cannot happen on a supported runtime.
             throw new IllegalStateException("SHA-256 is not available to derive the FPE tweak", e);
         }
-    }
-
-    /**
-     * Read the action of a processing context.
-     *
-     * @param processingContext the processing context of the endpoint
-     * @return the value of the {@code Action} evidence, or {@code null} when there is none
-     */
-    private static String actionOf(ProcessingContext processingContext) {
-        if (processingContext == null || processingContext.getEvidences() == null) {
-            return null;
-        }
-        return processingContext.getEvidences().stream()
-                .filter(evidence -> "Action".equalsIgnoreCase(evidence.getName()))
-                .map(Evidence::getValue)
-                .findFirst()
-                .orElse(null);
     }
 
     /**

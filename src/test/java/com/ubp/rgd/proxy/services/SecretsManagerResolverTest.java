@@ -56,6 +56,16 @@ class SecretsManagerResolverTest {
     }
 
     @Test
+    @DisplayName("The error names where the unknown value came from")
+    void unknownValueSource() {
+        UnknownSecretsManagerException e = assertThrows(UnknownSecretsManagerException.class,
+                () -> resolver.resolve("MC", "jurisdiction of set #3"));
+        assertEquals("Unknown jurisdiction of set #3 value: MC", e.getMessage());
+        assertEquals(LU, resolver.resolve(null, "jurisdiction of set #1"));
+        assertEquals(CH, resolver.resolve("ch", "jurisdiction of set #1"));
+    }
+
+    @Test
     @DisplayName("The header is read from the JAX-RS headers and from the request context")
     void readsTheConfiguredHeader() {
         HttpHeaders headers = mock(HttpHeaders.class);

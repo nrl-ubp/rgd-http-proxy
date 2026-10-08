@@ -9,6 +9,9 @@ import java.util.List;
  * A set of values sharing the same RPS transformation context: an {@code action} (e.g. Protect /
  * Unprotect), a {@code target} (e.g. WDX1) and a {@code jurisdiction} code (CH, LU, MC, ...).
  * All values of a set are transformed in a single RPS engine call.
+ * <p>
+ * The {@code jurisdiction} selects the RPS secrets manager of the set through the secrets manager
+ * mapping file. It is optional: a set without one uses the file's default mapping.
  */
 public class TransformSet {
 
@@ -21,7 +24,7 @@ public class TransformSet {
     @JsonProperty(value = "module", required = true)
     private String module;
 
-    @JsonProperty(value = "jurisdiction", required = true)
+    @JsonProperty(value = "jurisdiction")
     private String jurisdiction;
 
     @JsonProperty(value = "values", required = true)

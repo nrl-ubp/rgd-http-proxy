@@ -17,7 +17,13 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class TransformServiceTest {
 
-    private final TransformService service = new TransformService();
+    private final TransformService service = newService();
+
+    private static TransformService newService() {
+        TransformService service = new TransformService();
+        service.secretsManagerResolver = TestSecretsManagers.resolver();
+        return service;
+    }
 
     private TransformValue value(String v, String cls, String prop, String regex) {
         TransformValue tv = new TransformValue();

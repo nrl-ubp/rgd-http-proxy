@@ -2,6 +2,7 @@ package com.ubp.rgd.proxy.services;
 
 import ch.regdata.rps.engine.client.model.api.value.IRPSValue;
 import ch.regdata.rps.engine.client.model.api.value.RPSValue;
+import com.ubp.rgd.proxy.exception.UnknownSecretsManagerException;
 import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.api.TransformRequest;
 import com.ubp.rgd.proxy.transform.api.TransformSet;
@@ -12,10 +13,18 @@ import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.MultivaluedMap;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static com.ubp.rgd.proxy.services.TestSecretsManagers.CH;
+import static com.ubp.rgd.proxy.services.TestSecretsManagers.LU;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -27,29 +36,54 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Checks that the service behind {@code /transform} hands the resolved secrets manager to every
- * transformer call, and that the selecting header never reaches
- * the proxied API.
+ * Checks that the service behind {@code /transform} transforms each set with the secrets manager
+ * of its jurisdiction, and that the selecting header never reaches the proxied API.
  */
 public class SecretsManagerForwardingTest {
 
     @Test
-    @DisplayName("/transform uses the secrets manager for every set")
-    void transformServiceForwards() throws Exception {
+    @DisplayName("/transform uses the secrets manager of each set's jurisdiction, the default one without")
+    void transformServiceUsesEachSetJurisdiction() throws Exception {
         EndPointTransformer transformer = echoTransformer();
+        TransformService service = transformService(transformer);
+
+        service.transform(request(set("CH"), set("lu"), set(null), set(" ")));
+
+        InOrder inOrder = inOrder(transformer);
+        inOrder.verify(transformer).transformData(any(), any(), any(), eq(CH));
+        inOrder.verify(transformer, times(3)).transformData(any(), any(), any(), eq(LU));
+        verifyNoMoreInteractions(transformer);
+    }
+
+    @Test
+    @DisplayName("/transform rejects an unknown jurisdiction before transforming any set")
+    void transformServiceRejectsUnknownJurisdictionUpFront() throws Exception {
+        EndPointTransformer transformer = echoTransformer();
+        TransformService service = transformService(transformer);
+
+        UnknownSecretsManagerException e = assertThrows(UnknownSecretsManagerException.class,
+                () -> service.transform(request(set("CH"), set("MC"))));
+
+        assertEquals(400, e.getResponse().getStatus());
+        assertEquals("Unknown jurisdiction of set #2 value: MC", e.getMessage());
+        verifyNoInteractions(transformer);
+    }
+
+    private static TransformService transformService(EndPointTransformer transformer) {
         TransformService service = new TransformService();
         service.transformer = transformer;
+        service.secretsManagerResolver = TestSecretsManagers.resolver();
         service.preFilterAuthEnabled = "false";
         service.rightContextTarget = "WDX1";
         service.rightContextModule = "WDX1Proxy";
         service.rightContextRight = "Transform";
+        return service;
+    }
 
+    private static TransformRequest request(TransformSet... sets) {
         TransformRequest request = new TransformRequest();
-        request.setSets(List.of(set("Protect"), set("Protect")));
-
-        service.transform(request, CH);
-
-        verify(transformer, times(2)).transformData(any(), any(), any(), eq(CH));
+        request.setSets(Arrays.asList(sets));
+        return request;
     }
 
     @Test
@@ -85,15 +119,15 @@ public class SecretsManagerForwardingTest {
         return transformer;
     }
 
-    private static TransformSet set(String action) {
+    private static TransformSet set(String jurisdiction) {
         TransformValue value = new TransformValue();
         value.setValue("John");
         value.setClassName("Person");
         value.setPropertyName("ShortString");
         TransformSet set = new TransformSet();
-        set.setAction(action);
+        set.setAction("Protect");
         set.setTarget("WDX1");
-        set.setJurisdiction("CH");
+        set.setJurisdiction(jurisdiction);
         set.setValues(List.of(value));
         return set;
     }

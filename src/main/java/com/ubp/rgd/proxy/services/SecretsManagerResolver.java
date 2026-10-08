@@ -24,7 +24,8 @@ import java.util.UUID;
  * Resolves the RPS secrets manager a request must be transformed with.
  * <p>
  * The caller names it through the {@code proxy.transform.http-secrets-manager-header} header (for
- * instance {@code X-Proxy-Jurisdiction: LU}). The value is looked up, case-insensitively, in
+ * instance {@code X-Proxy-Jurisdiction: LU}) on {@code /proxy} and {@code /utils/wdx1/concat}, or
+ * through the {@code jurisdiction} of each set on {@code /transform}. The value is looked up, case-insensitively, in
  * {@code proxy.transform.http-secrets-manager-mapping-file}; a request without the header uses the
  * file's {@code default-mapping}. A value missing from the file is rejected with a 400 rather than
  * silently transformed with another secrets manager.
@@ -74,13 +75,23 @@ public class SecretsManagerResolver {
      * @throws UnknownSecretsManagerException when the value is not in the mapping file
      */
     public UUID resolve(String headerValue) {
-        if (headerValue == null || headerValue.isBlank()) {
+        return resolve(headerValue, headerName);
+    }
+
+    /**
+     * @param value  the value naming the secrets manager, {@code null} or blank when absent
+     * @param source where the value was read from, quoted in the error, e.g. {@code jurisdiction of set #2}
+     * @return the secrets manager mapped to the value, or the default one when there is no value
+     * @throws UnknownSecretsManagerException when the value is not in the mapping file
+     */
+    public UUID resolve(String value, String source) {
+        if (value == null || value.isBlank()) {
             return defaultSecretsManager;
         }
-        UUID id = mappings.get(normalize(headerValue));
+        UUID id = mappings.get(normalize(value));
         if (id == null) {
-            LOG.warn("Rejecting a request with unknown {} value '{}'", headerName, headerValue);
-            throw new UnknownSecretsManagerException(headerName, headerValue);
+            LOG.warn("Rejecting a request with unknown {} value '{}'", source, value);
+            throw new UnknownSecretsManagerException(source, value);
         }
         return id;
     }
