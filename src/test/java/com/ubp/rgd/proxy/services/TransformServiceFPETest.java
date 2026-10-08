@@ -39,6 +39,7 @@ class TransformServiceFPETest {
     private static TransformService fpeService() {
         TransformService service = new TransformService();
         service.transformer = FPEEndPointTransformer.withKey(KEY);
+        service.secretsManagerResolver = TestSecretsManagers.resolver();
         // Authentication is covered by TransformServiceTest and needs a live KDC.
         service.preFilterAuthEnabled = "false";
         service.rightContextTarget = "WDX1";

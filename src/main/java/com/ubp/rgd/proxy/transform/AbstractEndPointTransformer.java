@@ -43,6 +43,23 @@ public abstract class AbstractEndPointTransformer implements EndPointTransformer
                                        UUID secretsManager) throws Exception;
 
     /**
+     * Read the action of a processing context.
+     *
+     * @param processingContext the processing context of the endpoint
+     * @return the value of the {@code Action} evidence, or {@code null} when there is none
+     */
+    protected static String actionOf(ProcessingContext processingContext) {
+        if (processingContext == null || processingContext.getEvidences() == null) {
+            return null;
+        }
+        return processingContext.getEvidences().stream()
+                .filter(evidence -> "Action".equalsIgnoreCase(evidence.getName()))
+                .map(Evidence::getValue)
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
      * Makes {@code read()} return the concrete path of every match instead of its value.
      */
     private static final Configuration PATH_LIST_CONFIG = Configuration.builder()

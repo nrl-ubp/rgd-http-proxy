@@ -155,6 +155,20 @@
             <artifactId>quarkus-cache</artifactId>
         </dependency>
 
+        <!-- Resolution of the secrets manager that created a token: MongoDB then SQL Server lookups -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-mongodb-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-agroal</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jdbc-mssql</artifactId>
+        </dependency>
+
         <!-- Swagger OpenAPI support -->
         <dependency>
             <groupId>io.quarkus</groupId>

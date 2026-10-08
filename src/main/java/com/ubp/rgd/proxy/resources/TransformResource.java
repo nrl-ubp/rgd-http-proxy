@@ -1,6 +1,5 @@
 package com.ubp.rgd.proxy.resources;
 
-import com.ubp.rgd.proxy.services.SecretsManagerResolver;
 import com.ubp.rgd.proxy.services.TransformService;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
 import com.ubp.rgd.proxy.transform.api.TransformRequest;
@@ -49,9 +48,6 @@ public class TransformResource {
     @Inject
     TransformService transformService;
 
-    @Inject
-    SecretsManagerResolver secretsManagerResolver;
-
     /**
      * Duration timer to measure min, avg and max duration of transformation endpoint
      */
@@ -71,9 +67,10 @@ public class TransformResource {
             description = "Each set carries an action (e.g. Protect, Unprotect), a target (e.g. WDX1) and a jurisdiction " +
                     "code (CH, LU, MC, ...). Each value provides its class name and property name and, optionally, an " +
                     "extract-regex used to tokenize the value word by word (protection only) while preserving its format. " +
-                    "Returns the transformed values grouped per set, in input order. The RPS secrets manager is " +
-                    "selected by the proxy.transform.http-secrets-manager-header header (X-Proxy-Jurisdiction by " +
-                    "default), or the default mapping when the header is absent.")
+                    "Returns the transformed values grouped per set, in input order. The jurisdiction of a set " +
+                    "selects the RPS secrets manager it is transformed with, through the secrets manager mapping " +
+                    "file; a set without jurisdiction uses the default mapping. The X-Proxy-Jurisdiction header " +
+                    "is ignored by this endpoint.")
     @APIResponses({
             @APIResponse(
                     responseCode = "200",
@@ -82,7 +79,7 @@ public class TransformResource {
             ),
             @APIResponse(
                     responseCode = "400",
-                    description = "RPS Transformation error",
+                    description = "RPS Transformation error, or a set with an unknown jurisdiction",
                     content = @Content(schema = @Schema(implementation = String.class))
             ),
             @APIResponse(
@@ -144,6 +141,6 @@ public class TransformResource {
         int setCount = body.getSets() == null ? 0 : body.getSets().size();
         LOG.info("Transform request with {} set(s)", setCount);
 
-        return transformService.transform(body, secretsManagerResolver.resolve(headers));
+        return transformService.transform(body);
     }
 }

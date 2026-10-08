@@ -243,14 +243,20 @@ transformed silently.
 ## Selecting the RPS secrets manager
 
 The RPS engine can protect each request with a different secrets manager, typically one per
-jurisdiction. The caller picks it with a request header:
+jurisdiction. The caller names the jurisdiction:
 
-```
-X-Proxy-Jurisdiction: LU
-```
+- on `/proxy` and `/utils/wdx1/concat`, with a request header:
 
-The header name is `proxy.transform.http-secrets-manager-header`, and its value is looked up in the
-JSON file named by `proxy.transform.http-secrets-manager-mapping-file`:
+  ```
+  X-Proxy-Jurisdiction: LU
+  ```
+
+  whose name is `proxy.transform.http-secrets-manager-header`;
+- on `/transform`, with the `jurisdiction` property of each set of the payload. Each set is
+  transformed with its own secrets manager, and the header is **ignored** by this endpoint.
+
+The jurisdiction is looked up in the JSON file named by
+`proxy.transform.http-secrets-manager-mapping-file`:
 
 ```json
 {
@@ -262,18 +268,20 @@ JSON file named by `proxy.transform.http-secrets-manager-mapping-file`:
 }
 ```
 
-- Each mapping associates a header value with the **UUID** of an RPS secrets manager. Values are
+- Each mapping associates a jurisdiction with the **UUID** of an RPS secrets manager. Values are
   compared **ignoring case** (`lu` selects `LU`).
-- A request **without the header** uses the `default-mapping` entry.
-- A request naming a value **absent from the file** is rejected with a **400**: nothing is transformed
-  nor forwarded, since tokens produced with another secrets manager could not be read back.
-- The header is **stripped** before the request reaches the proxied service.
-- It applies to `/proxy` (both the request and the response transformation use the same secrets
-  manager), `/transform` and `/utils/wdx1/concat`. On `/transform`, the header selects the secrets
-  manager for every set; the `jurisdiction` of a set is still sent to the engine as a processing
-  context evidence.
-- The Flight SQL server and the file transformation do not use it yet: they let the engine pick its
-  default secrets manager.
+- A request **without the header**, or a `/transform` set **without `jurisdiction`**, uses the
+  `default-mapping` entry.
+- A jurisdiction **absent from the file** is rejected with a **400**: nothing is transformed nor
+  forwarded, since tokens produced with another secrets manager could not be read back. On
+  `/transform`, every set is checked before the first one is transformed, so one unknown
+  jurisdiction rejects the whole request, and the message names the set
+  (`Unknown jurisdiction of set #2 value: MC`).
+- On `/proxy`, the request and the response transformations use the same secrets manager, and the
+  header is **stripped** before the request reaches the proxied service.
+- The Flight SQL server and the file transformation do not use it: the secrets manager of each token
+  they detokenize is resolved from the token itself, see below. When they protect values (the
+  Flight SQL `transform()` extensions), the engine uses its default secrets manager.
 - The file is read at startup, and the application **refuses to start** when it is missing or
   unreadable, when an id is not a UUID, when a value is mapped twice, or when `default-mapping` is
   absent or is not one of the mappings.
@@ -281,6 +289,35 @@ JSON file named by `proxy.transform.http-secrets-manager-mapping-file`:
 
 > The ids shipped in `config/secrets_manager_mapping.json` are placeholders: replace them with the ids
 > of your RPS secrets managers.
+
+### Resolving the secrets manager of a token
+
+The Flight SQL result sets and the transformed files carry tokens that may come from different
+jurisdictions, and nothing in the call says which. So when the RPS transformer **unprotects** values
+**without an explicit secrets manager**, it resolves the secrets manager that created each token
+from the token itself (`TokenSecretsManagerResolver.secretsManagerIdResolve(token)`):
+
+1. **MongoDB** is queried first, with the token;
+2. its result feeds the **SQL Server** query, which returns the secrets manager id.
+
+The values are then grouped by secrets manager and the engine is called once per group. Each
+distinct token is resolved once per call, and every token is resolved before the first engine call:
+a token found in neither database fails the whole detokenization with a
+`SecretsManagerNotFoundException`. The file is then moved to the error directory, and the Flight SQL
+client gets an error. Values that are not tokens are sent along with the first group.
+
+- `/proxy`, `/transform` and `/utils/wdx1/concat` always name the secrets manager, so they never
+  query the databases; neither does protecting a value.
+- Successful resolutions are cached in memory (cache `token-secrets-manager`, 10 000 entries,
+  1 hour by default). Failures are not cached.
+- The connections are configured in `application.properties`: `quarkus.mongodb.connection-string`
+  plus `proxy.secrets-manager-lookup.mongodb.database` / `.collection`, and the
+  `secrets-manager-lookup` datasource (`quarkus.datasource."secrets-manager-lookup".*`). See
+  `config/sample.application.properties`.
+- The FPE transformer is not concerned.
+
+> The queries are still to be written, in `lookupInMongoDb` and `lookupInSqlServer`. Until then they
+> find nothing, so **RPS detokenization in Flight SQL and the file transformation fails**.
 
 ## Monitoring 
 This anonymization proxy uses micrometer and prometheus endpoint is available.
