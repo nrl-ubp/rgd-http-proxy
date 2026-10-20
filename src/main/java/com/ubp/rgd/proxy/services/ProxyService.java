@@ -11,7 +11,6 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
@@ -131,7 +130,7 @@ public class ProxyService {
             KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
             kmf.init(keyStore, keystorePassword.toCharArray());
             keyManagers = kmf.getKeyManagers();
-            LOG.info("Keystore chargÃ©: " + keystorePath);
+            LOG.info("Keystore chargÃƒÂ©: " + keystorePath);
         }
 
         // Configuration du TrustManager (certificats de confiance)
@@ -143,7 +142,7 @@ public class ProxyService {
             TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
             tmf.init(trustStore);
             trustManagers = tmf.getTrustManagers();
-            LOG.info("Truststore chargÃ©: " + truststorePath);
+            LOG.info("Truststore chargÃƒÂ©: " + truststorePath);
         }
 
         sslContext.init(keyManagers, trustManagers, new SecureRandom());
@@ -226,7 +225,7 @@ public class ProxyService {
             return buildProxyResponse(response);
 
         } catch (Exception e) {
-            LOG.error("Erreur lors du proxy de la requÃªte {} {}", method, path, e);
+            LOG.error("Erreur lors du proxy de la requÃƒÂªte {} {}", method, path, e);
             return Response.status(Response.Status.BAD_GATEWAY)
                     .entity("Erreur du proxy: " + e.getMessage())
                     .build();
@@ -285,7 +284,7 @@ public class ProxyService {
     void copyHeaders(HttpHeaders headers,
                      jakarta.ws.rs.client.Invocation.Builder requestBuilder) {
 
-        // Headers Ã  exclure du proxy
+        // Headers a exclure du proxy
         // "authorization" is excluded here because the downstream Authorization header is set
         // explicitly by resolveDownstreamAuthorization (basic-auth client-to-service ticket,
         // Kerberos delegation, or pass-through).
@@ -395,7 +394,7 @@ public class ProxyService {
     private void copyResponseHeaders(Response originalResponse,
                                      Response.ResponseBuilder responseBuilder) {
 
-        // Headers Ã  exclure.
+        // Headers ÃƒÂ  exclure.
         // "content-encoding" is dropped because the proxy always emits an uncompressed body
         // (see buildProxyResponse / gunzipIfNeeded); advertising gzip would break the client.
         List<String> excludedHeaders = List.of(
