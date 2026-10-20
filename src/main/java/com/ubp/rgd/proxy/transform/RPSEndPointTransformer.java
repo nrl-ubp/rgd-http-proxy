@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -102,7 +101,6 @@ public class RPSEndPointTransformer extends AbstractEndPointTransformer {
      * a {@code null} group when there is no token.
      */
     private Map<UUID, List<IRPSValue<String>>> groupBySecretsManager(IRPSValue<String>[] values) {
-        Map<String, UUID> resolved = new HashMap<>();
         Map<UUID, List<IRPSValue<String>>> groups = new LinkedHashMap<>();
         List<IRPSValue<String>> notTokens = new ArrayList<>();
         for (IRPSValue<String> value : values) {
@@ -111,7 +109,10 @@ public class RPSEndPointTransformer extends AbstractEndPointTransformer {
                 notTokens.add(value);
                 continue;
             }
-            UUID id = resolved.computeIfAbsent(token, tokenSecretsManagerResolver::secretsManagerIdResolve);
+
+            String propertyName = value.getMapping().getPropertyName();
+            String propertyClassName = value.getMapping().getClassName();
+            UUID id = tokenSecretsManagerResolver.secretsManagerIdResolve(token, propertyClassName, propertyName);
             groups.computeIfAbsent(id, k -> new ArrayList<>()).add(value);
         }
         if (!notTokens.isEmpty()) {
