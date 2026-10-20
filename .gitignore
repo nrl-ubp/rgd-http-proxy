@@ -51,3 +51,7 @@ build/
 ### Apache Commons Procrun binaries ###
 # Ignore the downloaded zip archive
 tools/procrun/**/*
+
+# dotnet client generated
+**/clients/dotnet/**/bin/**/*
+**/clients/dotnet/**/obj/**/*
