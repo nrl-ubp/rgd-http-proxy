@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.ubp.rgd.proxy</groupId>
+        <artifactId>rgd-http-proxy-parent</artifactId>
+        <version>2.0.0</version>
+    </parent>
+
+    <!-- artifactId kept: the runner jar is still target/rgd-http-proxy-<version>-runner.jar -->
+    <artifactId>rgd-http-proxy</artifactId>
+    <name>RGD proxy - application</name>
+
+    <properties>
+        <quarkus.package.jar.type>uber-jar</quarkus.package.jar.type>
+    </properties>
+
+    <dependencies>
+        <!-- The transformer SPI and the transformer extensions. proxy.transform.impl selects one of the
+             extensions present here at runtime: remove an extension to ship the proxy without it. -->
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-spi</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-rps</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-fpe</artifactId>
+        </dependency>
+
+        <!-- Logging facade used by all our classes -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Apache Flight SQL Server -->
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>flight-core</artifactId>
+            <version>${arrow.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>flight-sql</artifactId>
+            <version>${arrow.version}</version>
+        </dependency>
+        <!-- JDBC ResultSet to Arrow conversion for the Flight SQL server -->
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-jdbc</artifactId>
+            <version>${arrow.version}</version>
+        </dependency>
+        <!-- Off-heap allocator required at runtime by Arrow -->
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-memory-netty</artifactId>
+            <version>${arrow.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- JDBC driver of the proxied database -->
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>12.8.1.jre11</version>
+        </dependency>
+
+        <!-- In-memory database used by the Flight SQL server tests -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>2.3.232</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Flight SQL JDBC client driver, used by the PersonFlightSqlLoader tool and its tests
+             to talk to our own Flight SQL server the way a real client would. -->
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>flight-sql-jdbc-driver</artifactId>
+            <version>${arrow.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+
+        <!-- WDX1 transliteration lib for CONCAT service-->
+        <dependency>
+            <groupId>com.ibm.icu</groupId>
+            <artifactId>icu4j</artifactId>
+            <version>77.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.jayway.jsonpath</groupId>
+            <artifactId>json-path</artifactId>
+        </dependency>
+
+        <!-- Quarkus REST Client -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-rest-client</artifactId>
+        </dependency>
+
+        <!-- Quarkus RESTEasy Reactive -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-rest</artifactId>
+        </dependency>
+
+        <!-- Quarkus RESTEasy Reactive Jackson -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-rest-jackson</artifactId>
+        </dependency>
+
+        <!-- Quarkus cache extension -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-cache</artifactId>
+        </dependency>
+
+        <!-- Swagger OpenAPI support -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-openapi</artifactId>
+        </dependency>
+
+        <!-- Quarkus Arc (CDI) -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-arc</artifactId>
+        </dependency>
+
+        <!-- Quarkus Config -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-config-yaml</artifactId>
+        </dependency>
+
+        <!-- Quarkus Health -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-health</artifactId>
+        </dependency>
+
+        <!-- Quarkus Metrics -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-micrometer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
+        </dependency>
+
+        <!-- TLS/SSL Support -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-tls-registry</artifactId>
+        </dependency>
+
+        <!-- Logging -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-logging-json</artifactId>
+        </dependency>
+
+        <!-- kerberos support -->
+
+        <!--
+        We do not want kerb support a is it in the extensions
+        because we want it to work on hybrid mode either basic of kerb
+
+        <dependency>
+            <groupId>io.quarkiverse.kerberos</groupId>
+            <artifactId>quarkus-kerberos</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+        -->
+
+        <!-- Base64 decoding and ASN.1 support -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+        </dependency>
+
+        <!-- key and certificate generation -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-junit5-mockito</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- generate random data for tests -->
+        <dependency>
+            <groupId>com.github.javafaker</groupId>
+            <artifactId>javafaker</artifactId>
+            <version>1.0.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-maven-plugin</artifactId>
+                <extensions>true</extensions>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build</goal>
+                            <goal>generate-code</goal>
+                            <goal>generate-code-tests</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Apache Arrow needs access to java.nio internals for its off-heap allocator -->
+                    <argLine>--add-opens=java.base/java.nio=ALL-UNNAMED</argLine>
+                </configuration>
+            </plugin>
+            <!-- Maven Exec Plugin -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.ubp.rgd.proxy.tools.KeyAndCertificateGenerator</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- Runs the Flight SQL person loader against a running proxy, for example:
+             mvn -Pflight-sql-loader test-compile exec:exec -Dloader.args="[switches]"
+             exec:exec is used rather than exec:java because Apache Arrow needs the forked JVM to be
+             started with the add-opens flag on java.base/java.nio. -->
+        <profile>
+            <id>flight-sql-loader</id>
+            <properties>
+                <loader.args></loader.args>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <configuration>
+                            <executable>java</executable>
+                            <classpathScope>test</classpathScope>
+                            <!-- commandlineArgs (not an arguments list) so that the switches passed
+                                 in loader.args are split on whitespace instead of being handed over
+                                 as a single argument. -->
+                            <commandlineArgs>--add-opens=java.base/java.nio=ALL-UNNAMED -classpath %classpath com.ubp.rgd.tools.PersonFlightSqlLoader ${loader.args}</commandlineArgs>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Builds target/rgd-flightsql-odbc-<version>.zip, the package clients unzip on Windows to install
+             the Apache Arrow Flight SQL ODBC driver and an ODBC datasource pointing to our Flight SQL server:
+               mvn -Podbc-package -DskipTests package
+             The driver MSI is downloaded from GitHub (or from -Dodbc.driver.url=<mirror>) and checked
+             against odbc.driver.sha256. Datasource defaults can be overridden, e.g. -Dodbc.dsn.host=...
+             Kept out of the default build so that it does not depend on GitHub being reachable. -->
+        <profile>
+            <id>odbc-package</id>
+            <properties>
+                <!-- When upgrading the driver, update the checksum (published with the GitHub release
+                     asset) and check the upgrade code and driver name in the MSI. -->
+                <odbc.driver.version>25.0.1</odbc.driver.version>
+                <odbc.driver.sha256>27f761673abd12c28d304233f569b90f42e7a4e41fee5ec224c8eef04e419f15</odbc.driver.sha256>
+                <odbc.driver.name>Apache Arrow Flight SQL ODBC Driver</odbc.driver.name>
+                <odbc.driver.upgrade-code>{DBF27A18-F8BF-423F-9E3A-957414D52C4B}</odbc.driver.upgrade-code>
+                <odbc.driver.msi>Apache-Arrow-Flight-SQL-ODBC-${odbc.driver.version}-win64.msi</odbc.driver.msi>
+                <odbc.driver.url>https://github.com/apache/arrow/releases/download/apache-arrow-${odbc.driver.version}/${odbc.driver.msi}</odbc.driver.url>
+                <odbc.driver.license-url>https://raw.githubusercontent.com/apache/arrow/apache-arrow-${odbc.driver.version}/LICENSE.txt</odbc.driver.license-url>
+                <odbc.driver.notice-url>https://raw.githubusercontent.com/apache/arrow/apache-arrow-${odbc.driver.version}/NOTICE.txt</odbc.driver.notice-url>
+                <odbc.driver.dir>${project.build.directory}/odbc-driver</odbc.driver.dir>
+
+                <odbc.dsn.name>RGD Flight SQL</odbc.dsn.name>
+                <odbc.dsn.host>tokenization-secure-gvz-e01.corp.ubp.ch</odbc.dsn.host>
+                <odbc.dsn.port>32010</odbc.dsn.port>
+                <odbc.dsn.use-encryption>true</odbc.dsn.use-encryption>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>download-odbc-driver</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${odbc.driver.dir}"/>
+                                        <get src="${odbc.driver.url}" dest="${odbc.driver.dir}/${odbc.driver.msi}" skipexisting="true"/>
+                                        <get src="${odbc.driver.license-url}" dest="${odbc.driver.dir}/LICENSE.txt" skipexisting="true"/>
+                                        <get src="${odbc.driver.notice-url}" dest="${odbc.driver.dir}/NOTICE.txt" skipexisting="true"/>
+                                        <checksum file="${odbc.driver.dir}/${odbc.driver.msi}" algorithm="SHA-256"
+                                                  property="${odbc.driver.sha256}" verifyproperty="odbc.driver.checksum.ok"/>
+                                        <fail message="${odbc.driver.msi} does not match the expected SHA-256 ${odbc.driver.sha256}. Delete ${odbc.driver.dir} (or run mvn clean) and build again, or check -Dodbc.driver.url.">
+                                            <condition>
+                                                <isfalse value="${odbc.driver.checksum.ok}"/>
+                                            </condition>
+                                        </fail>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <version>3.7.1</version>
+                        <executions>
+                            <execution>
+                                <id>odbc-datasource-zip</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <descriptors>
+                                        <descriptor>src/assembly/odbc-datasource.xml</descriptor>
+                                    </descriptors>
+                                    <finalName>rgd-flightsql-odbc-${project.version}</finalName>
+                                    <appendAssemblyId>false</appendAssemblyId>
+                                    <attach>false</attach>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

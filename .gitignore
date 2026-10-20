@@ -1,6 +1,6 @@
 # quarkus config to be ignored because it contains sensible information
 # use the SAMPLE.appcliation.properties file to get started.
-config/application.properties
+rgd-http-proxy/config/application.properties
 **/*.keytab
 
 # java related

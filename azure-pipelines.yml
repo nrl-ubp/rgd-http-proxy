@@ -64,29 +64,26 @@ stages:
 
     steps:
       - task: Bash@3
-        displayName: Maven dependencies resolve
+        displayName: Compile project
         inputs:
           targetType: inline
           script: |
-            mvn dependency:resolve
-      - task: Bash@3
-        displayName: Compile project 
-        inputs:
-          targetType: inline
-          script: |
-            mvn compile
+            # install, not compile: the application module resolves the SPI and the RPS/FPE
+            # extensions as artifacts, and their deployment modules are needed by the Quarkus build
+            mvn install -DskipTests
       - task: Bash@3
         displayName: Setting up application.properties file from sample
         inputs:
           targetType: inline
           script: |
-            cp ./config/sample.application.properties ./config/application.properties
+            cp ./rgd-http-proxy/config/sample.application.properties ./rgd-http-proxy/config/application.properties
       - task: Bash@3
         displayName: Generate temporary server SSL keystore and certs
         inputs:
           targetType: inline
           script: |
-            mvn exec:java
+            # run from the application module: the certificates are written to ./config/certs
+            cd rgd-http-proxy && mvn exec:java
       - task: Bash@3
         displayName: Build and test
         inputs:
@@ -98,7 +95,7 @@ stages:
             export proxy_transform_engine_url="$(proxy.transform.engine-url)"
             mvn install
       - script: |
-          cp ./target/rgd-http-proxy-*-runner.jar $(Build.StagingDirectory)
+          cp ./rgd-http-proxy/target/rgd-http-proxy-*-runner.jar $(Build.StagingDirectory)
         displayName: 'Copy artifact to Build.StagingDirectory'
       - task: PublishBuildArtifacts@1
         inputs:

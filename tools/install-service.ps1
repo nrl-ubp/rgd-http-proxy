@@ -1,7 +1,7 @@
 # PowerShell script to install the RGD HTTP Proxy as a Windows Service using Apache Commons Procrun.
 #
 # Prerequisites:
-# - The application must be built (mvn package) to produce the uber-jar in target/.
+# - The application must be built (mvn install) to produce the uber-jar in rgd-http-proxy/target/.
 # - Java must be installed and JAVA_HOME set, or adjust the $javaPath variable below.
 # - This script must be run as an Administrator.
 
@@ -15,7 +15,7 @@ param (
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptDir
 $prunsrv = Join-Path $scriptDir "procrun\prunsrv.exe"
-$jarPath = Join-Path $projectRoot "target\rgd-http-proxy-1.1.0-runner.jar"
+$jarPath = Join-Path $projectRoot "rgd-http-proxy\target\rgd-http-proxy-2.0.0-runner.jar"
 
 # Use the standard 64-bit prunsrv.exe
 if (Test-Path (Join-Path $scriptDir "procrun\prunsrv.exe")) {
@@ -27,7 +27,7 @@ if (Test-Path (Join-Path $scriptDir "procrun\prunsrv.exe")) {
 
 if (-not (Test-Path $jarPath)) {
     Write-Host "ERROR: Application JAR not found at $jarPath"
-    Write-Host "Please build the project first using: mvn package"
+    Write-Host "Please build the project first using: mvn install"
     exit 1
 }
 

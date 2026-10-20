@@ -1,0 +1,281 @@
+package com.ubp.rgd.proxy.services;
+
+import com.ubp.rgd.proxy.transform.model.Evidence;
+import com.ubp.rgd.proxy.transform.model.ProcessingContext;
+import com.ubp.rgd.proxy.transform.model.RightContext;
+import com.ubp.rgd.proxy.transform.model.ValueMapping;
+import com.ubp.rgd.proxy.transform.model.MappedValue;
+import com.ubp.rgd.proxy.security.SecurityContext;
+import com.ubp.rgd.proxy.transform.EndPointTransformer;
+import com.ubp.rgd.proxy.transform.TransformException;
+import com.ubp.rgd.proxy.transform.api.TransformRequest;
+import com.ubp.rgd.proxy.transform.api.TransformResponse;
+import com.ubp.rgd.proxy.transform.ValuePlan;
+import com.ubp.rgd.proxy.transform.api.TransformResultSet;
+import com.ubp.rgd.proxy.transform.api.TransformSet;
+import com.ubp.rgd.proxy.transform.api.TransformValue;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.ForbiddenException;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.regex.Pattern;
+
+/**
+ * Service exposing generic transformation (Protect / Unprotect) of a list of value sets.
+ * <p>
+ * Each {@link TransformSet} carries an {@code action}, a {@code target} and a {@code jurisdiction}
+ * code that are passed to the engine as processing-context evidences ({@code Action},
+ * {@code Target}, {@code Jurisdiction}). A value may optionally carry an {@code extractRegExp} used,
+ * for protection, to tokenize the value group by group while preserving its original format. For
+ * unprotection, tokens are located by their fixed delimiter ({@code RG{...}}).
+ * <p>
+ * The values are handed over to the {@link EndPointTransformer} selected by
+ * {@code proxy.transform.impl}, so this endpoint protects the data exactly like the proxy filters
+ * do: with {@code RPS} it calls the RegData engine, with {@code FPE} it encrypts locally. A value
+ * protected through this endpoint is therefore readable through the proxy, and the other way round.
+ *
+ * @see EndPointTransformer
+ */
+@ApplicationScoped
+public class TransformService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TransformService.class);
+
+    @ConfigProperty(name = "proxy.transform.endpoint.right-context-target")
+    String rightContextTarget;
+
+    @ConfigProperty(name = "proxy.transform.endpoint.right-context-module")
+    String rightContextModule;
+
+    @ConfigProperty(name = "proxy.transform.endpoint.right-context-right")
+    String rightContextRight;
+
+
+    /**
+     * The transformer selected by {@code proxy.transform.impl}, so the endpoint protects the data
+     * exactly like the proxy filters do rather than being tied to one implementation.
+     */
+    @Inject
+    EndPointTransformer transformer;
+
+    /**
+     * Maps the {@code jurisdiction} of each set to its RPS secrets manager.
+     */
+    @Inject
+    SecretsManagerResolver secretsManagerResolver;
+
+    @Inject
+    SecurityContext securityContext;
+
+    /**
+     * Comma-separated list of SPNs or usernames allowed to call the transform endpoint.
+     */
+    @ConfigProperty(name = "proxy.transform.endpoint.authorized-spn", defaultValue = "")
+    String authorizedSpn;
+
+    /**
+     * Flag mirroring the pre-filter authentication switch. When authentication is globally disabled
+     * (e.g. local dev), the endpoint authorization check is skipped.
+     */
+    @ConfigProperty(name = "proxy.prefilter.auth-enabled", defaultValue = "true")
+    String preFilterAuthEnabled;
+
+    /**
+     * Transform every value of every set through the configured transformer.
+     * <p>
+     * Each set is transformed with the secrets manager its {@code jurisdiction} maps to, or the
+     * default mapping when it has none. Every jurisdiction is resolved before the first set is
+     * transformed, so a request naming an unknown one is rejected without anything being sent to
+     * the tokenizer.
+     *
+     * @param request the transform request (list of sets)
+     * @return the transformed values grouped per set, in input order
+     * @throws TransformException on invalid input or any transformation error
+     * @throws com.ubp.rgd.proxy.exception.UnknownSecretsManagerException (400) when a set names a
+     *         jurisdiction absent from the secrets manager mapping file
+     */
+    public TransformResponse transform(TransformRequest request) throws TransformException {
+        // Only authorized SPNs / usernames may call the transform endpoint.
+        checkAuthorization();
+
+        if (request == null || request.getSets() == null) {
+            throw new TransformException("The transform request or its sets are null.");
+        }
+
+        List<UUID> secretsManagers = new ArrayList<>(request.getSets().size());
+        for (int i = 0; i < request.getSets().size(); i++) {
+            TransformSet set = request.getSets().get(i);
+            secretsManagers.add(secretsManagerResolver.resolve(
+                    set == null ? null : set.getJurisdiction(),
+                    String.format("jurisdiction of set #%d", i + 1)));
+        }
+
+        TransformResponse response = new TransformResponse();
+        for (int i = 0; i < request.getSets().size(); i++) {
+            response.getResults().add(transformSet(request.getSets().get(i), secretsManagers.get(i)));
+        }
+        return response;
+    }
+
+    /**
+     * Ensure the current caller is allowed to use the transform endpoint. The caller's username (from
+     * the security context) must be listed in {@code proxy.transform.endpoint.authorized-spn}.
+     * <p>
+     * The check is skipped when authentication is globally disabled
+     * ({@code proxy.prefilter.auth-enabled=false}). When authentication is enabled but no authorized
+     * caller is configured, access is denied (fail closed).
+     *
+     * @throws ForbiddenException if the caller is not authenticated or not authorized
+     */
+    void checkAuthorization() {
+        if (!"true".equalsIgnoreCase(preFilterAuthEnabled)) {
+            LOG.warn("Prefilter auth DISABLED. Not checking authorization for the TRANSFORM endpoint.");
+            return;
+        }
+
+        if (securityContext == null || securityContext.getToken() == null) {
+            LOG.error("No security context found while calling the transform endpoint.");
+            throw new ForbiddenException("No authenticated caller for the transform endpoint.");
+        }
+
+        Set<String> authorized = parseAuthorizedList(authorizedSpn);
+        if (authorized.isEmpty()) {
+            LOG.error("No authorized SPN/username configured for the transform endpoint " +
+                    "(proxy.transform.endpoint.authorized-spn). Denying access.");
+            throw new ForbiddenException("Transform endpoint has no authorized caller configured.");
+        }
+
+        String userName = securityContext.getToken().getUser();
+        if (!isAuthorized(userName, authorized)) {
+            LOG.error("User {} is not authorized to call the transform endpoint.", userName);
+            throw new ForbiddenException(
+                    String.format("User %s is not authorized to call the transform endpoint.", userName));
+        }
+
+        LOG.debug("User {} is authorized to call the transform endpoint.", userName);
+    }
+
+    /**
+     * Parse a comma-separated list of SPNs / usernames into a normalized (lower-cased, trimmed) set.
+     * @param csv the comma-separated configuration value (may be null/empty)
+     * @return the set of authorized entries (empty when none configured)
+     */
+    static Set<String> parseAuthorizedList(String csv) {
+        Set<String> result = new LinkedHashSet<>();
+        if (csv == null || csv.isBlank()) {
+            return result;
+        }
+        Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(String::toLowerCase)
+                .forEach(result::add);
+        return result;
+    }
+
+    /**
+     * @param user the caller's username / SPN (may be null)
+     * @param authorized the normalized set of authorized entries
+     * @return true when the (case-insensitive) user is contained in the authorized set
+     */
+    static boolean isAuthorized(String user, Set<String> authorized) {
+        return user != null && authorized.contains(user.toLowerCase());
+    }
+
+    private TransformResultSet transformSet(TransformSet set, UUID secretsManager) throws TransformException {
+        if (set == null || set.getValues() == null) {
+            throw new TransformException("A transform set or its values are null.");
+        }
+
+        // Build, per value, the segments to transform (word by word for protect with a regex, token
+        // by token for unprotect) and one MappedValue per segment. All the set's RPSValues are batched
+        // into a single engine call.
+        List<ValuePlan> plans = new ArrayList<>(set.getValues().size());
+        List<MappedValue> flatValues = new ArrayList<>();
+
+        for (TransformValue value : set.getValues()) {
+            ValuePlan plan = buildValuePlan(set.getAction(), value);
+            plans.add(plan);
+            flatValues.addAll(plan.rpsValues());
+        }
+
+        if (!flatValues.isEmpty()) {
+            try {
+                transformer.transformData(
+                        flatValues.toArray(new MappedValue[0]),
+                        buildRightContext(),
+                        buildProcessingContext(set),
+                        secretsManager);
+            } catch (TransformException e) {
+                throw e;
+            } catch (Exception e) {
+                LOG.error("Transform exception: ", e);
+                throw new TransformException(e);
+            }
+        }
+
+        List<String> results = new ArrayList<>(plans.size());
+        for (ValuePlan plan : plans) {
+            results.add(plan.reassemble());
+        }
+        return new TransformResultSet(results);
+    }
+
+    /**
+     * Build the right context for RoseGarden proxy taken from the application.properties configuration file
+     * @return the right context with evidences according to the config
+     */
+    private RightContext buildRightContext() {
+        RightContext context = new RightContext();
+        context.addEvidence(new Evidence("Target", this.rightContextTarget));
+        context.addEvidence(new Evidence("Module", this.rightContextModule));
+        context.addEvidence(new Evidence("Right",  this.rightContextRight));
+        return context;
+    }
+
+    /**
+     * Build the transformation plan for a single value: the extraction pattern (if any), the ordered
+     * list of segments to transform and one {@link MappedValue} per segment.
+     */
+    ValuePlan buildValuePlan(String action, TransformValue value) throws TransformException {
+        if (value == null || value.getValue() == null) {
+            throw new TransformException("A transform value is null.");
+        }
+
+        ValueMapping mapping = new ValueMapping(value.getClassName(), value.getPropertyName());
+        Pattern pattern = ValuePlan.extractionPattern(action, value.getExtractRegExp());
+
+        return ValuePlan.of(mapping, value.getValue(), pattern);
+    }
+
+
+    private ProcessingContext buildProcessingContext(TransformSet set) {
+        ProcessingContext processingContext = new ProcessingContext();
+        addEvidence(processingContext, "Action", set.getAction());
+        addEvidence(processingContext, "Target", set.getTarget());
+        addEvidence(processingContext, "Module", set.getModule());
+        processingContext.getEvidences()
+                .forEach(e -> LOG.debug("Processing context: {} = {}", e.getName(), e.getValue()));
+        return processingContext;
+    }
+
+    private void addEvidence(ProcessingContext processingContext, String name, String value) {
+        if (value == null || value.isEmpty()) {
+            return;
+        }
+        Evidence evidence = new Evidence();
+        evidence.setName(name);
+        evidence.setValue(value);
+        processingContext.addEvidence(evidence);
+    }
+
+}
