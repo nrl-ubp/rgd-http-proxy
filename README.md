@@ -295,29 +295,49 @@ The jurisdiction is looked up in the JSON file named by
 The Flight SQL result sets and the transformed files carry tokens that may come from different
 jurisdictions, and nothing in the call says which. So when the RPS transformer **unprotects** values
 **without an explicit secrets manager**, it resolves the secrets manager that created each token
-from the token itself (`TokenSecretsManagerResolver.secretsManagerIdResolve(token)`):
+from the token itself (`TokenSecretsManagerResolver.secretsManagerIdResolve(token, className, propertyName)`).
 
-1. **MongoDB** is queried first, with the token;
-2. its result feeds the **SQL Server** query, which returns the secrets manager id.
+At startup, the resolver loads from SQL Server the configuration of the client
+`proxy.transform.client-id`: its RPS properties (class, property, property id, configuration id)
+and the association of each secrets manager configuration with the client's secrets manager.
+Each token is then resolved as follows:
 
-The values are then grouped by secrets manager and the engine is called once per group. Each
-distinct token is resolved once per call, and every token is resolved before the first engine call:
-a token found in neither database fails the whole detokenization with a
-`SecretsManagerNotFoundException`. The file is then moved to the error directory, and the Flight SQL
-client gets an error. Values that are not tokens are sent along with the first group.
+1. the RPS class and property of the value must belong to the client;
+2. **MongoDB** is queried, in the collection of the token format, for the token of that
+   configuration and property:
+
+   | Token format | Collection | Searched by |
+   |---|---|---|
+   | `RPSDOC+...+RPSDOC` | `SecretManagerTransformations` | MD5 of the value (`ValueHash`) |
+   | `-888...8888` | `SequenceToken` | the value between the wrappers |
+   | `RG{...}@example.com` | `EmailUidTokens` | the token without `RG{` and `}` |
+   | `yyyy-MM-dd` | `DateTokenV2s` | the date at midnight UTC |
+   | `RG{xxVALUE-AB}` | `ShiftedOPEShortTokens` | `VALUE` and the number in the letters after the last dash (`AA`=0 … `ZZ`=675, `AAA`=676, …) |
+
+3. the document found either carries a `SecretsManagerId`, which is mapped to the secrets manager
+   associated with the client, or a `SecretVersionId`, which **SQL Server** turns into the secrets
+   manager id.
+
+The values are then grouped by secrets manager and the engine is called once per group. Every
+token is resolved before the first engine call, and any failure fails the whole detokenization
+with a `SecretsManagerNotFoundException`: a property the client does not have, an unsupported token
+format (such as an `RG{...}` token without a dash), a token MongoDB does not know, a secrets manager
+configuration without association with the client, or a secret version SQL Server does not know.
+The file is then moved to the error directory, and the Flight SQL client gets an error. Values that
+are not tokens are sent along with the first group.
 
 - `/proxy`, `/transform` and `/utils/wdx1/concat` always name the secrets manager, so they never
-  query the databases; neither does protecting a value.
+  query the databases; neither does protecting a value. The file transformation passes the default
+  secrets manager of the mapping file when it protects, and none when it unprotects.
 - Successful resolutions are cached in memory (cache `token-secrets-manager`, 10 000 entries,
-  1 hour by default). Failures are not cached.
+  1 hour by default), so a token repeated in a result set or a file is looked up once. Failures
+  are not cached.
 - The connections are configured in `application.properties`: `quarkus.mongodb.connection-string`
-  plus `proxy.secrets-manager-lookup.mongodb.database` / `.collection`, and the
-  `secrets-manager-lookup` datasource (`quarkus.datasource."secrets-manager-lookup".*`). See
-  `config/sample.application.properties`.
+  plus `proxy.secrets-manager-lookup.mongodb.database`, and the `secrets-manager-lookup` datasource
+  (`quarkus.datasource."secrets-manager-lookup".*`). See `config/sample.application.properties`.
+  When the datasource cannot be reached at startup, the error is logged and the proxy starts
+  anyway; every resolution then fails.
 - The FPE transformer is not concerned.
-
-> The queries are still to be written, in `lookupInMongoDb` and `lookupInSqlServer`. Until then they
-> find nothing, so **RPS detokenization in Flight SQL and the file transformation fails**.
 
 ## Monitoring 
 This anonymization proxy uses micrometer and prometheus endpoint is available.

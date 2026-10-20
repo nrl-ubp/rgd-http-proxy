@@ -315,8 +315,25 @@ public class FileTransformService {
                 config.sortAttributeTransformsConfig(),
                 config.getRightContextEvidences(),
                 config.getProcessingContextEvidences(),
-                secretsManagerResolver.defaultSecretsManager()
+                secretsManagerFor(config)
         );
+    }
+
+    /**
+     * The secrets manager a file is transformed with.
+     * <p>
+     * Protecting uses the default secrets manager of the mapping file. Unprotecting uses none, so
+     * that the transformer resolves the secrets manager that created each token: a file may mix
+     * tokens of several jurisdictions.
+     *
+     * @param config the file transformation configuration, carrying the {@code Action} evidence
+     * @return the default secrets manager, or {@code null} when unprotecting
+     */
+    UUID secretsManagerFor(FileTransformConfig config) {
+        Map<String, String> evidences = config.getProcessingContextEvidences();
+        boolean unprotect = evidences != null && evidences.entrySet().stream()
+                .anyMatch(e -> "Action".equalsIgnoreCase(e.getKey()) && "Unprotect".equalsIgnoreCase(e.getValue()));
+        return unprotect ? null : secretsManagerResolver.defaultSecretsManager();
     }
 
     public void shutdown() {

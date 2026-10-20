@@ -20,6 +20,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -46,6 +47,7 @@ class FileTransformServiceFPETest {
         transformer = FPEEndPointTransformer.withKey(KEY);
         service = new FileTransformService();
         service.transformer = transformer;
+        service.secretsManagerResolver = TestSecretsManagers.resolver();
     }
 
     /**
@@ -259,6 +261,18 @@ class FileTransformServiceFPETest {
                 new MultivaluedHashMap<>(), new MultivaluedHashMap<>(), endpoint);
 
         assertTrue(clear.contains("Bernadette"), clear);
+    }
+
+    @Test
+    @DisplayName("Protecting uses the default secrets manager, unprotecting resolves it from each token")
+    void secretsManagerDependsOnTheAction() throws Exception {
+        assertEquals(TestSecretsManagers.LU, service.secretsManagerFor(config("sm-protect", "Protect")));
+        assertNull(service.secretsManagerFor(config("sm-unprotect", "Unprotect")));
+        assertNull(service.secretsManagerFor(config("sm-unprotect-case", "unprotect")));
+
+        FileTransformConfig noAction = config("sm-none", "Protect");
+        noAction.setProcessingContextEvidences(null);
+        assertEquals(TestSecretsManagers.LU, service.secretsManagerFor(noAction));
     }
 
     @Test
