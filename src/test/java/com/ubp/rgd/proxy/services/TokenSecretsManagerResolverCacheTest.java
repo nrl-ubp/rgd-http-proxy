@@ -64,24 +64,38 @@ class TokenSecretsManagerResolverCacheTest {
     @DisplayName("A resolved token is looked up once, then served from the cache")
     void resolutionIsCached() {
         String token = "RG{BxAbCd1234Cached}";
-        doReturn(Optional.of("key")).when(resolver).lookupInMongoDb(token);
+        var cfg = new TokenSecretsManagerResolver.RPSConfigProperty();
+        cfg.id = "1111";
+        cfg.configurationId = "1111";
+        cfg.className = "Person";
+        cfg.propertyName = "ShortString";
+        cfg.mapping = 3L;
+        doReturn(Optional.of("key")).when(resolver).lookupInMongoDb(token, cfg);
         doReturn(Optional.of(CH)).when(resolver).lookupInSqlServer(token, "key");
 
-        assertEquals(CH, resolver.secretsManagerIdResolve(token));
-        assertEquals(CH, resolver.secretsManagerIdResolve(token));
+        assertEquals(CH, resolver.secretsManagerIdResolve(token, cfg.className, cfg.propertyName));
+        assertEquals(CH, resolver.secretsManagerIdResolve(token, cfg.className, cfg.propertyName));
 
-        verify(resolver, times(1)).lookupInMongoDb(token);
+        verify(resolver, times(1)).lookupInMongoDb(token, cfg);
     }
 
     @Test
     @DisplayName("A failed resolution is retried on the next call")
     void failureIsNotCached() {
         String token = "RG{BxAbCd1234Missing}";
-        doReturn(Optional.empty()).when(resolver).lookupInMongoDb(anyString());
 
-        assertThrows(SecretsManagerNotFoundException.class, () -> resolver.secretsManagerIdResolve(token));
-        assertThrows(SecretsManagerNotFoundException.class, () -> resolver.secretsManagerIdResolve(token));
+        var cfg = new TokenSecretsManagerResolver.RPSConfigProperty();
+        cfg.id = "1111";
+        cfg.configurationId = "1111";
+        cfg.className = "Person";
+        cfg.propertyName = "ShortString";
+        cfg.mapping = 3L;
 
-        verify(resolver, times(2)).lookupInMongoDb(token);
+        doReturn(Optional.empty()).when(resolver).lookupInMongoDb(anyString(), cfg);
+
+        assertThrows(SecretsManagerNotFoundException.class, () -> resolver.secretsManagerIdResolve(token, cfg.className, cfg.propertyName));
+        assertThrows(SecretsManagerNotFoundException.class, () -> resolver.secretsManagerIdResolve(token, cfg.className, cfg.propertyName));
+
+        verify(resolver, times(2)).lookupInMongoDb(token, cfg);
     }
 }
