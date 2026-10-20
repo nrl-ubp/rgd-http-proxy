@@ -30,6 +30,9 @@ public class FileTransformService {
     @Inject
     EndPointTransformer transformer;
 
+    @Inject
+    SecretsManagerResolver secretsManagerResolver;
+
     @ConfigProperty(name = "proxy.file-transform.config-file", defaultValue = "./config/file_transform_config.json")
     String fileTransformConfigFile;
 
@@ -38,7 +41,7 @@ public class FileTransformService {
 
     // Package private so that the tests can drive a configuration without a configuration file.
     List<FileTransformConfig> fileTransformConfigs;
-    private Map<String, ScheduledExecutorService> schedulers = new HashMap<>();
+    private final Map<String, ScheduledExecutorService> schedulers = new HashMap<>();
 
     @PostConstruct
     public void init() {
@@ -311,7 +314,8 @@ public class FileTransformService {
                 jsonContent,
                 config.sortAttributeTransformsConfig(),
                 config.getRightContextEvidences(),
-                config.getProcessingContextEvidences()
+                config.getProcessingContextEvidences(),
+                secretsManagerResolver.defaultSecretsManager()
         );
     }
 
