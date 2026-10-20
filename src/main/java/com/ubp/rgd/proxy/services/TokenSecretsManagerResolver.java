@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -34,9 +35,13 @@ import static com.mongodb.client.model.Filters.eq;
  * know, that is the Flight SQL result sets and the file transformations: their tokens may come from
  * different jurisdictions, each one protected by its own secrets manager.
  * <p>
- * The resolution takes two chained lookups, in this order: MongoDB holds part of the information,
- * and SQL Server turns it into the secrets manager id. A token found in neither fails the
- * detokenization with a {@link SecretsManagerNotFoundException}.
+ * The resolution takes up to two chained lookups. MongoDB is queried first, in the collection of
+ * the token format (see {@link TokenKind}), for the RPS configuration and property the token belongs
+ * to. Its document either names the secrets manager configuration, then mapped to the secrets manager
+ * associated with the client, or a secret version, then turned into a secrets manager id by SQL
+ * Server. The client configuration (properties and secrets manager associations) is loaded once at
+ * startup. Any failure, such as an unknown property, an unsupported token format or a token found
+ * nowhere, fails the detokenization with a {@link SecretsManagerNotFoundException}.
  * <p>
  * Successful resolutions are cached (cache {@value #CACHE_NAME}, sized in the configuration);
  * failures are not, so they are retried on the next call.
@@ -51,8 +56,40 @@ public class TokenSecretsManagerResolver {
     /** Name of the Quarkus datasource queried by {@link #lookupInSqlServer(String, String)}. */
     public static final String DATASOURCE_NAME = "secrets-manager-lookup";
 
+    private static final String RPSDOC_PREFIX = "RPSDOC+";
+    private static final String RPSDOC_SUFFIX = "+RPSDOC";
+    private static final String SEQUENCE_PREFIX = "-888";
+    private static final String SEQUENCE_SUFFIX = ".8888";
+    private static final Pattern RG_TOKEN = Pattern.compile("RG\\{[^{}]+}");
+    private static final Pattern EMAIL_TOKEN = Pattern.compile("RG\\{[^{}]+}@example\\.com");
+    private static final Pattern DATE_TOKEN = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
+
+    /**
+     * The token formats, each one stored in its own MongoDB collection. The wrapper tells them apart.
+     */
+    public enum TokenKind {
+        /** {@code RPSDOC+...+RPSDOC}, found by the MD5 of its value. */
+        RPSDOC("SecretManagerTransformations"),
+        /** {@code -888...8888}. */
+        SEQUENCE("SequenceToken"),
+        /** {@code RG{...}@example.com}. */
+        EMAIL_UID("EmailUidTokens"),
+        /** A raw {@code yyyy-MM-dd} date. */
+        DATE("DateTokenV2s"),
+        /** {@code RG{...-XY}}: the letters after the last dash are the token number. */
+        SHIFTED_OPE("ShiftedOPEShortTokens"),
+        /** Any other {@code RG{...}}: no collection is known for it, so it cannot be resolved. */
+        RG_OTHER(null);
+
+        final String collection;
+
+        TokenKind(String collection) {
+            this.collection = collection;
+        }
+    }
+
     /** Number of token characters kept in the logs and error messages. */
-    private static final int TOKEN_PREFIX_LENGTH = 6000;
+    private static final int TOKEN_PREFIX_LENGTH = 6;
 
     /** Fetched lazily: the client is only built when a lookup actually needs it. */
     @Inject
@@ -128,7 +165,8 @@ public class TokenSecretsManagerResolver {
                 configPropertyByName.put(String.format("%s.%s", prop.className, prop.propertyName), prop);
             } while (rs.next());
 
-        } catch (SQLException ex) {
+        } catch (Exception ex) {
+            // also catches an unavailable datasource: the resolutions will then fail one by one
             LOG.error("Cannot load configuration id from client id.", ex);
         }
 
@@ -150,8 +188,8 @@ public class TokenSecretsManagerResolver {
 
             LOG.info("Loaded {} secrets manager ID mappings for this client: {}", secretsManagersConfigByClientIds.size(), clientId);
 
-        } catch (SQLException ex) {
-            LOG.error("Cannot load configuration id from client id.", ex);
+        } catch (Exception ex) {
+            LOG.error("Cannot load the secrets manager ids of the client.", ex);
         }
 
     }
@@ -159,18 +197,21 @@ public class TokenSecretsManagerResolver {
     /**
      * Resolve the secrets manager that created a token.
      *
-     * @param token the whole token, including its <code>RG{...}</code> wrapper
-     * @return the id of the secrets manager to detokenize the token with
-     * @throws SecretsManagerNotFoundException when either lookup finds nothing
+     * @param token             the whole token, with its wrapper (see {@link TokenKind})
+     * @param propertyClassName the RPS class the token belongs to
+     * @param propertyName      the RPS property the token belongs to
+     * @return the id of the secrets manager to detokenize the token with, never {@code null}
+     * @throws SecretsManagerNotFoundException when the property is unknown to the client, the token
+     *         format is not supported, or a lookup finds nothing
      */
     @CacheResult(cacheName = CACHE_NAME)
     public UUID secretsManagerIdResolve(String token, String propertyClassName, String propertyName) {
 
-        RPSConfigProperty prop = configPropertyByName.get(String.format("%s.%s", propertyClassName, propertyName));
+        RPSConfigProperty prop = findProperty(propertyClassName, propertyName);
         if (prop == null) {
-            LOG.error("Could not find property for class and name: {}.{} and client ID: {}",
-                    propertyClassName, propertyName, clientId);
-            return null;
+            throw new SecretsManagerNotFoundException(String.format(
+                    "The RPS property %s.%s is not configured for the client %s, cannot resolve the secrets manager of the token %s",
+                    propertyClassName, propertyName, clientId, mask(token)));
         }
 
         BsonDocument mongoResult = lookupInMongoDb(token, prop).orElseThrow(() -> notFound("MongoDB", token));
@@ -178,18 +219,18 @@ public class TokenSecretsManagerResolver {
         // if mongoResult has key secretsManagerId then no need to go further,
         // otherwise search the MSSQL with provided SecretVersionId
         if (mongoResult.containsKey("SecretsManagerId")) {
-            UUID secretsManager = mongoResult.get("SecretsManagerId").asBinary().asUuid(UuidRepresentation.C_SHARP_LEGACY);
+            UUID secretsManagerConfig = mongoResult.get("SecretsManagerId").asBinary().asUuid(UuidRepresentation.C_SHARP_LEGACY);
 
             // now we need to remap this secret manager to the ASSOCIATION with the client.
-            String clientSecretManagerIdStr = secretsManagersConfigByClientIds.get(secretsManager.toString().toUpperCase());
+            String clientSecretManagerIdStr = secretsManagersConfigByClientIds.get(secretsManagerConfig.toString().toUpperCase());
 
             if (clientSecretManagerIdStr == null) {
-                LOG.error("Secrets manager configuration {} did not match a secrets manager CLIENT association for client {}", secretsManager.toString(), clientId);
-                return null;
+                throw new SecretsManagerNotFoundException(String.format(
+                        "The secrets manager configuration %s of the token %s has no association with the client %s",
+                        secretsManagerConfig, mask(token), clientId));
             }
 
-            secretsManager = UUID.fromString(clientSecretManagerIdStr);
-
+            UUID secretsManager = UUID.fromString(clientSecretManagerIdStr);
             LOG.debug("Token {} resolved to the secrets manager {}", mask(token), secretsManager);
             return secretsManager;
         }
@@ -201,96 +242,63 @@ public class TokenSecretsManagerResolver {
             return secretsManager;
         }
 
-        throw notFound("SQL Server", token);
+        throw new SecretsManagerNotFoundException(
+                "The MongoDB document of the token " + mask(token) + " has neither a SecretsManagerId nor a SecretVersionId");
     }
 
     /**
-     * First lookup: read from MongoDB the information about the token that the SQL Server lookup
-     * needs.
+     * The RPS property of the client, loaded by {@link #init()}.
      *
-     * @param token the whole token
-     * @return what the SQL Server lookup needs, empty when the token is unknown to MongoDB
+     * @return the property, {@code null} when the client has no such property
+     */
+    RPSConfigProperty findProperty(String propertyClassName, String propertyName) {
+        return configPropertyByName.get(String.format("%s.%s", propertyClassName, propertyName));
+    }
+
+    /**
+     * First lookup: find in MongoDB the document of the token, in the collection of its format.
+     *
+     * @param token          the whole token
+     * @param configProperty the RPS property the token belongs to
+     * @return the document, empty when the token is unknown to MongoDB
+     * @throws SecretsManagerNotFoundException when the token format is not supported
      */
     Optional<BsonDocument> lookupInMongoDb(String token, RPSConfigProperty configProperty) {
-        // TODO query MongoDB, e.g. mongoClient().getDatabase(mongoDatabase.orElseThrow())
-        //      .getCollection(mongoCollection.orElseThrow()).find(...)
+        TokenKind kind = kindOf(token).orElseThrow(() -> unsupported(token));
 
-        String collectionName = "";
+        BsonBinary configurationId = new BsonBinary(UUID.fromString(configProperty.configurationId), UuidRepresentation.C_SHARP_LEGACY);
+        BsonBinary propertyId = new BsonBinary(UUID.fromString(configProperty.id), UuidRepresentation.C_SHARP_LEGACY);
 
-        // build search token whatever wrapper is.
-        String searchToken = token.replaceAll("RG\\{", "")
-                .replaceAll("}", "")
-                .replaceAll("RPSDOC\\+", "").replaceAll("\\+RPSDOC", "")
-                .replaceAll("-888", "").replaceAll(".8888", "");
-
-        // remove dash suffix if any
-        int dashIndex = searchToken.lastIndexOf("-");
-
-        Bson filter = null;
-
-        if (dashIndex >= 0) {
-            collectionName = "ShiftedOPEShortTokens";
-
-            long number = getIndexFromLabel(searchToken);
-
-            // there can be cases when token is of the form : ABCDEF--AB
-            // so we use this time the first occurrence of dash - character
-            int firstDash = searchToken.indexOf('-');
-            searchToken = searchToken.substring(0, firstDash);
-
-            // remove prefix of the property compressed inserter
-            searchToken = searchToken.substring(2);
-
-            filter = and(
-                    eq("TokenValue", searchToken),
-                    eq("Number", number),
-                    eq("ConfigurationId", new BsonBinary(UUID.fromString(configProperty.configurationId), UuidRepresentation.C_SHARP_LEGACY)),
-                    eq("PropertyId", new BsonBinary(UUID.fromString(configProperty.id), UuidRepresentation.C_SHARP_LEGACY))
-            );
-
-        } else if (token.startsWith("RG{") && token.endsWith("@example.com")) {
-            collectionName = "EmailUidTokens";
-
-            filter = and(
-                    eq("TokenValue", searchToken),
-                    eq("ConfigurationId", new BsonBinary(UUID.fromString(configProperty.configurationId), UuidRepresentation.C_SHARP_LEGACY)),
-                    eq("PropertyId", new BsonBinary(UUID.fromString(configProperty.id), UuidRepresentation.C_SHARP_LEGACY))
-            );
-
-        } else if (token.startsWith("RPSDOC+") && token.endsWith("+RPSDOC")) {
-            collectionName = "SecretManagerTransformations";
-
-            // compute MD5 for token value and use it as criteria
-            String md5Hash = HashUtils.md5(searchToken);
-
-            filter = and(
-                    eq("ValueHash", md5Hash),
-                    eq("ConfigurationId", new BsonBinary(UUID.fromString(configProperty.configurationId), UuidRepresentation.C_SHARP_LEGACY)),
-                    eq("PropertyId", new BsonBinary(UUID.fromString(configProperty.id), UuidRepresentation.C_SHARP_LEGACY))
-            );
-
-        } else if (token.startsWith("-888") && token.endsWith(".8888")) {
-            collectionName = "SequenceToken";
-
-            filter = and(
-                    eq("TokenValue", searchToken),
-                    eq("ConfigurationId", new BsonBinary(UUID.fromString(configProperty.configurationId), UuidRepresentation.C_SHARP_LEGACY)),
-                    eq("PropertyId", new BsonBinary(UUID.fromString(configProperty.id), UuidRepresentation.C_SHARP_LEGACY))
-            );
-
-        } else {
-            collectionName = "DateTokenV2s";
-            searchToken = String.format("%sT00:00:00.0000000Z", token);
-
-            filter = and(
-                    eq("TokenValue", searchToken),
-                    eq("ConfigurationId", new BsonBinary(UUID.fromString(configProperty.configurationId), UuidRepresentation.C_SHARP_LEGACY)),
-                    eq("PropertyId", new BsonBinary(UUID.fromString(configProperty.id), UuidRepresentation.C_SHARP_LEGACY))
-            );
-        }
+        Bson filter = switch (kind) {
+            case SHIFTED_OPE -> {
+                String searchToken = unwrapRg(token);
+                int number = getIndexFromLabel(searchToken);
+                // there can be cases when token is of the form : ABCDEF--AB
+                // so we use this time the first occurrence of dash - character
+                int firstDash = searchToken.indexOf('-');
+                if (number < 0 || firstDash < 2) {
+                    throw unsupported(token);
+                }
+                // remove prefix of the property compressed inserter
+                searchToken = searchToken.substring(2, firstDash);
+                yield and(eq("TokenValue", searchToken), eq("Number", number),
+                        eq("ConfigurationId", configurationId), eq("PropertyId", propertyId));
+            }
+            case EMAIL_UID -> and(eq("TokenValue", token.replace("RG{", "").replace("}", "")),
+                    eq("ConfigurationId", configurationId), eq("PropertyId", propertyId));
+            case RPSDOC -> and(
+                    // the documents are found by the MD5 of the token value
+                    eq("ValueHash", HashUtils.md5(token.substring(RPSDOC_PREFIX.length(), token.length() - RPSDOC_SUFFIX.length()))),
+                    eq("ConfigurationId", configurationId), eq("PropertyId", propertyId));
+            case SEQUENCE -> and(eq("TokenValue", token.substring(SEQUENCE_PREFIX.length(), token.length() - SEQUENCE_SUFFIX.length())),
+                    eq("ConfigurationId", configurationId), eq("PropertyId", propertyId));
+            case DATE -> and(eq("TokenValue", String.format("%sT00:00:00.0000000Z", token)),
+                    eq("ConfigurationId", configurationId), eq("PropertyId", propertyId));
+            case RG_OTHER -> throw unsupported(token);
+        };
 
         Document resultDoc = mongoClient().getDatabase(mongoDatabase)
-                .getCollection(collectionName)
+                .getCollection(kind.collection)
                 .find(filter).first();
 
         return resultDoc == null ? Optional.empty() : Optional.of(BsonDocument.parse(resultDoc.toJson()));
@@ -304,9 +312,6 @@ public class TokenSecretsManagerResolver {
      * @return the secrets manager id, empty when SQL Server has no match
      */
     Optional<UUID> lookupInSqlServer(String token, String secretVersionId) {
-        // TODO query SQL Server, e.g. try (Connection c = sqlServerDataSource().getConnection();
-        //      PreparedStatement s = c.prepareStatement("...")) { ... }
-
         String query = String.format("SELECT asm.SecretsManagerId as SecretsManagerId" +
                 "  FROM [CoreConfiguration_poc].[config].[SecretCurrentVersion] sv" +
                 "  LEFT JOIN config.AccountSecretsManager asm ON asm.SecretsManagerConfigId = sv.SecretsManagerId" +
@@ -336,6 +341,56 @@ public class TokenSecretsManagerResolver {
     /** The SQL Server datasource configured by {@code quarkus.datasource."secrets-manager-lookup".*}. */
     AgroalDataSource sqlServerDataSource() {
         return sqlServerDataSource.get();
+    }
+
+    /**
+     * Tell the format of a token. The specific wrappers are checked first: a date or an e-mail token
+     * also contains characters, such as a dash, that the other formats rely on.
+     *
+     * @param value the value to classify
+     * @return its format, empty when the value is not a token
+     */
+    public static Optional<TokenKind> kindOf(String value) {
+        if (value == null || value.isBlank()) {
+            return Optional.empty();
+        }
+        if (value.length() > RPSDOC_PREFIX.length() + RPSDOC_SUFFIX.length()
+                && value.startsWith(RPSDOC_PREFIX) && value.endsWith(RPSDOC_SUFFIX)) {
+            return Optional.of(TokenKind.RPSDOC);
+        }
+        if (value.length() > SEQUENCE_PREFIX.length() + SEQUENCE_SUFFIX.length()
+                && value.startsWith(SEQUENCE_PREFIX) && value.endsWith(SEQUENCE_SUFFIX)) {
+            return Optional.of(TokenKind.SEQUENCE);
+        }
+        if (EMAIL_TOKEN.matcher(value).matches()) {
+            return Optional.of(TokenKind.EMAIL_UID);
+        }
+        if (DATE_TOKEN.matcher(value).matches()) {
+            return Optional.of(TokenKind.DATE);
+        }
+        if (RG_TOKEN.matcher(value).matches()) {
+            return Optional.of(unwrapRg(value).contains("-") ? TokenKind.SHIFTED_OPE : TokenKind.RG_OTHER);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Whether a value is a token whose secrets manager has to be resolved.
+     *
+     * @param value the value to check
+     * @return {@code true} for any {@link TokenKind}, even one that cannot be resolved
+     */
+    public static boolean isToken(String value) {
+        return kindOf(value).isPresent();
+    }
+
+    private static String unwrapRg(String token) {
+        return token.substring(3, token.length() - 1);
+    }
+
+    private static SecretsManagerNotFoundException unsupported(String token) {
+        return new SecretsManagerNotFoundException(
+                "The format of the token " + mask(token) + " is not supported, cannot resolve its secrets manager");
     }
 
     private static SecretsManagerNotFoundException notFound(String source, String token) {
@@ -384,30 +439,38 @@ public class TokenSecretsManagerResolver {
     }
 
     /**
-     * Resolves the potential suffix of the token of the form ABCDE-AB.
-     * If not the right form, then returns -1
-     * @param token the token to get the suffix number
-     * @return number of the token to be used in MongoDb search to get the credentialsManagerId
+     * Read the token number carried by the letters after the last dash, e.g. {@code ABCDEF-AB}.
+     * <p>
+     * Two letters count from {@code AA} = 0 to {@code ZZ} = 675, three letters go on from
+     * {@code AAA} = 676, and so on: each length starts where the previous one ended.
+     *
+     * @param token the token, or its value, ending with {@code -} and at least two letters
+     * @return number of the token to be used in MongoDb search, -1 when the token has no such suffix
      */
     public static int getIndexFromLabel(String token) {
-        if (token == null || token.length() < 2) {
+        if (token == null) {
+            return -1;
+        }
+        String suffix = token.substring(token.lastIndexOf('-') + 1).toUpperCase();
+        if (suffix.length() < 2 || suffix.length() > 6) {
             return -1;
         }
 
-        String suffixe = token.substring(token.length() - 2).toUpperCase();
-
-        char premiereLettre = suffixe.charAt(0);
-        char deuxiemeLettre = suffixe.charAt(1);
-
-        if (premiereLettre < 'A' || premiereLettre > 'Z'
-                || deuxiemeLettre < 'A' || deuxiemeLettre > 'Z') {
-            return -1;
+        long offset = 0;
+        long size = 26L * 26L;
+        for (int length = 2; length < suffix.length(); length++) {
+            offset += size;
+            size *= 26L;
         }
 
-        int valeurPremiereLettre = premiereLettre - 'A';
-        int valeurDeuxiemeLettre = deuxiemeLettre - 'A';
-
-        return valeurPremiereLettre * 26 + valeurDeuxiemeLettre;
+        long value = 0;
+        for (char letter : suffix.toCharArray()) {
+            if (letter < 'A' || letter > 'Z') {
+                return -1;
+            }
+            value = value * 26 + (letter - 'A');
+        }
+        return (int) (offset + value);
     }
 
 }

@@ -77,11 +77,11 @@ class RPSEndPointTransformerTokenSecretsManagerTest {
     }
 
     @Test
-    @DisplayName("A token repeated in the call is resolved once")
-    void resolvesEachTokenOnce() throws Exception {
+    @DisplayName("A token repeated in the call is resolved each time, the resolver cache saves the lookups")
+    void repeatedTokenIsResolvedThroughTheCache() throws Exception {
         transformer.transformData(values(CH_TOKEN_1, CH_TOKEN_1, CH_TOKEN_1), new Context(), action("unprotect"), null);
 
-        verify(resolver, times(1)).secretsManagerIdResolve(CH_TOKEN_1, "Person", "ShortString");
+        verify(resolver, times(3)).secretsManagerIdResolve(CH_TOKEN_1, "Person", "ShortString");
         assertEquals(List.of(new EngineCall(List.of(CH_TOKEN_1, CH_TOKEN_1, CH_TOKEN_1), CH)), calls);
     }
 
@@ -128,12 +128,32 @@ class RPSEndPointTransformerTokenSecretsManagerTest {
     @Test
     @DisplayName("Without any token, a single call is made with the default secrets manager")
     void noTokenAtAll() throws Exception {
-        transformer.transformData(values("plain", "RG{short}"), new Context(), action("Unprotect"), null);
+        transformer.transformData(values("plain", "", "RG{}"), new Context(), action("Unprotect"), null);
 
         verifyNoInteractions(resolver);
         assertEquals(1, calls.size());
         assertNull(calls.getFirst().secretsManager());
-        assertEquals(List.of("plain", "RG{short}"), calls.getFirst().values());
+        assertEquals(List.of("plain", "", "RG{}"), calls.getFirst().values());
+    }
+
+    @Test
+    @DisplayName("Every token format is resolved, not only the RG{...} tokens")
+    void resolvesEveryTokenFormat() throws Exception {
+        List<String> tokens = List.of("RPSDOC+payload+RPSDOC", "-888123456.8888", "RG{abc}@example.com", "1985-03-12", "RG{BxCDEF-AB}");
+        for (String token : tokens) {
+            when(resolver.secretsManagerIdResolve(token, "Person", "ShortString")).thenReturn(CH);
+        }
+        List<String> all = new ArrayList<>(tokens);
+        all.add("John");
+
+        transformer.transformData(values(all.toArray(String[]::new)), new Context(), action("Unprotect"), null);
+
+        for (String token : tokens) {
+            verify(resolver).secretsManagerIdResolve(token, "Person", "ShortString");
+        }
+        verify(resolver, times(tokens.size())).secretsManagerIdResolve(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+        assertEquals(List.of(new EngineCall(all, CH)), calls);
     }
 
     private static RPSValue[] values(String... originals) {

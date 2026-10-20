@@ -97,7 +97,9 @@ public class RPSEndPointTransformer extends AbstractEndPointTransformer {
 
     /**
      * Group the values by the secrets manager that created their token, in order of first appearance.
-     * Each distinct token is resolved once. The values that are not tokens join the first group, or
+     * Every token format the resolver knows is resolved (see
+     * {@link TokenSecretsManagerResolver#isToken(String)}), each one through its cache, so a repeated
+     * token only costs one database lookup. The values that are not tokens join the first group, or
      * a {@code null} group when there is no token.
      */
     private Map<UUID, List<IRPSValue<String>>> groupBySecretsManager(IRPSValue<String>[] values) {
@@ -105,7 +107,7 @@ public class RPSEndPointTransformer extends AbstractEndPointTransformer {
         List<IRPSValue<String>> notTokens = new ArrayList<>();
         for (IRPSValue<String> value : values) {
             String token = value == null ? null : value.getOriginal();
-            if (token == null || !TOKEN_PATTERN.matcher(token).matches()) {
+            if (!TokenSecretsManagerResolver.isToken(token)) {
                 notTokens.add(value);
                 continue;
             }

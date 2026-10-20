@@ -31,6 +31,9 @@ public class TestProfile implements QuarkusTestProfile {
         props.put("proxy.transform.config-file", "./src/test/resources/rps_transform_config.json");
         props.put("proxy.transform.http-secrets-manager-header", "X-Proxy-Jurisdiction");
         props.put("proxy.transform.http-secrets-manager-mapping-file", "./src/test/resources/secrets_manager_mapping.json");
+        // Token secrets manager resolution: no database is reachable in the tests, the lookups are mocked
+        props.put("proxy.secrets-manager-lookup.mongodb.database", "rgd-test");
+        props.put("proxy.transform.client-id", "3150a79e-3084-4946-aeb5-e7e73aea3904");
 
         props.putAll(Map.of("proxy.file-transform.enabled","true",
                             "proxy.file-transform.config-file","./src/test/resources/file_transform_config.json"));

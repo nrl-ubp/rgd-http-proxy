@@ -4,6 +4,9 @@ import com.mongodb.client.MongoClient;
 import com.ubp.rgd.proxy.exception.SecretsManagerNotFoundException;
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
+import org.bson.BsonBinary;
+import org.bson.BsonDocument;
+import org.bson.UuidRepresentation;
 import io.quarkus.cache.Cache;
 import io.quarkus.cache.CacheName;
 import io.quarkus.test.junit.QuarkusTest;
@@ -20,7 +23,9 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -60,42 +65,42 @@ class TokenSecretsManagerResolverCacheTest {
         assertTrue(sqlServerDataSource.isResolvable());
     }
 
+    /** A property of the client, as {@link TokenSecretsManagerResolver#init()} would load it. */
+    private void clientHasProperty() {
+        var prop = new TokenSecretsManagerResolver.RPSConfigProperty();
+        prop.id = UUID.randomUUID().toString();
+        prop.configurationId = UUID.randomUUID().toString();
+        prop.className = "Person";
+        prop.propertyName = "ShortString";
+        prop.mapping = 3L;
+        doReturn(prop).when(resolver).findProperty(anyString(), anyString());
+    }
+
     @Test
     @DisplayName("A resolved token is looked up once, then served from the cache")
     void resolutionIsCached() {
-        String token = "RG{BxAbCd1234Cached}";
-        var cfg = new TokenSecretsManagerResolver.RPSConfigProperty();
-        cfg.id = "1111";
-        cfg.configurationId = "1111";
-        cfg.className = "Person";
-        cfg.propertyName = "ShortString";
-        cfg.mapping = 3L;
-        doReturn(Optional.of("key")).when(resolver).lookupInMongoDb(token, cfg);
-        doReturn(Optional.of(CH)).when(resolver).lookupInSqlServer(token, "key");
+        String token = "RG{BxAbCd1234Cached-AB}";
+        clientHasProperty();
+        BsonDocument doc = new BsonDocument("SecretVersionId", new BsonBinary(UUID.randomUUID(), UuidRepresentation.C_SHARP_LEGACY));
+        doReturn(Optional.of(doc)).when(resolver).lookupInMongoDb(eq(token), any());
+        doReturn(Optional.of(CH)).when(resolver).lookupInSqlServer(eq(token), anyString());
 
-        assertEquals(CH, resolver.secretsManagerIdResolve(token, cfg.className, cfg.propertyName));
-        assertEquals(CH, resolver.secretsManagerIdResolve(token, cfg.className, cfg.propertyName));
+        assertEquals(CH, resolver.secretsManagerIdResolve(token, "Person", "ShortString"));
+        assertEquals(CH, resolver.secretsManagerIdResolve(token, "Person", "ShortString"));
 
-        verify(resolver, times(1)).lookupInMongoDb(token, cfg);
+        verify(resolver, times(1)).lookupInMongoDb(eq(token), any());
     }
 
     @Test
     @DisplayName("A failed resolution is retried on the next call")
     void failureIsNotCached() {
-        String token = "RG{BxAbCd1234Missing}";
+        String token = "RG{BxAbCd1234Missing-AB}";
+        clientHasProperty();
+        doReturn(Optional.empty()).when(resolver).lookupInMongoDb(eq(token), any());
 
-        var cfg = new TokenSecretsManagerResolver.RPSConfigProperty();
-        cfg.id = "1111";
-        cfg.configurationId = "1111";
-        cfg.className = "Person";
-        cfg.propertyName = "ShortString";
-        cfg.mapping = 3L;
+        assertThrows(SecretsManagerNotFoundException.class, () -> resolver.secretsManagerIdResolve(token, "Person", "ShortString"));
+        assertThrows(SecretsManagerNotFoundException.class, () -> resolver.secretsManagerIdResolve(token, "Person", "ShortString"));
 
-        doReturn(Optional.empty()).when(resolver).lookupInMongoDb(anyString(), cfg);
-
-        assertThrows(SecretsManagerNotFoundException.class, () -> resolver.secretsManagerIdResolve(token, cfg.className, cfg.propertyName));
-        assertThrows(SecretsManagerNotFoundException.class, () -> resolver.secretsManagerIdResolve(token, cfg.className, cfg.propertyName));
-
-        verify(resolver, times(2)).lookupInMongoDb(token, cfg);
+        verify(resolver, times(2)).lookupInMongoDb(eq(token), any());
     }
 }
