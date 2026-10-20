@@ -51,9 +51,10 @@ class RPSEndPointTransformerTokenSecretsManagerTest {
     @BeforeEach
     void setUp() {
         resolver = mock(TokenSecretsManagerResolver.class);
-        when(resolver.secretsManagerIdResolve(CH_TOKEN_1)).thenReturn(CH);
-        when(resolver.secretsManagerIdResolve(CH_TOKEN_2)).thenReturn(CH);
-        when(resolver.secretsManagerIdResolve(LU_TOKEN)).thenReturn(LU);
+
+        when(resolver.secretsManagerIdResolve(CH_TOKEN_1, "Person", "ShortString")).thenReturn(CH);
+        when(resolver.secretsManagerIdResolve(CH_TOKEN_2, "Person", "ShortString")).thenReturn(CH);
+        when(resolver.secretsManagerIdResolve(LU_TOKEN, "Person", "ShortString")).thenReturn(LU);
 
         transformer = new RPSEndPointTransformer() {
             @Override
@@ -80,7 +81,7 @@ class RPSEndPointTransformerTokenSecretsManagerTest {
     void resolvesEachTokenOnce() throws Exception {
         transformer.transformData(values(CH_TOKEN_1, CH_TOKEN_1, CH_TOKEN_1), new Context(), action("unprotect"), null);
 
-        verify(resolver, times(1)).secretsManagerIdResolve(CH_TOKEN_1);
+        verify(resolver, times(1)).secretsManagerIdResolve(CH_TOKEN_1, "Person", "ShortString");
         assertEquals(List.of(new EngineCall(List.of(CH_TOKEN_1, CH_TOKEN_1, CH_TOKEN_1), CH)), calls);
     }
 
@@ -106,7 +107,7 @@ class RPSEndPointTransformerTokenSecretsManagerTest {
     @DisplayName("A token that cannot be resolved fails the call before any engine call")
     void unresolvedTokenFailsUpFront() {
         String unknown = "RG{DxIjKl9012Ddd}";
-        when(resolver.secretsManagerIdResolve(unknown)).thenThrow(new SecretsManagerNotFoundException("not found"));
+        when(resolver.secretsManagerIdResolve(unknown, "Person", "ShortString")).thenThrow(new SecretsManagerNotFoundException("not found"));
 
         assertThrows(SecretsManagerNotFoundException.class, () ->
                 transformer.transformData(values(CH_TOKEN_1, unknown), new Context(), action("Unprotect"), null));
