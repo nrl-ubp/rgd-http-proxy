@@ -11,10 +11,10 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.*;
 import java.io.ByteArrayInputStream;
@@ -33,7 +33,7 @@ import java.util.Map;
 @ApplicationScoped
 public class ProxyService {
 
-    private static final Logger LOG = Logger.getLogger(ProxyService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ProxyService.class);
 
     @ConfigProperty(name = "proxy.target.base-url")
     String targetBaseUrl;
@@ -70,6 +70,10 @@ public class ProxyService {
 
     @ConfigProperty(name = "proxy.kerberos.delegation-enabled", defaultValue = "false")
     boolean delegationEnabled;
+
+    /** Header selecting the RPS secrets manager: meant for the proxy only, never forwarded. */
+    @ConfigProperty(name = "proxy.transform.http-secrets-manager-header", defaultValue = "X-Proxy-Jurisdiction")
+    String secretsManagerHeader;
 
     /**
      * Prometheus metrics registry.
@@ -111,7 +115,7 @@ public class ProxyService {
             return clientBuilder.build();
 
         } catch (Exception e) {
-            LOG.errorf(e, "Error while creating gHTTPS client: %s", e.getMessage());
+            LOG.error("Error while creating gHTTPS client: {}", e.getMessage(), e);
             return ClientBuilder.newClient();
         }
     }
@@ -126,7 +130,7 @@ public class ProxyService {
             KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
             kmf.init(keyStore, keystorePassword.toCharArray());
             keyManagers = kmf.getKeyManagers();
-            LOG.info("Keystore chargé: " + keystorePath);
+            LOG.info("Keystore chargÃƒÂ©: " + keystorePath);
         }
 
         // Configuration du TrustManager (certificats de confiance)
@@ -138,7 +142,7 @@ public class ProxyService {
             TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
             tmf.init(trustStore);
             trustManagers = tmf.getTrustManagers();
-            LOG.info("Truststore chargé: " + truststorePath);
+            LOG.info("Truststore chargÃƒÂ©: " + truststorePath);
         }
 
         sslContext.init(keyManagers, trustManagers, new SecureRandom());
@@ -181,7 +185,7 @@ public class ProxyService {
         try {
             // Build target URL
             String targetUrl = buildTargetUrl(path, uriInfo);
-            LOG.infof("Forwarding %s request to: %s", method, targetUrl);
+            LOG.info("Forwarding {} request to: {}", method, targetUrl);
 
             WebTarget target = client.target(targetUrl);
 
@@ -215,13 +219,13 @@ public class ProxyService {
             // Record per-endpoint (method + path) duration for the ubp_proxy_forward metrics.
             recordForwardDuration(method, path, duration);
 
-            LOG.infof("Forwarded request took %d ms with return code: %d - %s", duration, response.getStatusInfo().getStatusCode(), response.getStatusInfo().getReasonPhrase());
+            LOG.info("Forwarded request took {} ms with return code: {} - {}", duration, response.getStatusInfo().getStatusCode(), response.getStatusInfo().getReasonPhrase());
 
             // Now build the proxy response
             return buildProxyResponse(response);
 
         } catch (Exception e) {
-            LOG.errorf(e, "Erreur lors du proxy de la requête %s %s", method, path);
+            LOG.error("Erreur lors du proxy de la requÃƒÂªte {} {}", method, path, e);
             return Response.status(Response.Status.BAD_GATEWAY)
                     .entity("Erreur du proxy: " + e.getMessage())
                     .build();
@@ -249,7 +253,7 @@ public class ProxyService {
             String token = com.ubp.rgd.proxy.security.SecurityUtils
                     .getClientToServiceToken(userSubject, targetServicePrincipal);
             if (token != null) {
-                LOG.infof("Obtained client-to-service ticket for downstream call to SPN: %s", targetServicePrincipal);
+                LOG.debug("Obtained client-to-service ticket for downstream call to SPN: {}", targetServicePrincipal);
                 return "Negotiate " + token;
             }
             LOG.warn("Could not obtain a client-to-service ticket for the basic-auth user; falling back.");
@@ -277,17 +281,18 @@ public class ProxyService {
         return String.format(format, targetBaseUrl, path);
     }
 
-    private void copyHeaders(HttpHeaders headers,
-                             jakarta.ws.rs.client.Invocation.Builder requestBuilder) {
+    void copyHeaders(HttpHeaders headers,
+                     jakarta.ws.rs.client.Invocation.Builder requestBuilder) {
 
-        // Headers à exclure du proxy
+        // Headers a exclure du proxy
         // "authorization" is excluded here because the downstream Authorization header is set
         // explicitly by resolveDownstreamAuthorization (basic-auth client-to-service ticket,
         // Kerberos delegation, or pass-through).
         List<String> excludedHeaders = List.of(
                 "host", "content-length", "connection", "transfer-encoding",
                 "authorization", "x-proxy-processed", "x-proxy-timestamp",
-                TransformBypass.HEADER_NAME.toLowerCase()
+                TransformBypass.HEADER_NAME.toLowerCase(),
+                Objects.requireNonNullElse(secretsManagerHeader, "X-Proxy-Jurisdiction").toLowerCase()
         );
 
         for (Map.Entry<String, List<String>> header : headers.getRequestHeaders().entrySet()) {
@@ -326,6 +331,14 @@ public class ProxyService {
             byte[] bodyBytes = gunzipIfNeeded(rawBytes);
             String responseBody = bodyBytes == null ? "" : new String(bodyBytes, StandardCharsets.UTF_8);
 
+            // log response body for debug if not SUCCESS family
+            if (originalResponse.getStatusInfo().getFamily() != Response.Status.Family.SUCCESSFUL) {
+                LOG.debug("Forwarded request failed: {} - {}.\n{}",
+                        originalResponse.getStatus(),
+                        originalResponse.getStatusInfo().getReasonPhrase(),
+                        responseBody);
+            }
+
             // Build the new response
             Response.ResponseBuilder responseBuilder = Response
                     .status(originalResponse.getStatus())
@@ -337,7 +350,7 @@ public class ProxyService {
             return responseBuilder.build();
 
         } catch (Exception e) {
-            LOG.errorf(e,"Error while building proxy response: %s", e.getMessage());
+            LOG.error("Error while building proxy response: {}", e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(String.format("Error while building proxy response: %s", e.getMessage()))
                     .build();
@@ -373,7 +386,7 @@ public class ProxyService {
             }
             return out.toByteArray();
         } catch (Exception e) {
-            LOG.warnf(e, "Failed to gunzip response body; returning raw bytes.");
+            LOG.warn("Failed to gunzip response body; returning raw bytes.", e);
             return data;
         }
     }
@@ -381,7 +394,7 @@ public class ProxyService {
     private void copyResponseHeaders(Response originalResponse,
                                      Response.ResponseBuilder responseBuilder) {
 
-        // Headers à exclure.
+        // Headers ÃƒÂ  exclure.
         // "content-encoding" is dropped because the proxy always emits an uncompressed body
         // (see buildProxyResponse / gunzipIfNeeded); advertising gzip would break the client.
         List<String> excludedHeaders = List.of(

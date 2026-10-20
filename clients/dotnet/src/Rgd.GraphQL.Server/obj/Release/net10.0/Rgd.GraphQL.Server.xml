@@ -1,0 +1,410 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Rgd.GraphQL.Server</name>
+    </assembly>
+    <members>
+        <member name="T:Rgd.GraphQL.Server.Configuration.ConfigDirectory">
+            <summary>
+            Locates the configuration directory holding <c>application.properties</c> and the model file.
+            </summary>
+            <remarks>
+            In order of precedence:
+            <list type="number">
+            <item>the <c>--config-dir</c> command line switch,</item>
+            <item>the <c>RGD_CONFIG_DIR</c> environment variable,</item>
+            <item>a <c>config</c> directory in the current working directory,</item>
+            <item>the <c>config</c> directory deployed next to the binaries.</item>
+            </list>
+            </remarks>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Configuration.FlightSqlOptions">
+            <summary>Connection to the Flight SQL server, bound from the <c>flightsql.*</c> properties.</summary>
+        </member>
+        <member name="P:Rgd.GraphQL.Server.Configuration.FlightSqlOptions.Username">
+            <summary>Basic credentials, exchanged on the first call for a bearer token when the server issues one.</summary>
+        </member>
+        <member name="P:Rgd.GraphQL.Server.Configuration.FlightSqlOptions.HealthQuery">
+            <summary>Statement run by the health check and the startup check.</summary>
+        </member>
+        <member name="P:Rgd.GraphQL.Server.Configuration.FlightSqlOptions.FailOnStartupError">
+            <summary>Stops the application when the Flight SQL server cannot be reached at startup.</summary>
+        </member>
+        <member name="P:Rgd.GraphQL.Server.Configuration.FlightSqlTlsOptions.TrustServerCertificate">
+            <summary>Accepts any server certificate. For development only.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Configuration.GraphQLOptions">
+            <summary>GraphQL endpoint settings, bound from the <c>graphql.*</c> properties.</summary>
+        </member>
+        <member name="P:Rgd.GraphQL.Server.Configuration.GraphQLOptions.ModelFile">
+            <summary>The model file, relative to the configuration directory unless absolute.</summary>
+        </member>
+        <member name="P:Rgd.GraphQL.Server.Configuration.GraphQLOptions.EnableTooling">
+            <summary>Serves the Nitro IDE and allows introspection on the endpoint.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Configuration.SqlOptions">
+            <summary>SQL generation settings, bound from the <c>sql.*</c> properties.</summary>
+        </member>
+        <member name="P:Rgd.GraphQL.Server.Configuration.SqlOptions.QuoteIdentifiers">
+            <summary>Quotes table and column names, which makes them case-sensitive on most databases.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Configuration.PropertiesConfigurationProvider">
+            <summary>
+            Exposes a Java style <c>application.properties</c> file as an <see cref="T:Microsoft.Extensions.Configuration.IConfiguration"/> source.
+            </summary>
+            <remarks>
+            Keys are mapped onto the .NET configuration model so that they bind to the options classes:
+            <list type="bullet">
+            <item><c>flightsql.tls.trust-server-certificate</c> becomes <c>flightsql:tls:trustservercertificate</c>:
+            dots are section separators and dashes are dropped, the binder being case-insensitive.</item>
+            <item><c>logging.level.&lt;category&gt;</c> becomes <c>Logging:LogLevel:&lt;category&gt;</c>, the
+            category being kept verbatim since it is itself dotted (<c>logging.level.Microsoft.AspNetCore=Warning</c>).</item>
+            </list>
+            </remarks>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Configuration.PropertiesConfigurationProvider.#ctor(Rgd.GraphQL.Server.Configuration.PropertiesConfigurationSource)">
+            <summary>
+            Exposes a Java style <c>application.properties</c> file as an <see cref="T:Microsoft.Extensions.Configuration.IConfiguration"/> source.
+            </summary>
+            <remarks>
+            Keys are mapped onto the .NET configuration model so that they bind to the options classes:
+            <list type="bullet">
+            <item><c>flightsql.tls.trust-server-certificate</c> becomes <c>flightsql:tls:trustservercertificate</c>:
+            dots are section separators and dashes are dropped, the binder being case-insensitive.</item>
+            <item><c>logging.level.&lt;category&gt;</c> becomes <c>Logging:LogLevel:&lt;category&gt;</c>, the
+            category being kept verbatim since it is itself dotted (<c>logging.level.Microsoft.AspNetCore=Warning</c>).</item>
+            </list>
+            </remarks>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Configuration.PropertiesFileParser">
+            <summary>
+            Parses the Java <c>.properties</c> format, the one of <c>java.util.Properties</c>: <c>#</c> and <c>!</c>
+            comments, <c>=</c>, <c>:</c> or whitespace separators, backslash line continuations and the
+            <c>\t \n \r \f \uXXXX</c> escapes. When a key is repeated the last value wins.
+            </summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Configuration.PropertiesFileParser.ReadLogicalLines(System.IO.TextReader)">
+            <summary>Joins continued lines and drops blank lines and comments.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Configuration.PropertiesFileParser.EndsWithContinuation(System.String)">
+            <summary>A line is continued when it ends with an odd number of backslashes.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Configuration.PropertiesFileParser.AppendEscape(System.String,System.Int32,System.Text.StringBuilder)">
+            <summary>Appends the character escaped at <paramref name="index"/> and returns the next index.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Data.FlightSql.ArrowValues">
+            <summary>Reads the value of an Arrow array cell as a CLR value.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Data.FlightSql.FlightSqlAuthInterceptor">
+            <summary>
+            Authenticates the Flight SQL calls with the configured credentials.
+            </summary>
+            <remarks>
+            Every call carries <c>Basic</c> credentials until the server hands a bearer token back in the
+            <c>authorization</c> response header, as the Arrow <c>GeneratedBearerTokenAuthenticator</c> of the
+            rgd-http-proxy does. The token is then used instead, sparing the server a credential validation per
+            call, until <see cref="M:Rgd.GraphQL.Server.Data.FlightSql.FlightSqlAuthInterceptor.ResetBearerToken"/> drops it.
+            <para>
+            This is a plain gRPC interceptor rather than an Arrow <c>IFlightClientMiddleware</c>: the Arrow
+            adapter of the middlewares replaces the <see cref="T:Grpc.Core.RpcException"/> of a failed call by an
+            <see cref="T:System.InvalidOperationException"/>, losing its status code.
+            </para>
+            </remarks>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Data.FlightSql.FlightSqlConnection">
+            <summary>
+            The connection to the Flight SQL server: one gRPC channel, multiplexing the calls of every request.
+            </summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Data.FlightSql.FlightSqlQueryExecutor">
+            <summary>Runs the statements through the Flight SQL client and materializes the Arrow record batches.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Data.FlightSql.FlightSqlQueryExecutor.#ctor(Rgd.GraphQL.Server.Data.FlightSql.FlightSqlConnection,Microsoft.Extensions.Options.IOptions{Rgd.GraphQL.Server.Configuration.FlightSqlOptions},Microsoft.Extensions.Logging.ILogger{Rgd.GraphQL.Server.Data.FlightSql.FlightSqlQueryExecutor})">
+            <summary>Runs the statements through the Flight SQL client and materializes the Arrow record batches.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Data.FlightSql.FlightSqlQueryExecutor.ExecuteWithReauthenticationAsync(System.String,System.Threading.CancellationToken)">
+            <summary>A bearer token may have expired server side: it is then dropped and the statement run once more.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Data.FlightSql.FlightSqlQueryExecutor.NewCallOptions">
+            <summary>The call options carry the headers the middleware writes to, hence one instance per call.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Data.FlightSql.FlightSqlQueryExecutor.FindRpcException(System.Exception)">
+            <summary>The Flight SQL client wraps the gRPC failures into <see cref="T:System.InvalidOperationException"/>.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Data.IQueryExecutor">
+            <summary>Runs SQL statements against the database.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Data.IQueryExecutor.QueryAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Runs a query and returns its rows, each value being at the position of its column in the result.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Data.DataAccessException">
+            <summary>A failure of the database, reported to the GraphQL client without its internals.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Data.Sql.FilterNode">
+            <summary>A database independent filter tree, rendered to SQL by <see cref="T:Rgd.GraphQL.Server.Data.Sql.SqlQueryBuilder"/>.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Data.Sql.FieldCondition">
+            <summary>A comparison of a field; <see cref="P:Rgd.GraphQL.Server.Data.Sql.FieldCondition.Value"/> is a list for <c>In</c> and <c>Nin</c>, a boolean for <c>IsNull</c>.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Data.Sql.FieldCondition.#ctor(Rgd.GraphQL.Server.Model.FieldModel,Rgd.GraphQL.Server.Data.Sql.FilterOperator,System.Object)">
+            <summary>A comparison of a field; <see cref="P:Rgd.GraphQL.Server.Data.Sql.FieldCondition.Value"/> is a list for <c>In</c> and <c>Nin</c>, a boolean for <c>IsNull</c>.</summary>
+        </member>
+        <member name="F:Rgd.GraphQL.Server.Data.Sql.SqlDialectKind.Ansi">
+            <summary>ANSI SQL, e.g. H2 or PostgreSQL behind the Flight SQL server.</summary>
+        </member>
+        <member name="F:Rgd.GraphQL.Server.Data.Sql.SqlDialectKind.SqlServer">
+            <summary>Microsoft SQL Server.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Data.Sql.SqlDialect">
+            <summary>The few places where the generated SQL depends on the database behind the Flight SQL server.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Data.Sql.SqlDialect.#ctor(Rgd.GraphQL.Server.Data.Sql.SqlDialectKind,System.Boolean)">
+            <summary>The few places where the generated SQL depends on the database behind the Flight SQL server.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Data.Sql.SqlDialect.EscapeLike(System.String)">
+            <summary>Escapes the LIKE wildcards of a value, to be used with <c>ESCAPE '\'</c>.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Data.Sql.SqlQueryBuilder">
+            <summary>
+            Renders <see cref="T:Rgd.GraphQL.Server.Data.Sql.EntityQuery"/> instances as SQL statements.
+            </summary>
+            <remarks>
+            Values are rendered as escaped literals rather than bound parameters: the <c>transform()</c> and
+            <c>transform_search()</c> extensions of the rgd-http-proxy are only understood with literal arguments.
+            Identifiers all come from the validated model, never from the request.
+            </remarks>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Data.Sql.SqlQueryBuilder.EffectiveOrder(Rgd.GraphQL.Server.Data.Sql.EntityQuery)">
+            <summary>Appends the key fields to the requested order so that pages are stable.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Data.Sql.SqlQueryBuilder.Value(Rgd.GraphQL.Server.Model.FieldModel,System.Object)">
+            <summary>Renders a value as a literal of the type of the field, or as a <c>transform()</c> call when it is tokenized.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Data.Sql.SqlQueryBuilder.ToUtcDateTime(System.Object)">
+            <summary>Timestamps are compared in UTC, the way they are read back.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.GraphQL.ArgumentParser">
+            <summary>Turns the <c>where</c> and <c>orderBy</c> argument values into the query model.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.GraphQL.ArgumentParser.ParseConditions(Rgd.GraphQL.Server.Model.FieldModel,System.Object)">
+            <summary>A null operator value is ignored, <c>isNull</c> being the way to look for nulls.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.GraphQL.DataErrorFilter">
+            <summary>
+            Hands the messages of the expected failures to the client, the ones of the others staying in the logs.
+            </summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.GraphQL.EntityResolvers">
+            <summary>The resolvers of the generated query fields: each one runs a single SQL statement.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.GraphQL.EntityResolvers.SelectedFields(HotChocolate.Resolvers.IResolverContext,Rgd.GraphQL.Server.Model.EntityModel)">
+            <summary>Only the columns of the fields selected by the request are read, sparing the detokenization of the others.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.GraphQL.EntityRow">
+            <summary>A row of an entity, keyed by GraphQL field name.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.GraphQL.EntityRow.#ctor(Rgd.GraphQL.Server.Model.EntityModel,System.Collections.Generic.IReadOnlyDictionary{System.String,System.Object})">
+            <summary>A row of an entity, keyed by GraphQL field name.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.GraphQL.OutputValues">
+            <summary>Converts the values read from Arrow into the runtime types of the GraphQL scalars.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.GraphQL.OutputValues.ToDateTimeOffset(System.Object)">
+            <summary>A timestamp without time zone is taken as UTC.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.GraphQL.FieldTypes">
+            <summary>The GraphQL scalar and filter input type of each model field type.</summary>
+        </member>
+        <member name="F:Rgd.GraphQL.Server.GraphQL.FieldTypes.Token">
+            <summary>A token can only be matched whole, or by its head through <c>transform_search()</c>.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.GraphQL.ModelSchemaBuilder">
+            <summary>
+            Generates the GraphQL schema from the data model. For an entity <c>Person</c>:
+            <code>
+            type Query {
+              person(id: Int!): Person
+              persons(where: PersonFilter, orderBy: [PersonOrder!], limit: Int, offset: Int! = 0): [Person!]!
+              personsCount(where: PersonFilter): Long!
+            }
+            </code>
+            </summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Health.FlightSqlHealthCheck">
+            <summary>Reports whether the configured health query runs on the Flight SQL server.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Health.FlightSqlHealthCheck.#ctor(Rgd.GraphQL.Server.Data.IQueryExecutor,Microsoft.Extensions.Options.IOptions{Rgd.GraphQL.Server.Configuration.FlightSqlOptions})">
+            <summary>Reports whether the configured health query runs on the Flight SQL server.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Health.FlightSqlStartupCheck">
+            <summary>Connects to the Flight SQL server at startup, so that a configuration problem shows at once.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Health.FlightSqlStartupCheck.#ctor(Rgd.GraphQL.Server.Data.IQueryExecutor,Microsoft.Extensions.Options.IOptions{Rgd.GraphQL.Server.Configuration.FlightSqlOptions},Microsoft.Extensions.Logging.ILogger{Rgd.GraphQL.Server.Health.FlightSqlStartupCheck})">
+            <summary>Connects to the Flight SQL server at startup, so that a configuration problem shows at once.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Model.DataModel">
+            <summary>
+            The data model the GraphQL schema is generated from, read from the model file of the configuration directory.
+            </summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Model.EntityModel">
+            <summary>A table exposed as a GraphQL object type.</summary>
+        </member>
+        <member name="P:Rgd.GraphQL.Server.Model.EntityModel.Name">
+            <summary>GraphQL type name, e.g. <c>Person</c>.</summary>
+        </member>
+        <member name="P:Rgd.GraphQL.Server.Model.EntityModel.Schema">
+            <summary>Optional database schema the table belongs to, e.g. <c>dbo</c>.</summary>
+        </member>
+        <member name="P:Rgd.GraphQL.Server.Model.EntityModel.PluralName">
+            <summary>Name of the list query field. Defaults to the camel-cased plural of <see cref="P:Rgd.GraphQL.Server.Model.EntityModel.Name"/>.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Model.FieldModel">
+            <summary>A column exposed as a GraphQL field.</summary>
+        </member>
+        <member name="P:Rgd.GraphQL.Server.Model.FieldModel.Name">
+            <summary>GraphQL field name, e.g. <c>firstName</c>.</summary>
+        </member>
+        <member name="P:Rgd.GraphQL.Server.Model.FieldModel.Key">
+            <summary>Part of the primary key: key fields become the arguments of the single-entity query.</summary>
+        </member>
+        <member name="P:Rgd.GraphQL.Server.Model.FieldModel.Transform">
+            <summary>
+            Set when the column stores RegData tokens: filter values are then wrapped in the <c>transform()</c>
+            and <c>transform_search()</c> SQL extensions of the rgd-http-proxy, so that clear values can be
+            compared with the tokens.
+            </summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Model.TransformModel">
+            <summary>The RPS mapping of a tokenized column, i.e. the first three arguments of <c>transform()</c>.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Model.FieldType">
+            <summary>The type of a field, named after the GraphQL scalar it is exposed as.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.Model.ModelLoader">
+            <summary>Reads and validates the model file. Any problem is reported at once, and fails the startup.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Model.ModelLoader.GraphQLName">
+            <remarks>
+            Pattern:<br/>
+            <code>^[A-Za-z_][A-Za-z0-9_]*$</code><br/>
+            Explanation:<br/>
+            <code>
+            ○ Match if at the beginning of the string.<br/>
+            ○ Match a character in the set [A-Z_a-z].<br/>
+            ○ Match a character in the set [0-9A-Z_a-z] atomically any number of times.<br/>
+            ○ Match if at the end of the string or if before an ending newline.<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Model.ModelLoader.SqlIdentifier">
+            <remarks>
+            Pattern:<br/>
+            <code>^[A-Za-z_][A-Za-z0-9_$#@]*$</code><br/>
+            Explanation:<br/>
+            <code>
+            ○ Match if at the beginning of the string.<br/>
+            ○ Match a character in the set [A-Z_a-z].<br/>
+            ○ Match a character in the set [#$0-9@-Z_a-z] atomically any number of times.<br/>
+            ○ Match if at the end of the string or if before an ending newline.<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.Model.NameConventions.Pluralize(System.String)">
+            <summary>English pluralization good enough for type names; use <c>pluralName</c> in the model otherwise.</summary>
+        </member>
+        <member name="T:Rgd.GraphQL.Server.ServerApplication">
+            <summary>Builds the GraphQL server from the content of the configuration directory.</summary>
+        </member>
+        <member name="M:Rgd.GraphQL.Server.ServerApplication.AddPropertiesFile(Microsoft.Extensions.Configuration.ConfigurationManager,System.String)">
+            <summary>
+            The properties file is inserted before the environment variables and the command line, which can
+            therefore override any property, e.g. <c>FLIGHTSQL__PASSWORD</c> for <c>flightsql.password</c>.
+            </summary>
+        </member>
+        <member name="T:Program">
+            <summary>
+            Auto-generated public partial Program class for top-level statement apps.
+            </summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.GraphQLName_0">
+            <summary>Custom <see cref="T:System.Text.RegularExpressions.Regex"/>-derived type for the GraphQLName method.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.GraphQLName_0.Instance">
+            <summary>Cached, thread-safe singleton instance.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.GraphQLName_0.#ctor">
+            <summary>Initializes the instance.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.GraphQLName_0.RunnerFactory">
+            <summary>Provides a factory for creating <see cref="T:System.Text.RegularExpressions.RegexRunner"/> instances to be used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.GraphQLName_0.RunnerFactory.CreateInstance">
+            <summary>Creates an instance of a <see cref="T:System.Text.RegularExpressions.RegexRunner"/> used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.GraphQLName_0.RunnerFactory.Runner">
+            <summary>Provides the runner that contains the custom logic implementing the specified regular expression.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.GraphQLName_0.RunnerFactory.Runner.Scan(System.ReadOnlySpan{System.Char})">
+            <summary>Scan the <paramref name="inputSpan"/> starting from base.runtextstart for the next match.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.GraphQLName_0.RunnerFactory.Runner.TryFindNextPossibleStartingPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Search <paramref name="inputSpan"/> starting from base.runtextpos for the next location a match could possibly start.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if a possible match was found; false if no more matches are possible.</returns>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.GraphQLName_0.RunnerFactory.Runner.TryMatchAtCurrentPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Determine whether <paramref name="inputSpan"/> at base.runtextpos is a match for the regular expression.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if the regular expression matches at the current position; otherwise, false.</returns>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.SqlIdentifier_1">
+            <summary>Custom <see cref="T:System.Text.RegularExpressions.Regex"/>-derived type for the SqlIdentifier method.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.SqlIdentifier_1.Instance">
+            <summary>Cached, thread-safe singleton instance.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SqlIdentifier_1.#ctor">
+            <summary>Initializes the instance.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.SqlIdentifier_1.RunnerFactory">
+            <summary>Provides a factory for creating <see cref="T:System.Text.RegularExpressions.RegexRunner"/> instances to be used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SqlIdentifier_1.RunnerFactory.CreateInstance">
+            <summary>Creates an instance of a <see cref="T:System.Text.RegularExpressions.RegexRunner"/> used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.SqlIdentifier_1.RunnerFactory.Runner">
+            <summary>Provides the runner that contains the custom logic implementing the specified regular expression.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SqlIdentifier_1.RunnerFactory.Runner.Scan(System.ReadOnlySpan{System.Char})">
+            <summary>Scan the <paramref name="inputSpan"/> starting from base.runtextstart for the next match.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SqlIdentifier_1.RunnerFactory.Runner.TryFindNextPossibleStartingPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Search <paramref name="inputSpan"/> starting from base.runtextpos for the next location a match could possibly start.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if a possible match was found; false if no more matches are possible.</returns>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SqlIdentifier_1.RunnerFactory.Runner.TryMatchAtCurrentPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Determine whether <paramref name="inputSpan"/> at base.runtextpos is a match for the regular expression.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if the regular expression matches at the current position; otherwise, false.</returns>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.Utilities">
+            <summary>Helper methods used by generated <see cref="T:System.Text.RegularExpressions.Regex"/>-derived implementations.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_defaultTimeout">
+            <summary>Default timeout value set in <see cref="T:System.AppContext"/>, or <see cref="F:System.Text.RegularExpressions.Regex.InfiniteMatchTimeout"/> if none was set.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_hasTimeout">
+            <summary>Whether <see cref="F:System.Text.RegularExpressions.Generated.Utilities.s_defaultTimeout"/> is non-infinite.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_asciiWordChars">
+            <summary>Supports searching for characters in or not in "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz".</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_ascii_1800FF03FFFFFF87FEFFFF07">
+            <summary>Supports searching for characters in or not in "#$0123456789@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz".</summary>
+        </member>
+    </members>
+</doc>

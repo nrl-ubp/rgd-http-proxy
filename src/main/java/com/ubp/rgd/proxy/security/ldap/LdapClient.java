@@ -4,7 +4,8 @@ import com.ubp.rgd.proxy.security.KerberosConstants;
 import com.ubp.rgd.proxy.services.ProxyService;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
@@ -23,7 +24,7 @@ import java.util.List;
  */
 @ApplicationScoped
 public class LdapClient {
-    private static final Logger LOG = Logger.getLogger(ProxyService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ProxyService.class);
 
     @ConfigProperty(name = "proxy.kerberos.ldap-url", defaultValue = KerberosConstants.DEFAULT_LDAP_URL)
     String ldapUrl;
@@ -46,8 +47,7 @@ public class LdapClient {
             // Attempt to connect and authenticate
             return new InitialDirContext(env);
         } catch (Exception e) {
-            LOG.errorf("Cannot connect to LDAP server using GSSAPI. %s", e.getMessage());
-            LOG.error(e);
+            LOG.error("Cannot connect to LDAP server using GSSAPI.", e);
             return null;
         }
     }
@@ -76,8 +76,7 @@ public class LdapClient {
             // Attempt to connect and authenticate
             return new InitialDirContext(env);
         } catch (Exception e) {
-            LOG.errorf("Cannot connect to LDAP server using user/password for: %s\\%s", domainName, userDn);
-            LOG.error(e);
+            LOG.error("Cannot connect to LDAP server using user/password for: {}\\{}", domainName, userDn, e);
             return null;
         }
     }
@@ -115,13 +114,13 @@ public class LdapClient {
 
                 Attributes attributes = result.getAttributes();
 
-                LOG.debugf("Found user: %s\n", attributes.get("distinguishedName"));
+                LOG.debug("Found user: {}\n", attributes.get("distinguishedName"));
 
                 // Get the "memberOf" attribute, which contains the groups
                 Attribute memberOf = attributes.get("memberOf");
 
                 if (memberOf != null) {
-                    LOG.debugf("Groups the user %s belongs to:%n", searchAccountName);
+                    LOG.debug("Groups the user {} belongs to:", searchAccountName);
                     NamingEnumeration<?> groups = memberOf.getAll();
                     List<String> listGroups = new ArrayList<>();
                     while (groups.hasMore()) {
@@ -139,8 +138,7 @@ public class LdapClient {
                 return null;
             }
         } catch (Exception e) {
-            LOG.errorf("Cannot retrieve LDAP user groups: %s", e.getMessage());
-            LOG.error(e);
+            LOG.error("Cannot retrieve LDAP user groups.", e);
             return null;
         }
     }

@@ -1,22 +1,16 @@
 package com.ubp.rgd.proxy.services;
 
-import ch.regdata.rps.engine.client.Context;
 import ch.regdata.rps.engine.client.Evidence;
-import ch.regdata.rps.engine.client.RPSEngine;
-import ch.regdata.rps.engine.client.RPSEngineConverter;
-import ch.regdata.rps.engine.client.RequestContext;
 import ch.regdata.rps.engine.client.enginecontext.ProcessingContext;
-import ch.regdata.rps.engine.client.enginecontext.RPSEngineContextResolver;
 import ch.regdata.rps.engine.client.enginecontext.RightContext;
-import ch.regdata.rps.engine.client.http.HttpClientEngineProvider;
 import ch.regdata.rps.engine.client.mapping.RPSMapping;
-import ch.regdata.rps.engine.client.model.api.value.IRPSValue;
 import ch.regdata.rps.engine.client.model.api.value.RPSValue;
 import com.ubp.rgd.proxy.security.SecurityContext;
-import com.ubp.rgd.proxy.transform.RPSClientEngineProvider;
+import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
 import com.ubp.rgd.proxy.transform.api.TransformRequest;
 import com.ubp.rgd.proxy.transform.api.TransformResponse;
+import com.ubp.rgd.proxy.transform.ValuePlan;
 import com.ubp.rgd.proxy.transform.api.TransformResultSet;
 import com.ubp.rgd.proxy.transform.api.TransformSet;
 import com.ubp.rgd.proxy.transform.api.TransformValue;
@@ -24,35 +18,37 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.ForbiddenException;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- * Service exposing generic RPS transformation (Protect / Unprotect) of a list of value sets.
+ * Service exposing generic transformation (Protect / Unprotect) of a list of value sets.
  * <p>
  * Each {@link TransformSet} carries an {@code action}, a {@code target} and a {@code jurisdiction}
- * code that are passed to the RPS engine as processing-context evidences ({@code Action},
+ * code that are passed to the engine as processing-context evidences ({@code Action},
  * {@code Target}, {@code Jurisdiction}). A value may optionally carry an {@code extractRegExp} used,
  * for protection, to tokenize the value group by group while preserving its original format. For
  * unprotection, tokens are located by their fixed delimiter ({@code RG{...}}).
+ * <p>
+ * The values are handed over to the {@link EndPointTransformer} selected by
+ * {@code proxy.transform.impl}, so this endpoint protects the data exactly like the proxy filters
+ * do: with {@code RPS} it calls the RegData engine, with {@code FPE} it encrypts locally. A value
+ * protected through this endpoint is therefore readable through the proxy, and the other way round.
+ *
+ * @see EndPointTransformer
  */
 @ApplicationScoped
 public class TransformService {
 
-    private static final Logger LOG = Logger.getLogger(TransformService.class);
-
-    private static final String ACTION_PROTECT = "Protect";
-    private static final String ACTION_UNPROTECT = "Unprotect";
-
-    /** Fixed delimiter pattern of an RPS token ({@code RG{...}}), used to locate tokens on unprotect. */
-    static final Pattern TOKEN_PATTERN = Pattern.compile("RG\\{[^}]*\\}");
+    private static final Logger LOG = LoggerFactory.getLogger(TransformService.class);
 
     @ConfigProperty(name = "proxy.transform.endpoint.right-context-target")
     String rightContextTarget;
@@ -64,8 +60,18 @@ public class TransformService {
     String rightContextRight;
 
 
+    /**
+     * The transformer selected by {@code proxy.transform.impl}, so the endpoint protects the data
+     * exactly like the proxy filters do rather than being tied to one implementation.
+     */
     @Inject
-    RPSClientEngineProvider rpsClientEngineProvider;
+    EndPointTransformer transformer;
+
+    /**
+     * Maps the {@code jurisdiction} of each set to its RPS secrets manager.
+     */
+    @Inject
+    SecretsManagerResolver secretsManagerResolver;
 
     @Inject
     SecurityContext securityContext;
@@ -84,10 +90,18 @@ public class TransformService {
     String preFilterAuthEnabled;
 
     /**
-     * Transform every value of every set through the RPS engine.
+     * Transform every value of every set through the configured transformer.
+     * <p>
+     * Each set is transformed with the secrets manager its {@code jurisdiction} maps to, or the
+     * default mapping when it has none. Every jurisdiction is resolved before the first set is
+     * transformed, so a request naming an unknown one is rejected without anything being sent to
+     * the tokenizer.
+     *
      * @param request the transform request (list of sets)
      * @return the transformed values grouped per set, in input order
-     * @throws RPSTransformException on invalid input or any RPS transformation error
+     * @throws RPSTransformException on invalid input or any transformation error
+     * @throws com.ubp.rgd.proxy.exception.UnknownSecretsManagerException (400) when a set names a
+     *         jurisdiction absent from the secrets manager mapping file
      */
     public TransformResponse transform(TransformRequest request) throws RPSTransformException {
         // Only authorized SPNs / usernames may call the transform endpoint.
@@ -97,9 +111,17 @@ public class TransformService {
             throw new RPSTransformException("The transform request or its sets are null.");
         }
 
+        List<UUID> secretsManagers = new ArrayList<>(request.getSets().size());
+        for (int i = 0; i < request.getSets().size(); i++) {
+            TransformSet set = request.getSets().get(i);
+            secretsManagers.add(secretsManagerResolver.resolve(
+                    set == null ? null : set.getJurisdiction(),
+                    String.format("jurisdiction of set #%d", i + 1)));
+        }
+
         TransformResponse response = new TransformResponse();
-        for (TransformSet set : request.getSets()) {
-            response.getResults().add(transformSet(set));
+        for (int i = 0; i < request.getSets().size(); i++) {
+            response.getResults().add(transformSet(request.getSets().get(i), secretsManagers.get(i)));
         }
         return response;
     }
@@ -134,12 +156,12 @@ public class TransformService {
 
         String userName = securityContext.getToken().getUser();
         if (!isAuthorized(userName, authorized)) {
-            LOG.errorf("User %s is not authorized to call the transform endpoint.", userName);
+            LOG.error("User {} is not authorized to call the transform endpoint.", userName);
             throw new ForbiddenException(
                     String.format("User %s is not authorized to call the transform endpoint.", userName));
         }
 
-        LOG.debugf("User %s is authorized to call the transform endpoint.", userName);
+        LOG.debug("User {} is authorized to call the transform endpoint.", userName);
     }
 
     /**
@@ -169,7 +191,7 @@ public class TransformService {
         return user != null && authorized.contains(user.toLowerCase());
     }
 
-    private TransformResultSet transformSet(TransformSet set) throws RPSTransformException {
+    private TransformResultSet transformSet(TransformSet set, UUID secretsManager) throws RPSTransformException {
         if (set == null || set.getValues() == null) {
             throw new RPSTransformException("A transform set or its values are null.");
         }
@@ -183,16 +205,16 @@ public class TransformService {
         for (TransformValue value : set.getValues()) {
             ValuePlan plan = buildValuePlan(set.getAction(), value);
             plans.add(plan);
-            flatValues.addAll(plan.rpsValues);
+            flatValues.addAll(plan.rpsValues());
         }
 
         if (!flatValues.isEmpty()) {
             try {
-                transformData(
-                        rpsClientEngineProvider.getClientEngineProvider(),
+                transformer.transformData(
                         flatValues.toArray(new RPSValue[0]),
                         buildRightContext(),
-                        buildProcessingContext(set));
+                        buildProcessingContext(set),
+                        secretsManager);
             } catch (RPSTransformException e) {
                 throw e;
             } catch (Exception e) {
@@ -230,47 +252,11 @@ public class TransformService {
         }
 
         RPSMapping mapping = new RPSMapping(value.getClassName(), value.getPropertyName());
-        Pattern pattern = extractionPattern(action, value.getExtractRegExp());
+        Pattern pattern = ValuePlan.extractionPattern(action, value.getExtractRegExp());
 
-        List<RPSValue> rpsValues = new ArrayList<>();
-        if (pattern == null) {
-            // Whole value transformed as a single segment.
-            rpsValues.add(new RPSValue(mapping, value.getValue()));
-        } else {
-            Matcher matcher = pattern.matcher(value.getValue());
-            while (matcher.find()) {
-                rpsValues.add(new RPSValue(mapping, matcher.group()));
-            }
-        }
-
-        return new ValuePlan(value.getValue(), pattern, rpsValues);
+        return ValuePlan.of(mapping, value.getValue(), pattern);
     }
 
-    /**
-     * Choose the extraction pattern for a value depending on the action:
-     * <ul>
-     *     <li>Protect: the value's {@code extractRegExp} when present (word-by-word tokenization),
-     *         otherwise {@code null} (whole value).</li>
-     *     <li>Unprotect: the fixed {@link #TOKEN_PATTERN} to locate {@code RG{...}} tokens.</li>
-     *     <li>Any other action: {@code null} (whole value).</li>
-     * </ul>
-     */
-    private Pattern extractionPattern(String action, String extractRegExp) throws RPSTransformException {
-        if (ACTION_PROTECT.equalsIgnoreCase(action)) {
-            if (extractRegExp == null || extractRegExp.isEmpty()) {
-                return null;
-            }
-            try {
-                return Pattern.compile(extractRegExp);
-            } catch (Exception e) {
-                throw new RPSTransformException("Invalid extract-regex: " + extractRegExp);
-            }
-        }
-        if (ACTION_UNPROTECT.equalsIgnoreCase(action)) {
-            return TOKEN_PATTERN;
-        }
-        return null;
-    }
 
     private ProcessingContext buildProcessingContext(TransformSet set) {
         ProcessingContext processingContext = new ProcessingContext();
@@ -278,7 +264,7 @@ public class TransformService {
         addEvidence(processingContext, "Target", set.getTarget());
         addEvidence(processingContext, "Module", set.getModule());
         processingContext.getEvidences()
-                .forEach(e -> LOG.debugf("Processing context: %s = %s", e.getName(), e.getValue()));
+                .forEach(e -> LOG.debug("Processing context: {} = {}", e.getName(), e.getValue()));
         return processingContext;
     }
 
@@ -292,63 +278,4 @@ public class TransformService {
         processingContext.addEvidence(evidence);
     }
 
-    /**
-     * Calls the RPS engine to transform the given values in place.
-     */
-    private void transformData(HttpClientEngineProvider engineProvider, IRPSValue<String>[] values,
-                               Context rightContext, ProcessingContext processingContext) throws Exception {
-        RPSEngine engine = new RPSEngine(engineProvider,
-                new RPSEngineConverter(),
-                new RPSEngineContextResolver(null));
-
-        RequestContext requestContext = new RequestContext(engine, new RPSEngineContextResolver(null));
-        requestContext.withRequest(values, rightContext, processingContext, null);
-        requestContext.transform();
-    }
-
-    /**
-     * Plan to rebuild a single value from its transformed segments while preserving the original
-     * format (surrounding characters, separators, token order).
-     */
-    static final class ValuePlan {
-        private final String originalValue;
-        private final Pattern pattern;
-        final List<RPSValue> rpsValues;
-
-        ValuePlan(String originalValue, Pattern pattern, List<RPSValue> rpsValues) {
-            this.originalValue = originalValue;
-            this.pattern = pattern;
-            this.rpsValues = rpsValues;
-        }
-
-        String reassemble() throws RPSTransformException {
-            if (rpsValues.isEmpty()) {
-                // No segment matched (e.g. regex with no match): return the value unchanged.
-                return originalValue;
-            }
-            if (pattern == null) {
-                // Single whole-value segment.
-                return requireTransformed(rpsValues.getFirst());
-            }
-
-            Matcher matcher = pattern.matcher(originalValue);
-            StringBuilder rebuilt = new StringBuilder();
-            int index = 0;
-            while (matcher.find() && index < rpsValues.size()) {
-                String transformed = requireTransformed(rpsValues.get(index++));
-                matcher.appendReplacement(rebuilt, Matcher.quoteReplacement(transformed));
-            }
-            matcher.appendTail(rebuilt);
-            return rebuilt.toString();
-        }
-
-        private String requireTransformed(RPSValue rpsValue) throws RPSTransformException {
-            String transformed = rpsValue.getTransformed();
-            if (transformed == null) {
-                throw new RPSTransformException(
-                        "Transformation did not return a value for: " + rpsValue.getOriginal());
-            }
-            return transformed;
-        }
-    }
 }

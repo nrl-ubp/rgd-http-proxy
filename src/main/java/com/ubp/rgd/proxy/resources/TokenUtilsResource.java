@@ -1,5 +1,6 @@
 package com.ubp.rgd.proxy.resources;
 
+import com.ubp.rgd.proxy.services.SecretsManagerResolver;
 import com.ubp.rgd.proxy.services.wdx1.WDX1ConcatRequest;
 import com.ubp.rgd.proxy.services.wdx1.WDX1ConcatResponse;
 import com.ubp.rgd.proxy.services.wdx1.WDX1UtilsService;
@@ -14,7 +15,8 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
@@ -24,7 +26,7 @@ import java.util.Objects;
 @Tag(name = "Token utils Resource", description = "Utility resource providing operators on tokens")
 public class TokenUtilsResource {
 
-    private static final Logger LOG = Logger.getLogger(TokenUtilsResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TokenUtilsResource.class);
 
     /**
      * The personalized security context containing user information from Kerberos (or Basic authz for local dev)
@@ -41,6 +43,9 @@ public class TokenUtilsResource {
     @Inject
     WDX1UtilsService WDX1UtilsService;
 
+    @Inject
+    SecretsManagerResolver secretsManagerResolver;
+
     @POST
     @Path("/wdx1/concat")
     @Operation(summary = "Generate a token representing the formatting of the payload in the form: CCYYYYMMDDAAAAABBBBB.", description = "Returns the RPS token for the CCYYYYMMDDAAAAABBBBB payload formatting. Where CC is the nationality country code, YYYYMMDD is the date of birth, AAAAA are the 5 first characters of the first name and BBBBB are the 5 first characters of the surname. If first names and surnames are shorter, replaces characters by #. The result is the corresponding RPS token.")
@@ -52,7 +57,7 @@ public class TokenUtilsResource {
             ),
             @APIResponse(
                     responseCode = "400",
-                    description = "RPS Transformation error",
+                    description = "RPS Transformation error, or unknown secrets manager header value",
                     content = @Content(schema = @Schema(implementation = String.class))
             ),
             @APIResponse(
@@ -67,7 +72,7 @@ public class TokenUtilsResource {
         // prometheus increment counter specific to this endpoint
         Objects.requireNonNull(metricsRegistry.counter("ubp_proxy_counter", Tags.of("name", "get_concat"))).increment();
 
-        String concatToken = WDX1UtilsService.tokenConcat(body);
+        String concatToken = WDX1UtilsService.tokenConcat(body, secretsManagerResolver.resolve(headers));
         WDX1ConcatResponse response = new WDX1ConcatResponse();
         response.setConcatResponseToken(concatToken);
         return response;

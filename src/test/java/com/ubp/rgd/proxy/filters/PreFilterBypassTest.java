@@ -1,6 +1,7 @@
 package com.ubp.rgd.proxy.filters;
 
-import com.ubp.rgd.proxy.transform.RPSEndPointTransformer;
+import com.ubp.rgd.proxy.services.TestSecretsManagers;
+import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.config.EndPointTransformConfig;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.MultivaluedHashMap;
@@ -32,14 +33,15 @@ import static org.mockito.Mockito.when;
 class PreFilterBypassTest {
 
     private PreFilter filter;
-    private RPSEndPointTransformer transformer;
+    private EndPointTransformer transformer;
     private ContainerRequestContext requestContext;
 
     @BeforeEach
     void setUp() {
-        transformer = mock(RPSEndPointTransformer.class);
+        transformer = mock(EndPointTransformer.class);
         filter = new PreFilter();
         filter.endpointTransformer = transformer;
+        filter.secretsManagerResolver = TestSecretsManagers.resolver();
         filter.allowIgnoreTransformHeader = true;
         // Authentication is covered elsewhere and needs a live KDC: keep it out of these tests.
         filter.preFilterAuthEnabled = "false";
@@ -81,7 +83,7 @@ class PreFilterBypassTest {
         when(requestContext.getHeaderString(TransformBypass.HEADER_NAME)).thenReturn(null);
         EndPointTransformConfig config = new EndPointTransformConfig();
         when(transformer.getEndpointTransformConfig("POST", "/persons", "BEFORE")).thenReturn(config);
-        when(transformer.transform(anyString(), any(), any(), any())).thenReturn("{\"name\":\"RG{x}\"}");
+        when(transformer.transform(anyString(), any(), any(), any(), any())).thenReturn("{\"name\":\"RG{x}\"}");
 
         filter.filter(requestContext);
 
@@ -96,7 +98,7 @@ class PreFilterBypassTest {
         when(requestContext.getHeaderString(TransformBypass.HEADER_NAME)).thenReturn("false");
         EndPointTransformConfig config = new EndPointTransformConfig();
         when(transformer.getEndpointTransformConfig("POST", "/persons", "BEFORE")).thenReturn(config);
-        when(transformer.transform(anyString(), any(), any(), any())).thenReturn("{\"name\":\"RG{x}\"}");
+        when(transformer.transform(anyString(), any(), any(), any(), any())).thenReturn("{\"name\":\"RG{x}\"}");
 
         filter.filter(requestContext);
 

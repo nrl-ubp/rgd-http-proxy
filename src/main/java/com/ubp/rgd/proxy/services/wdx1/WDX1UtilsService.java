@@ -2,10 +2,7 @@ package com.ubp.rgd.proxy.services.wdx1;
 
 import ch.regdata.rps.engine.client.*;
 import ch.regdata.rps.engine.client.enginecontext.ProcessingContext;
-import ch.regdata.rps.engine.client.enginecontext.RPSEngineContextResolver;
-import ch.regdata.rps.engine.client.http.HttpClientEngineProvider;
 import ch.regdata.rps.engine.client.mapping.RPSMapping;
-import ch.regdata.rps.engine.client.model.api.value.IRPSValue;
 import ch.regdata.rps.engine.client.model.api.value.RPSValue;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -13,17 +10,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ubp.rgd.proxy.security.SecurityContext;
 import com.ubp.rgd.proxy.services.wdx1.config.WDX1ConcatConfig;
 import com.ubp.rgd.proxy.services.wdx1.config.WDX1ConcatRpsMapping;
-import com.ubp.rgd.proxy.transform.RPSClientEngineProvider;
+import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
 import com.ubp.rgd.proxy.utils.StringUtils;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -33,17 +33,29 @@ import java.util.regex.Pattern;
  */
 @ApplicationScoped
 public class WDX1UtilsService {
-    private static final Logger LOG = Logger.getLogger(WDX1UtilsService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(WDX1UtilsService.class);
 
     /**
      * A protected value is represented by one or more tokens. Each token is prefixed by the "RG"
      * letters and its value is enclosed in single braces, e.g. {@code RG{...}}. The name fields
      * ({@code firstNameToken}, {@code lastNameToken}) may contain several of these tokens.
+     * <p>
+     * Deliberately kept local rather than asked to the transformer, unlike
+     * {@code FlightSqlDetokenizeService}: this pattern is only used <b>symmetrically</b>, to split a
+     * field into tokens and to put the clear values back at the very same places. It therefore only
+     * has to be self consistent, not to tell who produced the token, and it already matches the
+     * tokens of every implementation since they are all wrapped in <code>RG{...}</code>.
      */
     private static final Pattern TOKEN_PATTERN = Pattern.compile("RG\\{[^}]*\\}");
 
+    /**
+     * Format of the date component of the concatenation key. It is fixed by the
+     * {@code CCYYYYMMDDAAAAABBBBB} layout of the key, so it is not configurable.
+     */
+    private static final String CONCAT_KEY_DATE_FORMAT = "yyyyMMdd";
+
     @Inject
-    RPSClientEngineProvider rpsClientEngineProvider;
+    EndPointTransformer transformer;
 
     @Inject
     SecurityContext securityContext;
@@ -70,7 +82,7 @@ public class WDX1UtilsService {
 
     @PostConstruct
     public void init() throws IOException {
-        LOG.infof("Now loading WDX1 concat configuration from %s", wdx1ConcatConfigFile);
+        LOG.info("Now loading WDX1 concat configuration from {}", wdx1ConcatConfigFile);
         ObjectMapper objectMapper = new ObjectMapper();
         concatConfig = objectMapper.readValue(new File(wdx1ConcatConfigFile), new TypeReference<>() { } );
         if (concatConfig == null) {
@@ -79,11 +91,20 @@ public class WDX1UtilsService {
     }
 
     /**
-     * Token concatenation : will tokenize and format the concatenation of the clear values in the request
-     * @param request the concat request from WDx1 services. Format is applied to conform to WDX1 specifications
-     * @return the token representing the concat of the values of the request.
+     * {@link #tokenConcat(WDX1ConcatRequest, UUID)} with the tokenizer's default secrets manager.
      */
     public String tokenConcat(WDX1ConcatRequest request) throws RPSTransformException {
+        return tokenConcat(request, null);
+    }
+
+    /**
+     * Token concatenation : will tokenize and format the concatenation of the clear values in the request
+     * @param request the concat request from WDx1 services. Format is applied to conform to WDX1 specifications
+     * @param secretsManager the secrets manager used both to read the input tokens and to tokenize the
+     *                       concatenation, {@code null} for the tokenizer's default
+     * @return the token representing the concat of the values of the request.
+     */
+    public String tokenConcat(WDX1ConcatRequest request, UUID secretsManager) throws RPSTransformException {
 
         // check calling service is WDX1
         checkAuthorization();
@@ -94,7 +115,7 @@ public class WDX1UtilsService {
         }
 
         // unprotect the token
-        WDX1ConcatRequest unprotectedRequest = unprotect(request);
+        WDX1ConcatRequest unprotectedRequest = unprotect(request, secretsManager);
 
         // sanitize the names
         WDX1ConcatRequest sanitizedRequest = sanitize(unprotectedRequest);
@@ -107,7 +128,7 @@ public class WDX1UtilsService {
                 StringUtils.firstFiveWithHash(sanitizedRequest.getLastName()));
 
 
-        return protect(clearFormat);
+        return protect(clearFormat, secretsManager);
     }
 
     /**
@@ -133,31 +154,32 @@ public class WDX1UtilsService {
 
         if (!userName.equalsIgnoreCase(wdx1AuthorizedSpn)) {
             String msg = "Username is not authorized to execute the WDX1 concat utils: %s";
-            LOG.errorf(msg, userName);
+            LOG.error(String.format(msg, userName));
             throw new RPSTransformException(String.format(msg, userName));
         }
 
-        LOG.debugf("User %s is authorized to execute WDX1 concat utils.");
+        LOG.debug("User {} is authorized to execute WDX1 concat utils.", userName);
     }
 
     private WDX1ConcatRequest sanitize(WDX1ConcatRequest request) {
         request.setFirstName(NameSanitizer.sanitizeName(request.getFirstName()));
         request.setLastName(NameSanitizer.sanitizeName(request.getLastName()));
-        request.setBirthDate(request.getBirthDate().replaceAll("-", ""));
+        // The birth date needs no sanitizing: it was already rendered as YYYYMMDD when the
+        // detokenized value was reformatted.
         return request;
     }
 
-    private String protect(String clear) throws RPSTransformException {
+    private String protect(String clear, UUID secretsManager) throws RPSTransformException {
         RPSValue[] rpsValues = new RPSValue[1];
         rpsValues[0] = new RPSValue(new RPSMapping(concatConfig.getConcatResultClassName(), concatConfig.getConcatResultPropertyName()), clear);
 
         // now call transform API
         try {
-            transformData(
-                    rpsClientEngineProvider.getClientEngineProvider(),
+            transformer.transformData(
                     rpsValues,
                     getRightContext(),
-                    getProcessingContext("protect")
+                    getProcessingContext("protect"),
+                    secretsManager
             );
         } catch (Throwable e) {
             LOG.error("Transform exception: ", e);
@@ -167,7 +189,7 @@ public class WDX1UtilsService {
         return rpsValues[0].getTransformed();
     }
 
-    private WDX1ConcatRequest unprotect(WDX1ConcatRequest request) throws RPSTransformException {
+    private WDX1ConcatRequest unprotect(WDX1ConcatRequest request, UUID secretsManager) throws RPSTransformException {
         // generate RPS Values to transform
         Map<String, RPSValue[]> rpsValues = getRPSValues(request);
 
@@ -178,11 +200,11 @@ public class WDX1UtilsService {
 
         // now call transform API which will modify the flatRPSValues and no replace
         try {
-            transformData(
-                    rpsClientEngineProvider.getClientEngineProvider(),
+            transformer.transformData(
                     flatRPSValues,
                     getRightContext(),
-                    getProcessingContext("Unprotect")
+                    getProcessingContext("Unprotect"),
+                    secretsManager
             );
         } catch (Throwable e) {
             LOG.error("Transform exception: ", e);
@@ -195,27 +217,6 @@ public class WDX1UtilsService {
         return request;
     }
 
-    /**
-     * This method calls REGDATA to get the values transformed
-     */
-    private void transformData(HttpClientEngineProvider engineProvider, IRPSValue<String>[] values, Context rightContext, ProcessingContext processingContext) throws Exception {
-
-        RPSEngine engine = new RPSEngine(engineProvider,
-                new RPSEngineConverter(),
-                new RPSEngineContextResolver(null));
-
-        RequestContext requestContext = new RequestContext(engine, new RPSEngineContextResolver(null));
-
-        requestContext
-                .withRequest(
-                        values,
-                        rightContext,
-                        processingContext,
-                        null);
-
-        // Calls the transformation API -> will lead to protect the data
-        requestContext.transform();
-    }
 
     private Context getRightContext() {
         Context rightContext = new Context();
@@ -227,7 +228,7 @@ public class WDX1UtilsService {
             rightContext.addEvidence(moduleEvidence);
         });
 
-        rightContext.getEvidences().forEach(e -> LOG.debugf("Processing context: %s = %s", e.getName(), e.getValue()));
+        rightContext.getEvidences().forEach(e -> LOG.debug("Processing context: {} = {}", e.getName(), e.getValue()));
 
         return rightContext;
     }
@@ -249,7 +250,7 @@ public class WDX1UtilsService {
         moduleEvidence.setValue(action);
         processingContext.addEvidence(moduleEvidence);
 
-        processingContext.getEvidences().forEach(e -> LOG.debugf("Processing context: %s = %s", e.getName(), e.getValue()));
+        processingContext.getEvidences().forEach(e -> LOG.debug("Processing context: {} = {}", e.getName(), e.getValue()));
 
         return processingContext;
     }
@@ -278,9 +279,10 @@ public class WDX1UtilsService {
         values.put("firstName", getTokenRPSValues(request.getFirstName(), getRPSMapping("name")));
         values.put("lastName", getTokenRPSValues(request.getLastName(), getRPSMapping("name")));
         // no transform for country : values.put("country", getRPSValues(getFirstName(), getRPSMapping("country")));
+        // The birth date is a token at this point: it is sent as is for detokenization, and only the
+        // clear date that comes back is reformatted, in setRPSValuesTransformed().
         values.put("birthDate", new RPSValue[]{
-                new RPSValue(getRPSMapping("date"),
-                        request.getTokenizationFormattedDate(request.getBirthDate(), concatConfig.getDateFormat()))
+                new RPSValue(getRPSMapping("date"), request.getBirthDate())
         });
 
         return values;
@@ -324,7 +326,61 @@ public class WDX1UtilsService {
             String error = values.get("birthDate")[0].getError().getMessage();
             throw new RPSTransformException("Birth date transformation did not return anything: " + error);
         }
-        request.setBirthDate(birthDate);
+        checkTransformed("Birth date", birthDate);
+        request.setBirthDate(toConcatKeyDate(request, birthDate));
+    }
+
+    /**
+     * Render a detokenized birth date as the {@code YYYYMMDD} component of the concatenation key.
+     * <p>
+     * The clear date comes back in the format declared by the caller, so it is first normalised to
+     * the format the concat configuration works with, then rendered in the fixed key format. That
+     * second step is what guarantees a correct key whatever the configured formats are.
+     *
+     * @param request the request, holding the format the caller expressed its date in
+     * @param clearDate the detokenized birth date
+     * @return the date as {@code YYYYMMDD}
+     * @throws RPSTransformException if the clear date is not a valid date in the expected format
+     */
+    private String toConcatKeyDate(WDX1ConcatRequest request, String clearDate) throws RPSTransformException {
+        try {
+            String normalized = request.getTokenizationFormattedDate(clearDate, concatConfig.getDateFormat());
+
+            SimpleDateFormat configuredFormat = new SimpleDateFormat(concatConfig.getDateFormat());
+            configuredFormat.setLenient(false);
+            return new SimpleDateFormat(CONCAT_KEY_DATE_FORMAT).format(configuredFormat.parse(normalized));
+        } catch (ParseException e) {
+            String msg = String.format("The detokenized birth date '%s' is not a valid date"
+                    + " (expected format '%s'): %s", clearDate, request.getDateFormat(), e.getMessage());
+            LOG.error(msg);
+            throw new RPSTransformException(msg);
+        }
+    }
+
+    /**
+     * Reject a detokenized value that came back still looking like a token.
+     * <p>
+     * A transformer returns a value it cannot handle <b>unchanged</b> rather than {@code null}, which
+     * happens here whenever the tokens come from another tokenizer than the configured one — WDX1
+     * detokenizes the tokens of the upstream system, not the ones this proxy produced. Without this
+     * check the concatenation key would silently be computed from the raw token text instead of the
+     * clear name, then protected and stored as if it were correct.
+     * <p>
+     * A legitimate clear value, a name or a date, is never <code>RG{...}</code>, so this can only fire
+     * on a value that was really not transformed.
+     *
+     * @param fieldLabel human readable field name used in the error message
+     * @param clearValue the value returned by the transformer
+     * @throws RPSTransformException when the value is still a token
+     */
+    private static void checkTransformed(String fieldLabel, String clearValue) throws RPSTransformException {
+        if (clearValue != null && TOKEN_PATTERN.matcher(clearValue).matches()) {
+            String msg = String.format("%s was not detokenized and came back as a token: %s."
+                    + " The value was most likely produced by another tokenizer than the configured one.",
+                    fieldLabel, clearValue);
+            LOG.error(msg);
+            throw new RPSTransformException(msg);
+        }
     }
 
     /**
@@ -356,6 +412,7 @@ public class WDX1UtilsService {
                 throw new RPSTransformException(String.format(
                         "%s detokenization did not return a clear value for token: %s", fieldLabel, matcher.group()));
             }
+            checkTransformed(fieldLabel, clearValue);
             matcher.appendReplacement(rebuilt, Matcher.quoteReplacement(clearValue));
         }
         matcher.appendTail(rebuilt);

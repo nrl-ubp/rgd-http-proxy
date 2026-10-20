@@ -1,6 +1,7 @@
 package com.ubp.rgd.proxy.filters;
 
-import com.ubp.rgd.proxy.transform.RPSEndPointTransformer;
+import com.ubp.rgd.proxy.services.TestSecretsManagers;
+import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.config.EndPointTransformConfig;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
@@ -29,16 +30,17 @@ import static org.mockito.Mockito.when;
 class PostFilterBypassTest {
 
     private PostFilter filter;
-    private RPSEndPointTransformer transformer;
+    private EndPointTransformer transformer;
     private ContainerRequestContext requestContext;
     private ContainerResponseContext responseContext;
     private MultivaluedMap<String, Object> responseHeaders;
 
     @BeforeEach
     void setUp() {
-        transformer = mock(RPSEndPointTransformer.class);
+        transformer = mock(EndPointTransformer.class);
         filter = new PostFilter();
         filter.endPointTransformer = transformer;
+        filter.secretsManagerResolver = TestSecretsManagers.resolver();
         filter.allowIgnoreTransformHeader = true;
 
         requestContext = mock(ContainerRequestContext.class);
@@ -90,7 +92,7 @@ class PostFilterBypassTest {
         when(requestContext.getHeaderString(TransformBypass.HEADER_NAME)).thenReturn(null);
         EndPointTransformConfig config = new EndPointTransformConfig();
         when(transformer.getEndpointTransformConfig("GET", "/persons", "AFTER")).thenReturn(config);
-        when(transformer.transform(anyString(), any(), any(), any())).thenReturn("{\"name\":\"John\"}");
+        when(transformer.transform(anyString(), any(), any(), any(), any())).thenReturn("{\"name\":\"John\"}");
 
         filter.filter(requestContext, responseContext);
 
@@ -105,7 +107,7 @@ class PostFilterBypassTest {
         when(requestContext.getHeaderString(TransformBypass.HEADER_NAME)).thenReturn("false");
         EndPointTransformConfig config = new EndPointTransformConfig();
         when(transformer.getEndpointTransformConfig("GET", "/persons", "AFTER")).thenReturn(config);
-        when(transformer.transform(anyString(), any(), any(), any())).thenReturn("{\"name\":\"John\"}");
+        when(transformer.transform(anyString(), any(), any(), any(), any())).thenReturn("{\"name\":\"John\"}");
 
         filter.filter(requestContext, responseContext);
 
@@ -119,7 +121,7 @@ class PostFilterBypassTest {
         when(requestContext.getHeaderString(TransformBypass.HEADER_NAME)).thenReturn("true");
         EndPointTransformConfig config = new EndPointTransformConfig();
         when(transformer.getEndpointTransformConfig("GET", "/persons", "AFTER")).thenReturn(config);
-        when(transformer.transform(anyString(), any(), any(), any())).thenReturn("{\"name\":\"John\"}");
+        when(transformer.transform(anyString(), any(), any(), any(), any())).thenReturn("{\"name\":\"John\"}");
 
         filter.filter(requestContext, responseContext);
 

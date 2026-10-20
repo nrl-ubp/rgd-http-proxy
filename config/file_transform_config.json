@@ -15,7 +15,8 @@
     },
     "processing-context": {
       "Target" : "WDX1",
-      "Module": "WDX1Proxy"
+      "Module": "WDX1Proxy",
+      "Action": "Protect"
     },
     "entity-transform-configs": [
       {
@@ -60,11 +61,14 @@
     "preserve-directory-structure": true,
     "scan-interval-seconds": 0,
     "right-context": {
-      "Location": "Onshore"
+      "Target" : "WDX1",
+      "Module": "WDX1Proxy",
+      "Right": "Transform"
     },
     "processing-context": {
-      "Action": "Unprotect",
-      "Location": "Onshore"
+      "Target" : "WDX1",
+      "Module": "WDX1Proxy",
+      "Action": "Unprotect"
     },
     "entity-transform-configs": [
       {

@@ -24,6 +24,196 @@ For development, you can generate self signed certs using the maven command: `mv
 
 The `com.ubp.rgd.proxy.tools.ConfigGenerator` program can be used as a sample configuration generator.  
 
+### JSON paths in the transform configuration
+
+The `json-path` of an attribute transform config is evaluated with
+[JsonPath](https://github.com/json-path/JsonPath), and both definite paths (`$.customer.name`) and
+indefinite ones (`$.persons[*].name`, `$..name`) are supported. Two behaviours are worth knowing:
+
+- **A path absent from the payload is simply skipped** (logged at `debug`), so a single transform
+  configuration can serve several payload shapes and optional fields cost nothing. The same applies
+  to a `null` value, which holds nothing to protect.
+- **A JSON number stays a JSON number.** The engine returns a number when it tokenizes a number, so
+  `{"accountNumber": 42}` becomes `{"accountNumber": 8371}` and not `{"accountNumber": "8371"}`. The
+  value is rebuilt from the exact digits of the token, so neither precision nor width is lost,
+  whatever the size of the number. The same applies when unprotecting. Booleans, on the other hand,
+  are written back as strings.
+
+Two limits are worth knowing when mapping a numeric field:
+
+- **A token starting with a zero loses it.** JSON numbers cannot carry a leading zero, so a
+  format-preserving token such as `007` is written as `7` and will no longer detokenize. Avoid
+  mapping numeric fields to an RPS property whose tokens may start with a zero.
+- **A non-numeric token is written as a string.** If the engine returns something that is not a
+  number for a numeric field, the value is kept as text rather than lost, a warning is logged, and
+  the JSON type of that field changes.
+
+Each match is written back to the exact location it was read from, so wildcards over arrays whose
+elements do not all carry the mapped field are handled correctly.
+
+### Word by word tokenization with `extract-regex`
+
+An attribute transform config may carry an `extract-regex` — generated from the `x-cid-extractregex`
+annotation of the swagger by `SwaggerTransformConfigGenerator`. When it is present, the value is
+**not** tokenized as a whole: every substring the regex matches is tokenized on its own, and the
+original formatting is rebuilt around the tokens.
+
+With the regex `(?:\w(?<!_)|~)+` carried by most WDX1 name properties:
+
+| Direction | Value | Result |
+|---|---|---|
+| Protect | `Jean-Claude DUSSE` | `RG{t1}-RG{t2} RG{t3}` |
+| Protect | `O'Brien` | `RG{t1}'RG{t2}` |
+| Protect | `  spaced  out  ` | `  RG{t1}  RG{t2}  ` |
+| Unprotect | `RG{aaa}-RG{bbb} RG{ccc}` | `Jean-Claude DUSSE` |
+
+Separators, apostrophes and leading or trailing whitespace are preserved exactly, and a value the
+regex does not match at all is left untouched. This is the same behaviour as the `/transform`
+endpoint, which shares the implementation (`com.ubp.rgd.proxy.transform.ValuePlan`).
+
+The direction is read from the `Action` evidence of the endpoint's `processing-context`:
+
+- **`Protect` with an `extract-regex`** — tokenized word by word.
+- **`Protect` without an `extract-regex`** — the whole value is tokenized, as before.
+- **`Unprotect`** — every `RG{...}` token found in the value is detokenized, for **every** attribute,
+  whether or not it declares an `extract-regex`. A value that carries no token is therefore left
+  untouched and is **no longer sent to the engine**, which is a change from the previous behaviour
+  where the whole value was always sent.
+- **No `Action` evidence, or any other action** — the whole value is transformed, as before.
+
+Two things to keep in mind:
+
+- **Numbers are never split.** A JSON number can carry neither a separator nor an `RG{...}` token, so
+  numeric values are always transformed as a whole, in both directions. This is what keeps the
+  numeric detokenization described above working, since the engine returns a plain number — `8371`,
+  not `RG{...}` — for a tokenized number.
+- **An invalid `extract-regex` fails the transformation** with an `RPSTransformException`. In the
+  proxy this fails the request; in the file transformer the file is moved to the error directory.
+
+The same rules apply to `FileTransformService`. Headers and query parameters have no `extract-regex`
+and are unaffected.
+
+## Choosing the transformer
+
+The transformer is pluggable. Everything that does not depend on the tokenizer — reading the
+configuration, locating the values in the payload, the headers and the query parameters, and writing
+the results back — lives in `AbstractEndPointTransformer`; an implementation only provides
+`transformData()`.
+
+| `proxy.transform.impl` | Implementation | What it does |
+| --- | --- | --- |
+| `RPS` (default) | `RPSEndPointTransformer` | Tokenizes through the RegData RPS engine. |
+| `FPE` | `FPEEndPointTransformer` | Encrypts locally with Format Preserving Encryption, no engine needed. |
+
+`EndPointTransformerProducer` produces the configured one. Each implementation carries a
+`@TransformerImpl` qualifier, so application code simply injects `EndPointTransformer` and gets the
+selected one. An **unknown value stops the application at startup** rather than falling back to a
+default: running with another tokenizer than the intended one would protect the data the wrong way.
+
+The property drives **every transformation of the application** — the proxy filters, the
+`/transform` endpoint, the file transformation, the Flight SQL detokenization and the WDX1 concat
+utility — which all share the same transformer instance. A value protected by one is therefore
+readable by the others, and no class calls a tokenizer directly any more.
+
+What a token looks like is asked to the transformer rather than hardcoded, which matters for Flight
+SQL: result sets carry no transformation configuration, so the tokens have to be recognised by their
+shape. An RPS token has a fixed layout (a two character mapping index, an eight character identifier,
+then the value), while an FPE token is `RG{` + a two character header + the ciphertext, and may carry
+separators inside it. The two patterns have nothing in common.
+
+> Values protected by one implementation **cannot** be unprotected by the other. Do not change this
+> property on an environment that already holds protected data.
+>
+> The **token mapping index** tier of the Flight SQL detokenization (`FlightSqlTokenIndexResolver`) is
+> **RPS only**. It reads a mapping index from the first two characters of a token, which the RegData
+> engine writes but FPE does not: those two characters are the radix marker and the padding length.
+> The tier is therefore skipped under FPE, and a column resolved by neither a column mapping nor a
+> data mapping is returned as is.
+>
+> `WDX1UtilsService` detokenizes the tokens of the **upstream WDX1 system**. If those were produced by
+> another tokenizer than the configured one, they cannot be read back, and the service now **fails
+> explicitly** rather than building its concatenation key from the raw token text.
+>
+> The `birthDateToken` of a concat request is detokenized like any other token; the **clear** date it
+> yields is expected in the `dateFormat` declared by the request (default `yyyy-MM-dd`) and is then
+> rendered as the `YYYYMMDD` component of the key. A clear value that is not a valid date in that
+> format is rejected.
+
+### Format Preserving Encryption
+
+`FPEEndPointTransformer` encrypts with **FF1** (NIST SP 800-38G), provided by BouncyCastle. There is
+no engine to reach and no token vault: protecting and unprotecting are the two directions of the same
+deterministic cipher.
+
+```properties
+proxy.transform.impl=FPE
+# hex encoded AES key: 32, 48 or 64 characters for 128, 192 or 256 bits
+proxy.transform.fpe.key=2b7e151628aed2a6abf7158809cf4f3c
+```
+
+The key committed in `config/application.properties` is a **development key**. On a real environment
+provide it through the `PROXY_TRANSFORM_FPE_KEY` environment variable, which Quarkus reads natively,
+and never commit the real one. It is decoded at startup, so a wrong key fails immediately instead of
+on the first payload carrying sensitive data — and only when `FPE` is actually selected.
+
+#### Token format
+
+The ciphertext is wrapped like an RPS token, because `RG{...}` is how `ValuePlan` locates the values
+to unprotect. Inside the braces comes a two character header:
+
+```
+RG{ <radix marker> <padding length> <ciphertext> }
+```
+
+| Marker | Radix | Alphabet | Minimum length |
+| --- | --- | --- | --- |
+| `N` | 10 | `0123456789` | 6 |
+| `A` | 62 | `0-9A-Za-z` | 4 |
+
+The **radix marker** is needed because the alphabet is picked from the clear value when protecting,
+but has to be recovered from the ciphertext when unprotecting. A value made of digits keeps the
+numeric alphabet, so its ciphertext stays digits.
+
+Only the characters of the alphabet are encrypted: separators, punctuation and accented letters stay
+exactly where they were, which is what makes the transformation reversible.
+
+```
+"12-34"  ->  "RG{N483-9204}"          the dash never moved
+"Jean-Claude DUSSE"                   with extract-regex, each word gets its own token
+```
+
+#### Short values are padded, not skipped
+
+FF1 refuses any input with fewer than a million possible values, that is 6 digits or 4 alphanumeric
+characters. Skipping shorter values would leave most numbers in the clear, so a short value is padded
+with `0` up to the minimum, encrypted, and the number of padding characters is written into the token
+header. Unprotecting decrypts and drops the filler:
+
+```
+"42"  ->  padded to "420000"  ->  RG{N4839204}
+                                      ^ four padding characters were added
+```
+
+`0` is index 0 in both alphabets, so one filler serves both. Padding is deterministic, so equal values
+still give equal tokens, and leading zeros survive: `007` comes back as `007`.
+
+#### Behaviour worth knowing
+
+- **Encryption is deterministic.** The same value always gives the same token within a property. That
+  is a property of FPE, not a defect: it is what lets encrypted values be compared and joined.
+- **Each property has its own tweak**, derived from `SHA-256("ClassName.PropertyName")`. The same
+  value encrypts differently in two properties, so a token cannot be correlated across fields — and a
+  token can only be read back with the tweak of the property it belongs to.
+- **Numeric JSON fields become strings.** A tokenized number normally stays a JSON number, but
+  `RG{...}` is not one, so such a field is written back as a string and the existing warning is
+  logged. This is inherent to the wrapped token format.
+- **A value carrying `{` or `}` is left unchanged**, with a warning: a brace kept in place inside the
+  token would close it early and the value would come back truncated.
+- **Values that cannot be transformed are left unchanged** rather than failing the request: an empty
+  value, a value holding no character of the alphabet (`---`), a value that is not a token when
+  unprotecting, and an RPS token, whose header is not an FPE one. Mixed payloads are therefore never
+  corrupted.
+
 ## Bypassing the transformation
 
 A caller can ask the proxy to forward a request **without any RPS transformation**, whatever the
@@ -49,6 +239,105 @@ transformed silently.
 > ⚠️ This is a plain request header, so while the property is enabled **any authenticated caller can
 > retrieve untransformed payloads**. It bypasses the tokenization, not the authentication or the
 > authorization.
+
+## Selecting the RPS secrets manager
+
+The RPS engine can protect each request with a different secrets manager, typically one per
+jurisdiction. The caller names the jurisdiction:
+
+- on `/proxy` and `/utils/wdx1/concat`, with a request header:
+
+  ```
+  X-Proxy-Jurisdiction: LU
+  ```
+
+  whose name is `proxy.transform.http-secrets-manager-header`;
+- on `/transform`, with the `jurisdiction` property of each set of the payload. Each set is
+  transformed with its own secrets manager, and the header is **ignored** by this endpoint.
+
+The jurisdiction is looked up in the JSON file named by
+`proxy.transform.http-secrets-manager-mapping-file`:
+
+```json
+{
+  "default-mapping": "LU",
+  "mappings": [
+    {"CH": "16ec8462-e8d5-4a2c-b8df-f253e09bd274"},
+    {"LU": "b9f72aef-6c1b-4556-bf65-9813f122cf8b"}
+  ]
+}
+```
+
+- Each mapping associates a jurisdiction with the **UUID** of an RPS secrets manager. Values are
+  compared **ignoring case** (`lu` selects `LU`).
+- A request **without the header**, or a `/transform` set **without `jurisdiction`**, uses the
+  `default-mapping` entry.
+- A jurisdiction **absent from the file** is rejected with a **400**: nothing is transformed nor
+  forwarded, since tokens produced with another secrets manager could not be read back. On
+  `/transform`, every set is checked before the first one is transformed, so one unknown
+  jurisdiction rejects the whole request, and the message names the set
+  (`Unknown jurisdiction of set #2 value: MC`).
+- On `/proxy`, the request and the response transformations use the same secrets manager, and the
+  header is **stripped** before the request reaches the proxied service.
+- The Flight SQL server and the file transformation do not use it: the secrets manager of each token
+  they detokenize is resolved from the token itself, see below. When they protect values (the
+  Flight SQL `transform()` extensions), the engine uses its default secrets manager.
+- The file is read at startup, and the application **refuses to start** when it is missing or
+  unreadable, when an id is not a UUID, when a value is mapped twice, or when `default-mapping` is
+  absent or is not one of the mappings.
+- The FPE transformer has a single key and ignores the secrets manager.
+
+> The ids shipped in `config/secrets_manager_mapping.json` are placeholders: replace them with the ids
+> of your RPS secrets managers.
+
+### Resolving the secrets manager of a token
+
+The Flight SQL result sets and the transformed files carry tokens that may come from different
+jurisdictions, and nothing in the call says which. So when the RPS transformer **unprotects** values
+**without an explicit secrets manager**, it resolves the secrets manager that created each token
+from the token itself (`TokenSecretsManagerResolver.secretsManagerIdResolve(token, className, propertyName)`).
+
+At startup, the resolver loads from SQL Server the configuration of the client
+`proxy.transform.client-id`: its RPS properties (class, property, property id, configuration id)
+and the association of each secrets manager configuration with the client's secrets manager.
+Each token is then resolved as follows:
+
+1. the RPS class and property of the value must belong to the client;
+2. **MongoDB** is queried, in the collection of the token format, for the token of that
+   configuration and property:
+
+   | Token format | Collection | Searched by |
+   |---|---|---|
+   | `RPSDOC+...+RPSDOC` | `SecretManagerTransformations` | MD5 of the value (`ValueHash`) |
+   | `-888...8888` | `SequenceToken` | the value between the wrappers |
+   | `RG{...}@example.com` | `EmailUidTokens` | the token without `RG{` and `}` |
+   | `yyyy-MM-dd` | `DateTokenV2s` | the date at midnight UTC |
+   | `RG{xxVALUE-AB}` | `ShiftedOPEShortTokens` | `VALUE` and the number in the letters after the last dash (`AA`=0 … `ZZ`=675, `AAA`=676, …) |
+
+3. the document found either carries a `SecretsManagerId`, which is mapped to the secrets manager
+   associated with the client, or a `SecretVersionId`, which **SQL Server** turns into the secrets
+   manager id.
+
+The values are then grouped by secrets manager and the engine is called once per group. Every
+token is resolved before the first engine call, and any failure fails the whole detokenization
+with a `SecretsManagerNotFoundException`: a property the client does not have, an unsupported token
+format (such as an `RG{...}` token without a dash), a token MongoDB does not know, a secrets manager
+configuration without association with the client, or a secret version SQL Server does not know.
+The file is then moved to the error directory, and the Flight SQL client gets an error. Values that
+are not tokens are sent along with the first group.
+
+- `/proxy`, `/transform` and `/utils/wdx1/concat` always name the secrets manager, so they never
+  query the databases; neither does protecting a value. The file transformation passes the default
+  secrets manager of the mapping file when it protects, and none when it unprotects.
+- Successful resolutions are cached in memory (cache `token-secrets-manager`, 10 000 entries,
+  1 hour by default), so a token repeated in a result set or a file is looked up once. Failures
+  are not cached.
+- The connections are configured in `application.properties`: `quarkus.mongodb.connection-string`
+  plus `proxy.secrets-manager-lookup.mongodb.database`, and the `secrets-manager-lookup` datasource
+  (`quarkus.datasource."secrets-manager-lookup".*`). See `config/sample.application.properties`.
+  When the datasource cannot be reached at startup, the error is logged and the proxy starts
+  anyway; every resolution then fails.
+- The FPE transformer is not concerned.
 
 ## Monitoring 
 This anonymization proxy uses micrometer and prometheus endpoint is available.
@@ -76,11 +365,429 @@ The test is doing 2 calls and compare clear and protected data.
 1. GET a person, forward to person server and protect data before responding
 2. POST a protected person data, un protect and forward to person server.
 
+## Flight SQL server
+
+The proxy can also expose an **Apache Arrow Flight SQL** server that proxies a whole JDBC datasource.
+Every statement is executed on the proxied database, and each value of the result sets matching an
+RPS token (`RG{...}`) — or any pattern declared in the mapping file — is detokenized through the
+RegData engine before being streamed back to the client. A token can be resolved from its column,
+from a configured regex, or from the mapping index it carries in its own value.
+
+Configuration (see `config/application.properties`):
+
+| Property | Description |
+| --- | --- |
+| `proxy.flight-sql.enabled` | Enables the Flight SQL server (disabled by default). |
+| `proxy.flight-sql.host` / `proxy.flight-sql.port` | Listening address of the gRPC server (default `0.0.0.0:32010`). |
+| `proxy.flight-sql.jdbc-url` | JDBC URL of the proxied database. |
+| `proxy.flight-sql.batch-size` | Rows per Arrow record batch, i.e. per detokenization call. |
+| `proxy.flight-sql.mapping-config-file` | Column and data to RPS class/property mapping file. |
+| `proxy.flight-sql.tls.enabled` | Serves Flight SQL over TLS (default `false`, plaintext). See [TLS](#tls). |
+| `proxy.flight-sql.tls.key-store-file` / `.key-store-password` / `.key-store-alias` | PKCS12 keystore holding the server key and certificate chain. |
+| `proxy.flight-sql.tls.cert-chain-file` / `.private-key-file` | Or a PEM certificate chain and an unencrypted PKCS#8 PEM key. |
+
+Clients authenticate with **basic credentials that are forwarded to the proxied database**: the
+credentials are validated by opening a real connection, then every query runs under the caller's own
+database identity.
+
+### TLS
+
+The Flight SQL server is plaintext by default. Since clients send their database password at login,
+**enable TLS for anything but local tests**, which is also what the ODBC driver expects by default
+(see [Using Flight SQL through ODBC on Windows](#using-flight-sql-through-odbc-on-windows)):
+
+```properties
+proxy.flight-sql.tls.enabled=true
+# Either a PKCS12 keystore, possibly the very one used for HTTPS...
+proxy.flight-sql.tls.key-store-file=./config/certs/serverkeystore.p12
+proxy.flight-sql.tls.key-store-password=changeit
+#proxy.flight-sql.tls.key-store-alias=flightsql   # only when the keystore holds several keys
+# ...or a PEM pair (the key must be PKCS#8: "BEGIN PRIVATE KEY")
+#proxy.flight-sql.tls.cert-chain-file=./config/certs/flightsql-chain.pem
+#proxy.flight-sql.tls.private-key-file=./config/certs/flightsql-key.pem
+```
+
+- A keystore is converted in memory: no unencrypted key is ever written to disk.
+- **A TLS configuration that cannot be used fails startup** rather than falling back to plaintext:
+  neither or both sources given, a missing file, a wrong password, several keys without an alias, an
+  encrypted or PKCS#1 PEM key (convert it with `openssl pkcs8 -topk8 -nocrypt -in key.pem -out
+  key-pkcs8.pem`).
+- An expired or not yet valid certificate only logs a warning.
+- The startup log states the transport: `Flight SQL server listening on 0.0.0.0:32010 (TLS, CN=...)`
+  or `(plaintext)`, plus a warning while TLS is disabled.
+- The certificate must name the host clients connect to (subject alternative name), e.g.
+  `tokenization-secure-gvz-e01.corp.ubp.ch`, and be issued by a CA the clients trust. The
+  certificates produced by `tools/generate-certs.*` are self-signed for `localhost`: tests only.
+
+Result sets carry no RPS metadata, so the RPS class and property names of each column are resolved
+from `config/flight_sql_mapping_config.json`. That file also holds the right-context and
+processing-context evidences sent to the engine, grouped by **phase** of the exchange:
+
+```json
+{
+  "before": {
+    "active": true,
+    "right-context": { "Target": "WDX1", "Module": "RoseGarden", "Right": "Transform" },
+    "processing-context": { "Action": "Protect", "Target": "WDX1" }
+  },
+  "after": {
+    "active": true,
+    "right-context": { "Target": "WDX1", "Module": "RoseGarden", "Right": "Transform" },
+    "processing-context": { "Action": "Unprotect", "Target": "WDX1" }
+  },
+  "data-mappings": [
+    { "regex": "RG\\{[A-Z2-7x]{2}[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+\\}@example\\.com",
+      "rps-class-name": "Person", "rps-property-name": "email" }
+  ],
+  "column-mappings": [
+    { "table": "PERSON", "column": "FIRST_NAME",
+      "rps-class-name": "Person", "rps-property-name": "shortString" },
+    { "table": "*", "column": "EMAIL",
+      "rps-class-name": "Person", "rps-property-name": "email" }
+  ]
+}
+```
+
+### Phases
+
+A query crosses the proxy twice, and the two directions do not use the same contexts:
+
+| Phase | Applies to | Typical action | Status |
+|---|---|---|---|
+| `before` | the statement on its way to the database server | `Protect` | used by the `transform()` and `transform_search()` extensions |
+| `after` | the result set on its way back, i.e. the detokenization | `Unprotect` | in use |
+
+`active` defaults to **true**, so a phase that does not mention it is performed. Setting
+`"active": false` on `after` turns the detokenization off: result sets are handed back exactly as
+the database server returned them, tokens included. Setting it on `before` **rejects** any query
+using `transform()` or `transform_search()`, rather than letting clear data reach the database.
+
+The action of each phase is taken from its own `processing-context`. When none is declared, the
+phase falls back to the only action that makes sense for its direction: `Unprotect` for `after`,
+which only ever reads data back, and `Protect` for `before`, which only ever writes a value into a
+query.
+
+> **A mapping file that exists but cannot be used fails startup** when `proxy.flight-sql.enabled` is
+> `true` — a malformed file, or one with an explicitly null `after` section. This is on purpose: the
+> alternative is a proxy that silently hands tokens back to its clients. A **missing** file only logs
+> a warning, since that is the normal state of a deployment that does not use Flight SQL. Unknown
+> properties are ignored, so adding a key to the file can never wipe the rest of the configuration.
+
+### The `transform()` SQL extensions
+
+A client holding a **clear** value cannot compare it with a column that stores tokens. It wraps the
+value in a `transform()` call, and the proxy replaces the call by the corresponding token **before**
+the statement leaves for the database server:
+
+```sql
+SELECT * FROM PERSON WHERE FIRST_NAME = transform('Person', 'shortString', 'CH', 'Jean-Claude')
+```
+
+reaches the database as:
+
+```sql
+SELECT * FROM PERSON WHERE FIRST_NAME = 'RG{AB12345678aa}'
+```
+
+The arguments are, in order:
+
+| # | Argument | Meaning |
+|---|---|---|
+| 1 | `className` | the RPS class name |
+| 2 | `propertyName` | the RPS property name |
+| 3 | `jurisdiction` | **parsed and validated, but ignored for now** |
+| 4 | `text` | the clear value to transform |
+
+It works in a query, in a prepared statement and in an update, so a value can be written tokenized
+and found back through the same call. The contexts are those of the **`before`** phase, and **all
+the calls of one statement are transformed in a single engine round trip**.
+
+#### `transform_search()`, for a `LIKE` comparison
+
+`transform_search()` takes **exactly the same four arguments** and obeys exactly the same rules, but
+produces a `LIKE` **pattern** instead of the token: the token is truncated to its **first 9
+characters** and a `%` is appended.
+
+```sql
+SELECT * FROM PERSON WHERE FIRST_NAME LIKE transform_search('Person', 'shortString', 'CH', 'Jean')
+```
+
+reaches the database as:
+
+```sql
+SELECT * FROM PERSON WHERE FIRST_NAME LIKE 'RG{AB1234%'
+```
+
+It exists for the cases where only the **head** of the token is stable, so that an equality on the
+whole token would miss the rows a prefix match finds. Use it with `LIKE`, not with `=`: written
+after an `=`, it would compare the column with the literal text `RG{AB1234%`.
+
+- a token **shorter** than 9 characters is used whole, still followed by the `%`;
+- a value the engine could not transform yields `NULL`, and `LIKE NULL` matches nothing;
+- the two functions can be **mixed in the same statement**, and still cost one engine round trip for
+  the whole of it.
+
+##### Wildcards inside the token
+
+A `%` or a `_` **of the token itself** would act as a wildcard and widen the search, so it is escaped
+with a backslash and the pattern is followed by an `ESCAPE` clause:
+
+```sql
+WHERE OWNER LIKE 'RG{10\%20%' ESCAPE '\'
+```
+
+An RPS token never contains either, but a format-preserving one (`proxy.transform.impl=FPE`) can,
+since it keeps the shape of the source value. A backslash of the token is escaped too, but only once
+the clause is emitted — without it, a backslash is an ordinary character and escaping it would change
+what the pattern matches.
+
+> **The clause is appended only when the prefix really holds a wildcard.** `ESCAPE` is valid after
+> the pattern of a `LIKE` predicate and **nowhere else**, so a `transform_search()` written somewhere
+> else — in a `SELECT` list, to see what it produces — keeps working as long as its token is free of
+> wildcards, and becomes a syntax error when it is not.
+
+Details that matter in practice, for both functions:
+
+- the name is matched in any case, and `transform (...)` with a space is accepted; a column or a
+  longer identifier such as `my_transform(...)`, `transformed` or `transform_searches(...)` is left
+  alone;
+- a call written inside a **string literal, a quoted identifier or a comment** is *not* rewritten,
+  so an existing query cannot be corrupted by the feature;
+- the four arguments must be **single-quoted texts**, `''` being an escaped quote. A `?` parameter
+  placeholder is rejected: it has no value yet when the query is rewritten;
+- the token, or the pattern, is substituted as a quoted SQL literal, so the call can sit anywhere a
+  value is expected;
+- a malformed call **rejects the whole query** with `INVALID_ARGUMENT` and an explanatory message
+  naming the function actually written, rather than passing meaningless SQL to the database. An
+  engine failure returns `INTERNAL`;
+- a query containing neither function is passed through untouched and never reaches the engine.
+
+### Resolution order
+
+Each string column of a result set is resolved in this order:
+
+1. **`column-mappings` — explicit detokenization.** When the table and column of the result-set
+   column are mapped, every `RG{...}` token of its values is detokenized with that RPS class and
+   property. A `table` set to `*` (or omitted) makes the mapping apply to any table exposing that
+   column, and an exact match always wins over a `*` one. Data mappings are **never** applied to a
+   column that has a column mapping.
+2. **`data-mappings` — implicit detokenization.** For the columns without a column mapping, each
+   regex locates **its own** segments inside the values and supplies their RPS class and property.
+   This makes it possible to detokenize columns that were never declared, and to recognize formats
+   that are not plain `RG{...}` tokens.
+3. **Token mapping index — last resort.** The `RG{...}` tokens that no data mapping claimed are
+   resolved from the **mapping index they carry in their own value**, so a token can be detokenized
+   even when nothing at all was configured for it. This tier is **RPS only** and is skipped when
+   `proxy.transform.impl=FPE`, whose tokens carry no mapping index.
+
+The segment sent to the engine is the **whole match**, not a capturing group, so a regex may use
+capturing or named groups freely for readability.
+
+Data mappings are applied in **declaration order, which is their priority order**: a match
+overlapping a segment already kept by an earlier mapping is discarded. Order the array from the most
+specific pattern to the most generic one.
+
+A value that no tier resolves is returned untouched, and a column is only rewritten when at least one
+of its values holds a resolved segment.
+
+### Token mapping index
+
+The first two characters of a token value, right after `RG{`, carry its **mapping index**: a fixed
+width of 2 characters holding an uppercase base26 number, left-aligned and padded with a lowercase
+`x` filler.
+
+| Symbol | Index | Rule |
+| --- | --- | --- |
+| `Ax` … `Zx` | 0 … 25 | one letter followed by the `x` filler |
+| `ZA` … `ZZ` | 26 … 51 | `Z` is an escape prefix, the second letter carries the value |
+
+The filler being lowercase, `Zx` (25) and `ZA` (26) never collide. Any other shape — `BA`, `A3`,
+`2x` — resolves to nothing.
+
+The index → `ClassName.PropertyName` table depends on the RPS client the proxy is configured for, so
+it is **built at startup** by `FlightSqlDetokenizeService.initTokenIndexMappings(clientId)` from
+`proxy.transform.client-id` — the same API key used to reach the engine. That method declares each
+index with `FlightSqlTokenIndexResolver.register(symbol, "ClassName.PropertyName")`; a symbol may be
+given padded (`"Bx"`) or not (`"B"`), both being the same index.
+
+The table can be rebuilt at any time with `FlightSqlDetokenizeService.loadTokenIndexMappings()`, which
+clears it first so a reload never leaves a stale index behind. If the initialization fails, the error
+is logged and the table is left **empty** rather than preventing the proxy from starting — this is
+only the last resolution tier, so the affected tokens are simply returned untouched.
+
+A token whose index is not declared is returned untouched and logs a warning, once per unknown symbol.
+
+> Implicit mode runs every data-mapping regex over every value of every unmapped string column, so
+> keeping the list short and the patterns anchored matters on large result sets. A regex that fails
+> to compile is logged and ignored, the rest of the configuration stays active.
+
+Apache Arrow needs access to the `java.nio` internals of the JDK, so the server **must** be started
+with `--add-opens=java.base/java.nio=ALL-UNNAMED` (see the launch commands below).
+
+### Prepared statements
+
+The Flight SQL server supports **parameterized statements**, both queries and updates. The parameter
+schema is derived from the proxied driver's `ParameterMetaData` and advertised to the client, the
+Arrow batches sent by the client are bound onto the JDBC statement, and a prepared batch is executed
+in a single round trip returning the summed update count.
+
+If the proxied JDBC driver refuses to describe its parameters, the server falls back to an empty
+parameter schema: statements without parameters keep working unchanged.
+
+> **Known client limitation.** `Statement.addBatch()` / `executeBatch()` on a *plain* statement fails
+> inside the Arrow Flight JDBC driver itself (a `NullPointerException` in its Avatica layer) and
+> cannot be fixed on the server side. Use `PreparedStatement.addBatch()`, which works.
+
+### Loading test data
+
+`src/test/java/com/ubp/rgd/tools/PersonFlightSqlLoader.java` generates random persons and writes them
+into a `PERSON` table **through the proxy**, using the Arrow Flight SQL JDBC driver and plain SQL (no
+JPA). It then reads the rows back and reports how many values came back detokenized.
+
+By default it does not fabricate tokens: it generates clear values and wraps each of them in a
+[`transform()` call](#the-transform-sql-extensions), so the proxy tokenizes them for real on the way
+in. The round trip is therefore a genuine one — tokenized by the engine on the way in, detokenized on
+the way out.
+
+Start the proxy with `proxy.flight-sql.enabled=true`, then:
+
+```
+mvn -Pflight-sql-loader test-compile exec:exec \
+    -Dloader.args="--user sa --password secret --rows 1000 --create-table --insert-mode literal"
+```
+
+The profile uses `exec:exec` so the forked JVM gets the required `--add-opens` flag.
+
+| Switch | Default | Meaning |
+| --- | --- | --- |
+| `--host` / `--port` | `localhost` / `32010` | Flight SQL endpoint of the proxy. |
+| `--user` / `--password` | `sa` / empty | **Database** credentials: the proxy validates them by opening a real connection to the proxied datasource. |
+| `--table` | `PERSON` | Target table name. |
+| `--rows` | `10000` | Number of persons to generate. |
+| `--locale` | `de-CH` | Faker locale for the generated data. |
+| `--data-mode` | `transform` | `transform` wraps every value in a `transform()` call so the proxy tokenizes it; `clear` emits plain faker data. |
+| `--insert-mode` | `prepared` | `prepared` uses parameter binding, `literal` uses quote-escaped literals. **`--data-mode transform` requires `literal`.** |
+| `--transform-class` | `Person` | RPS class name of the generated `transform()` calls. |
+| `--transform-property` | `ShortString` | RPS property name of the generated `transform()` calls. |
+| `--transform-jurisdiction` | `LU` | Jurisdiction argument, ignored by the proxy for now. |
+| `--batch-size` | `1000` | Rows per batch, prepared mode only. |
+| `--create-table` | off | Drops and recreates the table first, with portable DDL (H2 and SQL Server). |
+| `--no-read-back` | off | Skips the read-back phase. |
+| `--read-back-rows` | `10` | Number of rows printed during read-back. |
+| `--help` | | Prints the usage. |
+
+Every sensitive column is written with the **same** class and property, since a `transform()` call
+states its mapping explicitly; the column mappings of the configuration only serve the *implicit*
+detokenization of the columns that declare nothing.
+
+All token-bearing columns are `VARCHAR`, including `BIRTH_DATE`: a tokenized date does not fit a
+`DATE` column.
+
+> **Reading back is a different matter.** The read-back resolves each column through the configured
+> **column mappings**, so `BIRTH_DATE` and `EMAIL`, mapped to `Person.birthDate` and `Person.email`,
+> come back detokenized with a different mapping than the one they were tokenized with. Align
+> `--transform-property` with the column mappings, or expect those two columns not to round-trip.
+
+> **`--data-mode tokens` no longer exists.** It fabricated synthetic tokens no engine had ever
+> issued, so the read-back could only ever report them as still tokenized. The loader refuses the
+> value and points at `transform`.
+
+`PersonFlightSqlLoaderTest` runs this same program end to end against an in-memory H2 database
+fronted by a real Flight SQL server, which is the reproducible version of the above.
+
+## Using Flight SQL through ODBC on Windows
+
+Windows tools (64-bit Excel, Power BI, Access, any ODBC application) reach the Flight SQL server
+through the official, generic **Apache Arrow Flight SQL ODBC Driver** (Apache License 2.0). Its login
+is our server's: the `UID`/`PWD` of the connection are the database credentials, sent in the standard
+Flight handshake.
+
+### The client package
+
+```bash
+mvn -Podbc-package -DskipTests package
+# -> target/rgd-flightsql-odbc-<version>.zip
+```
+
+The `odbc-package` profile downloads the driver MSI from the Apache Arrow GitHub release (with Arrow's
+`LICENSE.txt` and `NOTICE.txt`), **fails the build if its SHA-256 differs** from the pinned one, and
+zips it with the scripts of `src/odbc/`. It is kept out of the default build so that it does not
+depend on GitHub. Properties:
+
+| Property | Default |
+|---|---|
+| `odbc.dsn.name` | `RGD Flight SQL` |
+| `odbc.dsn.host` / `odbc.dsn.port` | `tokenization-secure-gvz-e01.corp.ubp.ch` / `32010` |
+| `odbc.dsn.use-encryption` | `true` |
+| `odbc.driver.version` / `odbc.driver.sha256` | `25.0.1` / the checksum published with the release asset |
+| `odbc.driver.url` | the GitHub release asset; point it to a mirror (Artifactory) when GitHub is not reachable |
+
+e.g. `mvn -Podbc-package -DskipTests package -Dodbc.dsn.host=flightsql-test.example.com`. When
+upgrading the driver, update `odbc.driver.version` and `odbc.driver.sha256` together.
+
+The zip holds:
+
+| File | Role |
+|---|---|
+| `install.cmd`, `Install-RgdFlightSqlDsn.ps1` | Installs the driver if missing or older (UAC prompt for that step only), then creates the DSN. |
+| `test.cmd`, `Test-RgdFlightSqlDsn.ps1` | Asks for a user name and password, connects, runs `SELECT 1`, reads the data types and tables. |
+| `uninstall.cmd`, `Uninstall-RgdFlightSqlDsn.ps1` | Removes the DSN; `-RemoveDriver` also uninstalls the driver. |
+| `datasource.psd1` | The defaults above, editable by the client before installing. |
+| `README.txt` | Client instructions. |
+| `driver\` | The MSI, `LICENSE.txt`, `NOTICE.txt`. |
+
+The client unzips it and double-clicks `install.cmd`, then `test.cmd`. Highlights:
+
+- **User DSN by default** (`-DsnType System` for every user of the machine, from an elevated prompt).
+  Only the `msiexec` step is elevated, so the DSN lands in the calling user's registry, not the
+  administrator's.
+- **No credentials are stored in the DSN**: each application supplies `UID`/`PWD`.
+- Idempotent: running it again changes nothing; a DSN with other settings is only replaced with
+  `-Force`.
+- `-TrustedCerts <pem>` for a private CA (the file is copied under `%LOCALAPPDATA%`/`%ProgramData%`,
+  and the Windows store is then turned off, since the driver ignores `trustedCerts` otherwise);
+  `-DisableCertificateVerification` for troubleshooting only.
+- Exit codes for deployment tools: `0` OK, `1` failure, `2` invalid settings, `3` administrator rights
+  required, `4` driver installation failed, `5` DSN exists with other settings. A transcript of every
+  run goes to `logs\`.
+
+A DSN-less connection string works too:
+
+```text
+Driver={Apache Arrow Flight SQL ODBC Driver};HOST=tokenization-secure-gvz-e01.corp.ubp.ch;PORT=32010;useEncryption=true;UID=<user>;PWD=<password>
+```
+
+### Points to know
+
+- **64-bit only**: Apache publishes no 32-bit driver, so **32-bit Office cannot use it**.
+- **The DSN uses TLS by default, the server does not**: enable [TLS](#tls) on the server, or build the
+  package with `-Dodbc.dsn.use-encryption=false` for a test environment. A mismatch shows as a failed
+  or hanging connection; `test.cmd` lists the likely causes.
+- **The server certificate must name the DSN host**, and its CA must be trusted by the Windows
+  certificate store of the client machines (normally the case for a corporate CA), or be given with
+  `-TrustedCerts`.
+
+### Metadata
+
+ODBC tools browse the database through catalog calls. The Flight SQL server answers, under the
+caller's own database identity:
+
+| ODBC call | Flight SQL command | Source |
+|---|---|---|
+| `SQLGetInfo` | `GetSqlInfo` | server and database properties |
+| `SQLTables`, `SQLColumns`, ... | `GetCatalogs`, `GetDbSchemas`, `GetTables`, `GetTableTypes` | `DatabaseMetaData` |
+| `SQLGetTypeInfo` | `GetXdbcTypeInfo` | `DatabaseMetaData.getTypeInfo()`, translated to ODBC type codes |
+| `SQLPrimaryKeys` | `GetPrimaryKeys` | `getPrimaryKeys()`, in key order |
+| `SQLForeignKeys` | `GetImportedKeys`, `GetExportedKeys`, `GetCrossReference` | `getImportedKeys()`, `getExportedKeys()`, `getCrossReference()` |
+
+JDBC types ODBC cannot represent (`ARRAY`, `STRUCT`, `OTHER`, vendor codes...) are left out of the
+type list rather than mislabelled; notably JDBC `ROWID` (-8), whose code means `WCHAR` in ODBC.
+
 ## Useful commands
 
 Launch proxy in dev mode :
 
-`mvn quarkus:dev`
+`mvn quarkus:dev -Djvm.args="--add-opens=java.base/java.nio=ALL-UNNAMED"`
 
 Package with native profile :
 
@@ -88,7 +795,7 @@ Package with native profile :
 
 Launch server:
 
-`java -jar ./target/rgd-http-proxy-1.0.0.jar`
+`java --add-opens=java.base/java.nio=ALL-UNNAMED -jar ./target/rgd-http-proxy-1.0.0.jar`
 
 Change version accordingly.
 

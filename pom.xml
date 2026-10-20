@@ -7,13 +7,17 @@
 
     <groupId>com.ubp.rgd.proxy</groupId>
     <artifactId>rgd-http-proxy</artifactId>
-    <version>1.4.2</version>
+    <version>1.6.0</version>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <quarkus.platform.version>3.25.0</quarkus.platform.version>
+        <arrow.version>19.0.0</arrow.version>
+        <protobuf.version>4.33.4</protobuf.version>
+        <rps.client.version>4.0.0-hironico</rps.client.version>
+        <jackson.annotations.version>2.22</jackson.annotations.version>
 
         <quarkus.package.jar.type>uber-jar</quarkus.package.jar.type>
     </properties>
@@ -27,10 +31,86 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- Arrow Flight 19 is built against protobuf 4.x, override the Quarkus BOM 3.25.x -->
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+                <version>${protobuf.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java-util</artifactId>
+                <version>${protobuf.version}</version>
+            </dependency>
+            <!-- The RPS client 4.x is built on Jackson 3, which still reads the 2.x annotations but
+                 needs at least the 2.22 ones (JsonSerializeAs...). Override the Quarkus BOM 2.19.x,
+                 otherwise the RPS HTTP client cannot even be loaded. Annotations are backward
+                 compatible, so the Jackson 2 stack of Quarkus is unaffected. -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.annotations.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
+        <!-- Logging facade used by all our classes -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Apache Flight SQL Server -->
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>flight-core</artifactId>
+            <version>${arrow.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>flight-sql</artifactId>
+            <version>${arrow.version}</version>
+        </dependency>
+        <!-- JDBC ResultSet to Arrow conversion for the Flight SQL server -->
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-jdbc</artifactId>
+            <version>${arrow.version}</version>
+        </dependency>
+        <!-- Off-heap allocator required at runtime by Arrow -->
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-memory-netty</artifactId>
+            <version>${arrow.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- JDBC driver of the proxied database -->
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>12.8.1.jre11</version>
+        </dependency>
+
+        <!-- In-memory database used by the Flight SQL server tests -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>2.3.232</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Flight SQL JDBC client driver, used by the PersonFlightSqlLoader tool and its tests
+             to talk to our own Flight SQL server the way a real client would. -->
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>flight-sql-jdbc-driver</artifactId>
+            <version>${arrow.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+
         <!-- WDX1 transliteration lib for CONCAT service-->
         <dependency>
             <groupId>com.ibm.icu</groupId>
@@ -42,7 +122,7 @@
         <dependency>
             <groupId>ch.regdata.rps.engine.client</groupId>
             <artifactId>rps-engine-api-client</artifactId>
-            <version>3.10.0</version>
+            <version>${rps.client.version}</version>
         </dependency>
 
         <dependency>
@@ -73,6 +153,20 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-cache</artifactId>
+        </dependency>
+
+        <!-- Resolution of the secrets manager that created a token: MongoDB then SQL Server lookups -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-mongodb-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-agroal</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jdbc-mssql</artifactId>
         </dependency>
 
         <!-- Swagger OpenAPI support -->
@@ -206,6 +300,8 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.0.0</version>
                 <configuration>
+                    <!-- Apache Arrow needs access to java.nio internals for its off-heap allocator -->
+                    <argLine>--add-opens=java.base/java.nio=ALL-UNNAMED</argLine>
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
@@ -223,4 +319,117 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Runs the Flight SQL person loader against a running proxy, for example:
+             mvn -Pflight-sql-loader test-compile exec:exec -Dloader.args="[switches]"
+             exec:exec is used rather than exec:java because Apache Arrow needs the forked JVM to be
+             started with the add-opens flag on java.base/java.nio. -->
+        <profile>
+            <id>flight-sql-loader</id>
+            <properties>
+                <loader.args></loader.args>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <configuration>
+                            <executable>java</executable>
+                            <classpathScope>test</classpathScope>
+                            <!-- commandlineArgs (not an arguments list) so that the switches passed
+                                 in loader.args are split on whitespace instead of being handed over
+                                 as a single argument. -->
+                            <commandlineArgs>--add-opens=java.base/java.nio=ALL-UNNAMED -classpath %classpath com.ubp.rgd.tools.PersonFlightSqlLoader ${loader.args}</commandlineArgs>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Builds target/rgd-flightsql-odbc-<version>.zip, the package clients unzip on Windows to install
+             the Apache Arrow Flight SQL ODBC driver and an ODBC datasource pointing to our Flight SQL server:
+               mvn -Podbc-package -DskipTests package
+             The driver MSI is downloaded from GitHub (or from -Dodbc.driver.url=<mirror>) and checked
+             against odbc.driver.sha256. Datasource defaults can be overridden, e.g. -Dodbc.dsn.host=...
+             Kept out of the default build so that it does not depend on GitHub being reachable. -->
+        <profile>
+            <id>odbc-package</id>
+            <properties>
+                <!-- When upgrading the driver, update the checksum (published with the GitHub release
+                     asset) and check the upgrade code and driver name in the MSI. -->
+                <odbc.driver.version>25.0.1</odbc.driver.version>
+                <odbc.driver.sha256>27f761673abd12c28d304233f569b90f42e7a4e41fee5ec224c8eef04e419f15</odbc.driver.sha256>
+                <odbc.driver.name>Apache Arrow Flight SQL ODBC Driver</odbc.driver.name>
+                <odbc.driver.upgrade-code>{DBF27A18-F8BF-423F-9E3A-957414D52C4B}</odbc.driver.upgrade-code>
+                <odbc.driver.msi>Apache-Arrow-Flight-SQL-ODBC-${odbc.driver.version}-win64.msi</odbc.driver.msi>
+                <odbc.driver.url>https://github.com/apache/arrow/releases/download/apache-arrow-${odbc.driver.version}/${odbc.driver.msi}</odbc.driver.url>
+                <odbc.driver.license-url>https://raw.githubusercontent.com/apache/arrow/apache-arrow-${odbc.driver.version}/LICENSE.txt</odbc.driver.license-url>
+                <odbc.driver.notice-url>https://raw.githubusercontent.com/apache/arrow/apache-arrow-${odbc.driver.version}/NOTICE.txt</odbc.driver.notice-url>
+                <odbc.driver.dir>${project.build.directory}/odbc-driver</odbc.driver.dir>
+
+                <odbc.dsn.name>RGD Flight SQL</odbc.dsn.name>
+                <odbc.dsn.host>tokenization-secure-gvz-e01.corp.ubp.ch</odbc.dsn.host>
+                <odbc.dsn.port>32010</odbc.dsn.port>
+                <odbc.dsn.use-encryption>true</odbc.dsn.use-encryption>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>download-odbc-driver</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${odbc.driver.dir}"/>
+                                        <get src="${odbc.driver.url}" dest="${odbc.driver.dir}/${odbc.driver.msi}" skipexisting="true"/>
+                                        <get src="${odbc.driver.license-url}" dest="${odbc.driver.dir}/LICENSE.txt" skipexisting="true"/>
+                                        <get src="${odbc.driver.notice-url}" dest="${odbc.driver.dir}/NOTICE.txt" skipexisting="true"/>
+                                        <checksum file="${odbc.driver.dir}/${odbc.driver.msi}" algorithm="SHA-256"
+                                                  property="${odbc.driver.sha256}" verifyproperty="odbc.driver.checksum.ok"/>
+                                        <fail message="${odbc.driver.msi} does not match the expected SHA-256 ${odbc.driver.sha256}. Delete ${odbc.driver.dir} (or run mvn clean) and build again, or check -Dodbc.driver.url.">
+                                            <condition>
+                                                <isfalse value="${odbc.driver.checksum.ok}"/>
+                                            </condition>
+                                        </fail>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <version>3.7.1</version>
+                        <executions>
+                            <execution>
+                                <id>odbc-datasource-zip</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <descriptors>
+                                        <descriptor>src/assembly/odbc-datasource.xml</descriptor>
+                                    </descriptors>
+                                    <finalName>rgd-flightsql-odbc-${project.version}</finalName>
+                                    <appendAssemblyId>false</appendAssemblyId>
+                                    <attach>false</attach>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

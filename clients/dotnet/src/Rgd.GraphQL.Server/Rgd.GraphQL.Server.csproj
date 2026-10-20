@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>Rgd.GraphQL.Server</RootNamespace>
+    <!-- The global usings of Hot Chocolate clash with System.IO.Path and KeyNotFoundException. -->
+    <HotChocolateImplicitUsings>disable</HotChocolateImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Apache.Arrow.Flight.Sql" Version="23.0.0" />
+    <PackageReference Include="HotChocolate.AspNetCore" Version="16.6.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The config directory ships next to the binaries so that a published application finds it, except
+      application.properties: it holds the credentials, and is provided by each deployment.
+    -->
+    <None Include="config\**\*" Exclude="config\application.properties" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Rgd.GraphQL.Server.Tests" />
+  </ItemGroup>
+
+</Project>

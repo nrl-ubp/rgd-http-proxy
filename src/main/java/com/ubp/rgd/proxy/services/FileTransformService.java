@@ -1,23 +1,15 @@
 package com.ubp.rgd.proxy.services;
 
-import ch.regdata.rps.engine.client.*;
-import ch.regdata.rps.engine.client.enginecontext.ProcessingContext;
-import ch.regdata.rps.engine.client.enginecontext.RPSEngineContextResolver;
-import ch.regdata.rps.engine.client.http.HttpClientEngineProvider;
-import ch.regdata.rps.engine.client.model.api.value.IRPSValue;
-import ch.regdata.rps.engine.client.model.api.value.RPSValue;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jayway.jsonpath.DocumentContext;
-import com.jayway.jsonpath.JsonPath;
-import com.ubp.rgd.proxy.transform.RPSClientEngineProvider;
-import com.ubp.rgd.proxy.transform.config.EntityTransformConfig;
+import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.config.FileTransformConfig;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.jspecify.annotations.NonNull;
 
 import java.io.File;
@@ -33,10 +25,13 @@ import java.util.regex.Pattern;
 @ApplicationScoped
 public class FileTransformService {
 
-    private static final Logger LOG = Logger.getLogger(FileTransformService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FileTransformService.class);
 
     @Inject
-    RPSClientEngineProvider engineProvider;
+    EndPointTransformer transformer;
+
+    @Inject
+    SecretsManagerResolver secretsManagerResolver;
 
     @ConfigProperty(name = "proxy.file-transform.config-file", defaultValue = "./config/file_transform_config.json")
     String fileTransformConfigFile;
@@ -44,8 +39,9 @@ public class FileTransformService {
     @ConfigProperty(name = "proxy.file-transform.enabled", defaultValue = "false")
     boolean fileTransformEnabled;
 
-    private List<FileTransformConfig> fileTransformConfigs;
-    private Map<String, ScheduledExecutorService> schedulers = new HashMap<>();
+    // Package private so that the tests can drive a configuration without a configuration file.
+    List<FileTransformConfig> fileTransformConfigs;
+    private final Map<String, ScheduledExecutorService> schedulers = new HashMap<>();
 
     @PostConstruct
     public void init() {
@@ -55,12 +51,12 @@ public class FileTransformService {
         }
 
         try {
-            LOG.infof("Loading file transform configuration from %s", fileTransformConfigFile);
+            LOG.info("Loading file transform configuration from {}", fileTransformConfigFile);
             ObjectMapper objectMapper = new ObjectMapper();
             File configFile = new File(fileTransformConfigFile);
             
             if (!configFile.exists()) {
-                LOG.warnf("File transform config file not found: %s", fileTransformConfigFile);
+                LOG.warn("File transform config file not found: {}", fileTransformConfigFile);
                 return;
             }
 
@@ -71,7 +67,7 @@ public class FileTransformService {
                 return;
             }
 
-            LOG.infof("Loaded %d file transform configuration(s)", fileTransformConfigs.size());
+            LOG.info("Loaded {} file transform configuration(s)", fileTransformConfigs.size());
             
             // Validate and create directories
             for (FileTransformConfig config : fileTransformConfigs) {
@@ -97,10 +93,10 @@ public class FileTransformService {
             Path path = Paths.get(directory);
             if (!Files.exists(path)) {
                 Files.createDirectories(path);
-                LOG.infof("Created %s directory: %s", type, directory);
+                LOG.info("Created {} directory: {}", type, directory);
             }
         } catch (IOException e) {
-            LOG.errorf(e, "Failed to create %s directory: %s", type, directory);
+            LOG.error("Failed to create {} directory: {}", type, directory, e);
         }
     }
 
@@ -115,10 +111,10 @@ public class FileTransformService {
                         TimeUnit.SECONDS
                 );
                 schedulers.put(config.getName(), scheduler);
-                LOG.infof("Started scheduler for '%s' with interval: %d seconds", 
+                LOG.info("Started scheduler for '{}' with interval: {} seconds", 
                     config.getName(), config.getScanIntervalSeconds());
             } else {
-                LOG.infof("Configuration '%s' has scan interval %d - will only process on-demand", 
+                LOG.info("Configuration '{}' has scan interval {} - will only process on-demand", 
                     config.getName(), config.getScanIntervalSeconds());
             }
         }
@@ -127,17 +123,31 @@ public class FileTransformService {
     /**
      * Process a specific configuration synchronously.
      * This method can be called from external applications for on-demand processing.
+     * <p>
+     * A configuration driven by the scheduler cannot be triggered: the server is already processing
+     * it every {@code scan-interval-seconds}, so an on-demand run would walk the same directory at
+     * the same time as a scheduled one, and neither run would then describe what really happened. A
+     * configuration meant to be driven by a batch must declare an interval of 0.
+     *
      * @param configName the name of the configuration to process
-     * @return number of files processed
+     * @return the outcome of the run
      * @throws IllegalArgumentException if configuration not found
+     * @throws IllegalStateException if the configuration is driven by the scheduler
      */
-    public int processConfigurationByName(String configName) {
+    public FileTransformResult processConfigurationByName(String configName) {
         FileTransformConfig config = fileTransformConfigs.stream()
                 .filter(cfg -> cfg.getName().equals(configName))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Configuration not found: " + configName));
-        
-        LOG.infof("Processing configuration '%s' synchronously", configName);
+
+        if (config.getScanIntervalSeconds() > 0) {
+            throw new IllegalStateException(String.format(
+                    "Configuration '%s' is processed by the scheduler every %d seconds and cannot be"
+                            + " triggered on demand. Set its scan-interval-seconds to 0 to drive it from a batch.",
+                    configName, config.getScanIntervalSeconds()));
+        }
+
+        LOG.info("Processing configuration '{}' synchronously", configName);
         return processConfiguration(config);
     }
 
@@ -154,10 +164,12 @@ public class FileTransformService {
                 .toList();
     }
 
-    private int processConfiguration(FileTransformConfig config) {
+    private FileTransformResult processConfiguration(FileTransformConfig config) {
         Path sourceDir = Paths.get(config.getSourceDirectory());
         Pattern filePattern = Pattern.compile(config.getFilePattern());
-        final int[] processedCount = {0};
+        final int[] succeeded = {0};
+        final int[] failed = {0};
+        final List<String> errors = new ArrayList<>();
 
         try {
             Files.walkFileTree(sourceDir, new SimpleFileVisitor<Path>() {
@@ -172,8 +184,13 @@ public class FileTransformService {
 
                     // Check if file matches the pattern
                     if (filePattern.matcher(fileName).matches()) {
-                        processFile(file, config);
-                        processedCount[0]++;
+                        String failure = processFile(file, config);
+                        if (failure == null) {
+                            succeeded[0]++;
+                        } else {
+                            failed[0]++;
+                            errors.add(failure);
+                        }
                     }
 
                     return FileVisitResult.CONTINUE;
@@ -181,18 +198,35 @@ public class FileTransformService {
 
                 @Override
                 public FileVisitResult visitFileFailed(@NonNull Path file, @NonNull IOException exc) {
-                    LOG.warnf(exc, "Failed to visit file: %s", file);
+                    LOG.warn("Failed to visit file: {}", file, exc);
+                    errors.add(String.format("%s: cannot be read - %s", file, exc.getMessage()));
                     return FileVisitResult.CONTINUE;
                 }
             });
         } catch (IOException e) {
-            LOG.errorf(e, "Error scanning directory: %s", sourceDir);
+            // Not being able to scan the source directory is a failed run, not an empty one.
+            LOG.error("Error scanning directory: {}", sourceDir, e);
+            errors.add(String.format("Cannot scan the source directory %s - %s", sourceDir, e.getMessage()));
         }
-        
-        return processedCount[0];
+
+        FileTransformResult result =
+                new FileTransformResult(config.getName(), succeeded[0], failed[0], List.copyOf(errors));
+
+        LOG.info("Configuration '{}' finished with status {}: {} succeeded, {} failed",
+                config.getName(), result.status(), result.filesSucceeded(), result.filesFailed());
+
+        return result;
     }
 
-    private void processFile(Path file, FileTransformConfig config) {
+    /**
+     * Transform one file: rename it to mark it in progress, write the result to the target
+     * directory, and move it to the error directory if anything goes wrong.
+     *
+     * @param file   the file to process
+     * @param config the configuration being run
+     * @return {@code null} when the file was transformed, otherwise a message describing the failure
+     */
+    private String processFile(Path file, FileTransformConfig config) {
         Path wipFile = null;
         
         try {
@@ -200,7 +234,7 @@ public class FileTransformService {
             wipFile = file.resolveSibling(file.getFileName() + config.getWorkInProgressSuffix());
             Files.move(file, wipFile, StandardCopyOption.ATOMIC_MOVE);
             
-            LOG.infof("Processing file: %s", file.getFileName());
+            LOG.info("Processing file: {}", file.getFileName());
 
             // Read the file content
             String content = Files.readString(wipFile);
@@ -218,22 +252,29 @@ public class FileTransformService {
             // Delete the work-in-progress file
             Files.delete(wipFile);
 
-            LOG.infof("Successfully processed file: %s -> %s", file.getFileName(), targetPath);
+            LOG.info("Successfully processed file: {} -> {}", file.getFileName(), targetPath);
+            return null;
 
         } catch (Exception e) {
-            LOG.errorf(e, "Error processing file: %s", file.getFileName());
-            
+            LOG.error("Error processing file: {}", file.getFileName(), e);
+
+            String failure = String.format("%s: %s", file.getFileName(), e.getMessage());
+
             // Move file to error directory
             if (wipFile != null && Files.exists(wipFile)) {
                 try {
                     Path errorPath = calculateTargetPath(file, wipFile, config, config.getErrorDirectory());
                     Files.createDirectories(errorPath.getParent());
                     Files.move(wipFile, errorPath, StandardCopyOption.REPLACE_EXISTING);
-                    LOG.infof("Moved failed file to error directory: %s", errorPath);
+                    LOG.info("Moved failed file to error directory: {}", errorPath);
                 } catch (IOException moveException) {
-                    LOG.errorf(moveException, "Failed to move file to error directory: %s", wipFile);
+                    LOG.error("Failed to move file to error directory: {}", wipFile, moveException);
+                    failure += String.format(" (and could not be moved to the error directory: %s)",
+                            moveException.getMessage());
                 }
             }
+
+            return failure;
         }
     }
 
@@ -256,132 +297,43 @@ public class FileTransformService {
         }
     }
 
+    /**
+     * Transform the content of a file with the configured tokenizer.
+     * <p>
+     * The transformation itself is delegated to the injected {@link EndPointTransformer}, so a file
+     * is protected exactly the same way as an HTTP payload, with the implementation selected by
+     * {@code proxy.transform.impl}.
+     *
+     * @param jsonContent the content of the file
+     * @param config      the file transformation configuration
+     * @return the transformed content
+     * @throws Exception when the transformation fails
+     */
     private String transformContent(String jsonContent, FileTransformConfig config) throws Exception {
-        Map<String, EntityTransformConfig> attributesConfigs = config.sortAttributeTransformsConfig();
-
-        if (attributesConfigs.isEmpty()) {
-            LOG.debug("No entity transform configs, returning original content");
-            return jsonContent;
-        }
-
-        // Parse JSON as a document
-        DocumentContext documentContext = JsonPath.parse(jsonContent);
-
-        Map<String, RPSValue[]> rpsValuesByJsonPath = getRPSValuesFromBody(documentContext, attributesConfigs);
-
-        // Create a flat list of RPS Values
-        List<RPSValue> flatList = new ArrayList<>();
-        rpsValuesByJsonPath.values().forEach(rpsJsonValues -> flatList.addAll(Arrays.asList(rpsJsonValues)));
-
-        if (flatList.isEmpty()) {
-            LOG.debug("No values to transform, returning original content");
-            return jsonContent;
-        }
-
-        // Call transform API
-        transformData(
-                engineProvider.getClientEngineProvider(),
-                flatList.toArray(new RPSValue[0]),
-                getRightContext(config),
-                getProcessingContext(config)
+        return transformer.transformJson(
+                jsonContent,
+                config.sortAttributeTransformsConfig(),
+                config.getRightContextEvidences(),
+                config.getProcessingContextEvidences(),
+                secretsManagerFor(config)
         );
-
-        // Replace the tokenized values in the document
-        setRPSValuesToBody(documentContext, rpsValuesByJsonPath);
-
-        // Return transformed JSON
-        return documentContext.jsonString();
     }
 
-    private Context getRightContext(FileTransformConfig cfg) {
-        Context rightContext = new Context();
-
-        cfg.getRightContextEvidences().forEach((key, value) -> {
-            Evidence moduleEvidence = new Evidence();
-            moduleEvidence.setName(key);
-            moduleEvidence.setValue(value);
-            rightContext.addEvidence(moduleEvidence);
-            LOG.debugf("Right context: %s = %s", key, value);
-        });
-
-        return rightContext;
-    }
-
-    private ProcessingContext getProcessingContext(FileTransformConfig cfg) {
-        ProcessingContext processingContext = new ProcessingContext();
-
-        cfg.getProcessingContextEvidences().forEach((key, value) -> {
-            Evidence evidence = new Evidence();
-            evidence.setName(key);
-            evidence.setValue(value);
-            processingContext.addEvidence(evidence);
-            LOG.debugf("Processing context: %s = %s", key, value);
-        });
-
-        return processingContext;
-    }
-
-    protected Map<String, RPSValue[]> getRPSValuesFromBody(DocumentContext documentContext, 
-                                                            Map<String, EntityTransformConfig> attributesConfigs) {
-        Map<String, RPSValue[]> rpsValuesByJsonPath = new HashMap<>();
-
-        for (String jsonPath : attributesConfigs.keySet()) {
-            try {
-                List<String> values = documentContext.read(jsonPath);
-                EntityTransformConfig attrCfg = attributesConfigs.get(jsonPath);
-                RPSValue[] valuesForPath = new RPSValue[values.size()];
-                
-                for (int i = 0; i < values.size(); i++) {
-                    String oldValue = values.get(i);
-                    LOG.debugf("RPSValue: %s = %s : %s", oldValue, attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName());
-                    valuesForPath[i] = attrCfg.getRPSValue(oldValue);
-                }
-                
-                rpsValuesByJsonPath.put(jsonPath, valuesForPath);
-            } catch (Exception e) {
-                LOG.warnf(e, "Failed to read json path: %s", jsonPath);
-            }
-        }
-
-        return rpsValuesByJsonPath;
-    }
-
-    protected void setRPSValuesToBody(DocumentContext documentContext, Map<String, RPSValue[]> rpsValuesByJsonPath) {
-        rpsValuesByJsonPath.forEach((jsonPath, rpsJsonValues) -> {
-            try {
-                List<String> values = documentContext.read(jsonPath);
-                for (int i = 0; i < values.size(); i++) {
-                    RPSValue rpsValue = rpsJsonValues[i];
-                    String newValue = rpsValue.getTransformed();
-                    documentContext.set(jsonPath.replace("*", String.valueOf(i)), newValue);
-                }
-            } catch (Exception e) {
-                LOG.warnf(e, "Failed to set values for json path: %s", jsonPath);
-            }
-        });
-    }
-
-    private void transformData(HttpClientEngineProvider engineProvider, 
-                               IRPSValue<String>[] values, 
-                               Context rightContext, 
-                               ProcessingContext processingContext) throws Exception {
-
-        RPSEngine engine = new RPSEngine(
-                engineProvider,
-                new RPSEngineConverter(),
-                new RPSEngineContextResolver(null)
-        );
-
-        RequestContext requestContext = new RequestContext(engine, new RPSEngineContextResolver(null));
-
-        requestContext.withRequest(
-                values,
-                rightContext,
-                processingContext,
-                null
-        );
-
-        requestContext.transform();
+    /**
+     * The secrets manager a file is transformed with.
+     * <p>
+     * Protecting uses the default secrets manager of the mapping file. Unprotecting uses none, so
+     * that the transformer resolves the secrets manager that created each token: a file may mix
+     * tokens of several jurisdictions.
+     *
+     * @param config the file transformation configuration, carrying the {@code Action} evidence
+     * @return the default secrets manager, or {@code null} when unprotecting
+     */
+    UUID secretsManagerFor(FileTransformConfig config) {
+        Map<String, String> evidences = config.getProcessingContextEvidences();
+        boolean unprotect = evidences != null && evidences.entrySet().stream()
+                .anyMatch(e -> "Action".equalsIgnoreCase(e.getKey()) && "Unprotect".equalsIgnoreCase(e.getValue()));
+        return unprotect ? null : secretsManagerResolver.defaultSecretsManager();
     }
 
     public void shutdown() {
@@ -389,7 +341,7 @@ public class FileTransformService {
             LOG.info("Shutting down file transform schedulers");
             schedulers.forEach((name, scheduler) -> {
                 if (scheduler != null && !scheduler.isShutdown()) {
-                    LOG.infof("Shutting down scheduler for: %s", name);
+                    LOG.info("Shutting down scheduler for: {}", name);
                     scheduler.shutdown();
                     try {
                         if (!scheduler.awaitTermination(30, TimeUnit.SECONDS)) {

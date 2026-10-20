@@ -1,8 +1,11 @@
 package com.ubp.rgd.proxy.filters;
 
+import com.ubp.rgd.proxy.exception.UnknownSecretsManagerException;
+import com.ubp.rgd.proxy.resources.ProxyResource;
 import com.ubp.rgd.proxy.security.SecurityContext;
+import com.ubp.rgd.proxy.services.SecretsManagerResolver;
 import com.ubp.rgd.proxy.transform.config.EndPointTransformConfig;
-import com.ubp.rgd.proxy.transform.RPSEndPointTransformer;
+import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -13,9 +16,11 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * The PostFilter will actually make the RegData transformation depending on the configuration
@@ -25,7 +30,7 @@ import java.util.List;
  */
 @Provider
 public class PostFilter implements ContainerResponseFilter {
-    private static final Logger LOG = Logger.getLogger(PostFilter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PostFilter.class);
 
     /**
      * Security context can be used to configure the authorizations for the transformers
@@ -35,7 +40,13 @@ public class PostFilter implements ContainerResponseFilter {
     private SecurityContext securityContext;
 
     @Inject
-    RPSEndPointTransformer endPointTransformer;
+    EndPointTransformer endPointTransformer;
+
+    /**
+     * Selects the RPS secrets manager when {@link PreFilter} has not already done it.
+     */
+    @Inject
+    SecretsManagerResolver secretsManagerResolver;
 
     /**
      * Whether a caller is allowed to skip the RPS transformation with the
@@ -48,7 +59,7 @@ public class PostFilter implements ContainerResponseFilter {
 
     @Override
     public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
-        LOG.infof("POST-FILTER: %s %s",
+        LOG.info("POST-FILTER: {} {}",
                 requestContext.getMethod(),
                 requestContext.getUriInfo().getPath());
 
@@ -57,32 +68,39 @@ public class PostFilter implements ContainerResponseFilter {
             return;
         }
 
-        // TODO set the proxy string in a application.properties parameter !
-        String proxyBasePath = "/proxy";
-
-        String requestPath = requestContext.getUriInfo().getPath();
+        String requestPath = requestContext.getUriInfo().getPath().replaceAll("//", "/").toLowerCase();
 
         // if request is not a sub path of the proxy path
-        if (!requestPath.startsWith(proxyBasePath)) {
-            LOG.infof("POST-FILTER: Not the proxied path. Skipping filtering.");
+        if (!requestPath.startsWith(ProxyResource.PROXY_BASE_PATH)) {
+            LOG.info("POST-FILTER: Not the proxied path. Skipping filtering.");
             return;
         }
 
-        String proxyUrlPath = requestPath.substring(proxyBasePath.length());
+        String proxyUrlPath = requestPath.substring(ProxyResource.PROXY_BASE_PATH.length()).replaceAll("//", "/").toLowerCase();
 
         // the caller may have asked for the payloads to be returned without any RPS transformation
         if (allowIgnoreTransformHeader && TransformBypass.isRequested(requestContext)) {
-            LOG.infof("POST filter: %s is set, returning %s > %s without any transformation.",
+            LOG.info("POST filter: {} is set, returning {} > {} without any transformation.",
                     TransformBypass.HEADER_NAME, requestContext.getMethod(), requestPath);
             // echo the header so that the caller can tell the payload was left untransformed
             responseContext.getHeaders().putSingle(TransformBypass.HEADER_NAME, "true");
             return;
         }
 
-        LOG.infof("POST filter: Comparing if we need to transform url path: AFTER: %s > %s", requestContext.getMethod(), proxyUrlPath);
+        LOG.info("POST filter: Comparing if we need to transform url path: AFTER: {} > {}", requestContext.getMethod(), proxyUrlPath);
         EndPointTransformConfig cfg = endPointTransformer.getEndpointTransformConfig(requestContext.getMethod(), proxyUrlPath, "AFTER");
         if (cfg != null) {
-            LOG.infof("POST filter: Transforming %s > %s", requestContext.getMethod(), requestContext.getUriInfo().getPath());
+            LOG.info("POST filter: Transforming {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
+
+            UUID secretsManager;
+            try {
+                secretsManager = secretsManagerOf(requestContext);
+            } catch (UnknownSecretsManagerException e) {
+                LOG.error("POST filter: {}", e.getMessage());
+                responseContext.setStatus(Response.Status.BAD_REQUEST.getStatusCode());
+                responseContext.setEntity(e.getResponse().getEntity());
+                return;
+            }
 
             try {
                 // entity of the response can be transformed
@@ -103,7 +121,7 @@ public class PostFilter implements ContainerResponseFilter {
                 MultivaluedMap<String, String> requestParams = requestContext.getUriInfo().getQueryParameters();
 
                 // perform actual transform
-                String finalJson = endPointTransformer.transform(responseJson, responseHeadersStr, requestParams, cfg);
+                String finalJson = endPointTransformer.transform(responseJson, responseHeadersStr, requestParams, cfg, secretsManager);
 
                 // replacing the transformed values in the response
                 responseContext.setEntity(finalJson);
@@ -113,7 +131,20 @@ public class PostFilter implements ContainerResponseFilter {
                 requestContext.abortWith(Response.status(500).entity(e.getMessage()).build());
             }
         } else {
-            LOG.infof("POST filter: No need to transform: %s > %s", requestContext.getMethod(), requestContext.getUriInfo().getPath());
+            LOG.info("POST filter: No need to transform: {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
         }
+    }
+
+    /**
+     * @return the secrets manager {@link PreFilter} resolved for this request, or a fresh resolution
+     *         when it did not run
+     * @throws UnknownSecretsManagerException when the header names an unknown secrets manager
+     */
+    private UUID secretsManagerOf(ContainerRequestContext requestContext) {
+        Object resolved = requestContext.getProperty(SecretsManagerResolver.REQUEST_PROPERTY);
+        if (resolved instanceof UUID uuid) {
+            return uuid;
+        }
+        return secretsManagerResolver.resolve(requestContext);
     }
 }

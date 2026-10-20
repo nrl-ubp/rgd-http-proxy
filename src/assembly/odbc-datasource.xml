@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The ODBC datasource package for Windows clients, built with: mvn -Podbc-package -DskipTests package -->
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.2.0 https://maven.apache.org/xsd/assembly-2.2.0.xsd">
+    <id>odbc-datasource</id>
+    <formats>
+        <format>zip</format>
+    </formats>
+    <baseDirectory>rgd-flightsql-odbc-${project.version}</baseDirectory>
+    <fileSets>
+        <!-- Only these two hold Maven properties: the scripts read their defaults from datasource.psd1,
+             so PowerShell syntax never goes through the filter. -->
+        <fileSet>
+            <directory>src/odbc</directory>
+            <outputDirectory>/</outputDirectory>
+            <includes>
+                <include>datasource.psd1</include>
+                <include>README.txt</include>
+            </includes>
+            <filtered>true</filtered>
+            <lineEnding>crlf</lineEnding>
+        </fileSet>
+        <fileSet>
+            <directory>src/odbc</directory>
+            <outputDirectory>/</outputDirectory>
+            <excludes>
+                <exclude>datasource.psd1</exclude>
+                <exclude>README.txt</exclude>
+            </excludes>
+            <lineEnding>crlf</lineEnding>
+        </fileSet>
+        <fileSet>
+            <directory>${odbc.driver.dir}</directory>
+            <outputDirectory>driver</outputDirectory>
+            <includes>
+                <include>${odbc.driver.msi}</include>
+            </includes>
+        </fileSet>
+        <fileSet>
+            <directory>${odbc.driver.dir}</directory>
+            <outputDirectory>driver</outputDirectory>
+            <includes>
+                <include>LICENSE.txt</include>
+                <include>NOTICE.txt</include>
+            </includes>
+            <lineEnding>crlf</lineEnding>
+        </fileSet>
+    </fileSets>
+</assembly>

@@ -1,0 +1,98 @@
+[
+  {
+    "name": "protect_random_persons",
+    "source-directory": "./data/source",
+    "target-directory": "./data/target",
+    "error-directory": "./data/error",
+    "work-in-progress-suffix": ".processing",
+    "file-pattern": ".*\\.json$",
+    "preserve-directory-structure": true,
+    "scan-interval-seconds": 0,
+    "right-context": {
+      "Target": "WDX1",
+      "Module": "WDX1Proxy",
+      "Right": "Transform"
+    },
+    "processing-context": {
+      "Target": "WDX1",
+      "Module": "WDX1Proxy",
+      "Action": "Protect"
+    },
+    "entity-transform-configs": [
+      {
+        "json-path": "$.[*].LongName",
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
+      },
+      {
+        "json-path": "$.[*].ShortName",
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
+      }
+    ]
+  },
+  {
+    "name": "Person Data Unprotection",
+    "source-directory": "./data/unprotect-source",
+    "target-directory": "./data/unprotect-target",
+    "error-directory": "./data/unprotect-error",
+    "work-in-progress-suffix": ".processing",
+    "file-pattern": ".*\\.json$",
+    "preserve-directory-structure": true,
+    "scan-interval-seconds": 0,
+    "right-context": {
+      "Target": "WDX1",
+      "Module": "WDX1Proxy",
+      "Right": "Transform"
+    },
+    "processing-context": {
+      "Target": "WDX1",
+      "Module": "WDX1Proxy",
+      "Action": "Unprotect"
+    },
+    "entity-transform-configs": [
+      {
+        "json-path": "$.[*].LongName",
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
+      },
+      {
+        "json-path": "$.[*].ShortName",
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
+      }
+    ]
+  },
+  {
+    "name": "scheduled_persons",
+    "source-directory": "./src/test/resources/scheduled-source",
+    "target-directory": "./target/scheduled-target",
+    "error-directory": "./target/scheduled-error",
+    "work-in-progress-suffix": ".processing",
+    "file-pattern": ".*\\.json$",
+    "preserve-directory-structure": true,
+    "scan-interval-seconds": 3600,
+    "right-context": {
+      "Target": "WDX1",
+      "Module": "WDX1Proxy",
+      "Right": "Transform"
+    },
+    "processing-context": {
+      "Target": "WDX1",
+      "Module": "WDX1Proxy",
+      "Action": "Protect"
+    },
+    "entity-transform-configs": [
+      {
+        "json-path": "$.[*].LongName",
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
+      },
+      {
+        "json-path": "$.[*].ShortName",
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
+      }
+    ]
+  }
+]

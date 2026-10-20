@@ -1,10 +1,13 @@
 package com.ubp.rgd.proxy.filters;
 
+import com.ubp.rgd.proxy.exception.UnknownSecretsManagerException;
+import com.ubp.rgd.proxy.resources.ProxyResource;
 import com.ubp.rgd.proxy.security.BasicToken;
 import com.ubp.rgd.proxy.security.KerberosToken;
 import com.ubp.rgd.proxy.security.SecurityContext;
+import com.ubp.rgd.proxy.services.SecretsManagerResolver;
 import com.ubp.rgd.proxy.transform.config.EndPointTransformConfig;
-import com.ubp.rgd.proxy.transform.RPSEndPointTransformer;
+import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.RPSTransformException;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -13,7 +16,8 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -21,6 +25,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * PreFilter is authenticating users against the proxy service.
@@ -32,7 +37,7 @@ import java.util.List;
 @Provider
 public class PreFilter implements ContainerRequestFilter {
 
-    private static final Logger LOG = Logger.getLogger(PreFilter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PreFilter.class);
 
     @ConfigProperty(name = "proxy.prefilter.auth-enabled", defaultValue = "true")
     String preFilterAuthEnabled;
@@ -63,17 +68,23 @@ public class PreFilter implements ContainerRequestFilter {
      * Endpoint transformer bean to transform payload depending of the request method and path
      */
     @Inject
-    RPSEndPointTransformer endpointTransformer;
+    EndPointTransformer endpointTransformer;
+
+    /**
+     * Selects the RPS secrets manager from the request header.
+     */
+    @Inject
+    SecretsManagerResolver secretsManagerResolver;
 
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
         // add a timestamp to request to ease debugging
         requestContext.setProperty("request.timestamp", LocalDateTime.now());
 
-        String requestPath = requestContext.getUriInfo().getPath();
+        String requestPath = requestContext.getUriInfo().getPath().replaceAll("//", "/").toLowerCase();
 
         // trace request
-        LOG.infof("PRE-FILTER: %s %s du client %s",
+        LOG.info("PRE-FILTER: {} {} du client {}",
                 requestContext.getMethod(),
                 requestPath,
                 getClientIp(requestContext));
@@ -90,8 +101,8 @@ public class PreFilter implements ContainerRequestFilter {
         requestContext.getHeaders().add("X-Proxy-Timestamp", LocalDateTime.now().toString());
 
         // if request is not a sub path of the proxy path then do nothing
-        if (!requestPath.startsWith("/proxy")) {
-            LOG.infof("PRE-FILTER: Not the proxied path. Skipping filtering.");
+        if (!requestPath.startsWith(ProxyResource.PROXY_BASE_PATH)) {
+            LOG.info("PRE-FILTER: Not the proxied path. Skipping filtering.");
             return;
         }
 
@@ -100,7 +111,7 @@ public class PreFilter implements ContainerRequestFilter {
 
         // a caller may ask for the payloads to be forwarded without any RPS transformation
         if (!allowIgnoreTransformHeader && TransformBypass.isPresent(requestContext)) {
-            LOG.warnf("PRE-FILTER: %s was sent while the transform bypass is disabled by configuration."
+            LOG.warn("PRE-FILTER: {} was sent while the transform bypass is disabled by configuration."
                     + " See the proxy.transform.allow-ignore-header property.", TransformBypass.HEADER_NAME);
             requestContext.abortWith(Response.status(Response.Status.FORBIDDEN)
                     .entity(String.format("The %s header is not allowed on this proxy.",
@@ -110,17 +121,28 @@ public class PreFilter implements ContainerRequestFilter {
         }
 
         if (TransformBypass.isRequested(requestContext)) {
-            LOG.infof("PRE-FILTER: %s is set, forwarding %s > %s without any transformation.",
+            LOG.info("PRE-FILTER: {} is set, forwarding {} > {} without any transformation.",
                     TransformBypass.HEADER_NAME, requestContext.getMethod(), requestPath);
             return;
         }
 
+        // Resolved even when nothing is transformed BEFORE: an unknown value must never reach the
+        // proxied API, whose response may have to be transformed AFTER with that secrets manager.
+        UUID secretsManager;
+        try {
+            secretsManager = secretsManagerResolver.resolve(requestContext);
+        } catch (UnknownSecretsManagerException e) {
+            requestContext.abortWith(e.getResponse());
+            return;
+        }
+        requestContext.setProperty(SecretsManagerResolver.REQUEST_PROPERTY, secretsManager);
+
         // now check if we should transform payload BEFORE invoking proxified target url
-        String proxyUrlPath = requestContext.getUriInfo().getPath().substring("/proxy".length());
-        LOG.infof("Comparing if we need to transform url path: BEFORE: %s > %s", requestContext.getMethod(), proxyUrlPath);
+        String proxyUrlPath = requestPath.substring(ProxyResource.PROXY_BASE_PATH.length()).replaceAll("//","/").toLowerCase();
+        LOG.info("PRE-FILTER: Comparing if we need to transform url path: BEFORE: {} > {}", requestContext.getMethod(), proxyUrlPath);
         EndPointTransformConfig cfg = endpointTransformer.getEndpointTransformConfig(requestContext.getMethod(), proxyUrlPath, "BEFORE");
         if (cfg != null) {
-            LOG.infof("PRE filter: Transforming %s > %s", requestContext.getMethod(), requestContext.getUriInfo().getPath());
+            LOG.info("PRE-FILTER: Transforming {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
 
             try {
                 InputStream is = requestContext.getEntityStream();
@@ -138,16 +160,16 @@ public class PreFilter implements ContainerRequestFilter {
                 MultivaluedMap<String, String> requestParams = requestContext.getUriInfo().getQueryParameters();
 
                 // perform actual transformation
-                String finalJson = endpointTransformer.transform(originalBody, requestHeaders, requestParams, cfg);
+                String finalJson = endpointTransformer.transform(originalBody, requestHeaders, requestParams, cfg, secretsManager);
 
                 InputStream modifiedInputStream = new ByteArrayInputStream(finalJson.getBytes(StandardCharsets.UTF_8));
                 requestContext.setEntityStream(modifiedInputStream);
             } catch (RPSTransformException e) {
-                LOG.error("PRE FILTER: Cannot transform response to tokenizer.", e);
+                LOG.error("PRE-FILTER: Cannot transform response to tokenizer.", e);
                 requestContext.abortWith(Response.status(500).entity(e.getMessage()).build());
             }
         } else {
-            LOG.infof("No need to transform: %s > %s", requestContext.getMethod(), requestContext.getUriInfo().getPath());
+            LOG.info("PRE-FILTER: No need to transform: {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
         }
     }
 
@@ -173,7 +195,7 @@ public class PreFilter implements ContainerRequestFilter {
      * @see #handleAuthForRequest(ContainerRequestContext)
      */
     private void handleBasicAuthForRequest(ContainerRequestContext requestContext) {
-        LOG.infof("PRE-FILTER: BASIC auth %s %s du client %s",
+        LOG.info("PRE-FILTER: BASIC auth {} {} du client {}",
                 requestContext.getMethod(),
                 requestContext.getUriInfo().getPath(),
                 getClientIp(requestContext));
@@ -231,7 +253,7 @@ public class PreFilter implements ContainerRequestFilter {
      * @see KerberosToken for more details on implementation
      */
     private void handleKerberosAuthForRequest(ContainerRequestContext requestContext) {
-        LOG.infof("PRE-FILTER: KERBEROS auth %s %s of client %s",
+        LOG.info("PRE-FILTER: KERBEROS auth {} {} of client {}",
                 requestContext.getMethod(),
                 requestContext.getUriInfo().getPath(),
                 getClientIp(requestContext));
@@ -255,7 +277,7 @@ public class PreFilter implements ContainerRequestFilter {
                 // valid user, set the context into the request
                 securityContext.setToken(krbToken);
                 securityContext.setUserSubject(krbToken.getUserSubject());
-                LOG.debugf("User %s has %s roles configured.", krbToken.getUser(), krbToken.getRoles().size());
+                LOG.debug("User {} has {} roles configured.", krbToken.getUser(), krbToken.getRoles().size());
             } else {
                 Response respNegoKerb = getKerberosNegociateResponse(krbToken.getServiceToken());
                 requestContext.abortWith(respNegoKerb);
@@ -281,7 +303,7 @@ public class PreFilter implements ContainerRequestFilter {
                 header = String.format("%s %s", header, b64Token);
             }
 
-            LOG.debugf("Adding header: WWW-Authenticate: %s", header);
+            LOG.debug("Adding header: WWW-Authenticate: {}", header);
             builder.header("WWW-Authenticate", header)
                     .entity( "Must provide auth token to use this service.");
         } catch (Exception ex) {
@@ -317,7 +339,7 @@ public class PreFilter implements ContainerRequestFilter {
      * @return client ip if contained in one of the headers above and unknown if not found in the headers
      */
     private String getClientIp(ContainerRequestContext requestContext) {
-        // Vérifier les headers de proxy
+        // VÃƒÂ©rifier les headers de proxy
         String xForwardedFor = requestContext.getHeaderString("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
             return xForwardedFor.split(",")[0].trim();
@@ -337,10 +359,10 @@ public class PreFilter implements ContainerRequestFilter {
      * @param requestContext the container request context to validate
      */
     private void validateRequest(ContainerRequestContext requestContext) {
-        // Validation de sécurité basique
+        // Validation de sÃƒÂ©curitÃƒÂ© basique
         String userAgent = requestContext.getHeaderString("User-Agent");
         if (userAgent != null && userAgent.toLowerCase().contains("bot")) {
-            LOG.warn("Requête suspecte détectée (bot): " + userAgent);
+            LOG.warn("RequÃƒÂªte suspecte dÃƒÂ©tectÃƒÂ©e (bot): " + userAgent);
             // Optionnel : bloquer les bots
             // requestContext.abortWith(Response.status(Response.Status.FORBIDDEN).build());
         }

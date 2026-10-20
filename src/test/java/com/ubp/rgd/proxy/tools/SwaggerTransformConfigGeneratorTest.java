@@ -65,8 +65,8 @@ class SwaggerTransformConfigGeneratorTest {
 
         for (EndPointTransformConfig cfg : List.of(post, patch)) {
             assertEquals("BEFORE", cfg.getEndpointTransformWhen());
-            assertTrue(cfg.getRightContextEvidences().isEmpty(), "right-context must be empty");
-            assertTrue(cfg.getProcessingContextEvidences().isEmpty(), "processing-context must be empty");
+            assertFalse(cfg.getRightContextEvidences().isEmpty(), "right-context must NOT be empty");
+            assertFalse(cfg.getProcessingContextEvidences().isEmpty(), "processing-context must NOT be empty");
             assertEquals(3, cfg.getEntityTransformConfigs().size(),
                     "PersonCreateRequest/PersonPatch expose 3 sensitive fields");
         }
