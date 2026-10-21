@@ -31,9 +31,20 @@ public class TestProfile implements QuarkusTestProfile {
         props.put("proxy.transform.config-file", "./src/test/resources/rps_transform_config.json");
         props.put("proxy.transform.http-secrets-manager-header", "X-Proxy-Jurisdiction");
         props.put("proxy.transform.http-secrets-manager-mapping-file", "./src/test/resources/secrets_manager_mapping.json");
+
         // Token secrets manager resolution: no database is reachable in the tests, the lookups are mocked
         props.put("proxy.secrets-manager-lookup.mongodb.database", "rgd-test");
-        props.put("proxy.transform.client-id", "3150a79e-3084-4946-aeb5-e7e73aea3904");
+
+        // can have the connection to RPS engine set by env variables, this defaults to Shenzo dev anonymous environment
+        String clientId = System.getProperty("proxy.transform.client-id", "3689c3d7-5f1e-4cda-967b-8b5b979c40e8");
+        String clientSecret = System.getProperty("proxy.transform.client-secret", "46094e476a0840d3abdfaf583c633dec0a49323c256247f98ebc0f06a966e060");
+        String engineUrl = System.getProperty("proxy.transform.engine-url", "https://engine-rgd-poc.corp.ubp.ch");
+        String identityUrl = System.getProperty("proxy.transform.identity-url", "https://identity-rgd-poc.corp.ubp.ch");
+
+        props.put("proxy.transform.client-id", clientId);
+        props.put("proxy.transform.client-secret", clientSecret);
+        props.put("proxy.transform.engine-url", engineUrl);
+        props.put("proxy.transform.identity-url", identityUrl);
 
         props.putAll(Map.of("proxy.file-transform.enabled","true",
                             "proxy.file-transform.config-file","./src/test/resources/file_transform_config.json"));
