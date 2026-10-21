@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -67,6 +68,16 @@ public class SecretsManagerResolver {
     /** @return the secrets manager used when a request does not carry the header */
     public UUID defaultSecretsManager() {
         return defaultSecretsManager;
+    }
+
+    /** @return the values the header accepts, upper-cased, in the order of the mapping file */
+    public Set<String> jurisdictions() {
+        return mappings.keySet();
+    }
+
+    /** @return the value used when a request does not carry the header, as written in the mapping file */
+    public String defaultMapping() {
+        return defaultKey;
     }
 
     /**

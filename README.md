@@ -287,6 +287,10 @@ The jurisdiction is looked up in the JSON file named by
   (`Unknown jurisdiction of set #2 value: MC`).
 - On `/proxy`, the request and the response transformations use the same secrets manager, and the
   header is **stripped** before the request reaches the proxied service.
+- On `/utils/wdx1/concat`, the same secrets manager reads the input tokens and tokenizes the
+  result. The Swagger UI (`/swagger-ui`) shows the header as an optional free-text field of this
+  operation, under its configured name, with the accepted values and the default in its
+  description. Leave it empty to use the default.
 - The Flight SQL server and the file transformation do not use it: the secrets manager of each token
   they detokenize is resolved from the token itself, see below. When they protect values (the
   Flight SQL `transform()` extensions), the engine uses its default secrets manager.

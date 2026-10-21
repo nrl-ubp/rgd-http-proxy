@@ -57,7 +57,7 @@ public class TokenUtilsResource {
             ),
             @APIResponse(
                     responseCode = "400",
-                    description = "RPS Transformation error, or unknown secrets manager header value",
+                    description = "Transformation error, or unknown secrets manager header value",
                     content = @Content(schema = @Schema(implementation = String.class))
             ),
             @APIResponse(
