@@ -19,7 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.javafaker.Name;
-import com.ubp.rgd.proxy.utils.CliArgs;
+import com.ubp.rgd.proxy.cli.CliArgs;
 
 /**
  * Utility program to generate sample random client data. See program switches to accomodate for your needs.

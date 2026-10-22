@@ -1,0 +1,8 @@
+{
+  "after": {
+    "active": true,
+    "right-context": {"Target": "WDX1", "Module": "WDX1Proxy", "Right": "Transform"},
+    "processing-context": {"Action": "Unprotect", "Module": "WDX1Proxy", "Target": "WDX1"}
+  },
+  "column-mappings": []
+}

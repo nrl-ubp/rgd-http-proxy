@@ -10,14 +10,19 @@
     <version>2.0.0</version>
     <packaging>pom</packaging>
 
-    <!-- The common base (rgd-proxy-spi), one Quarkus extension per transformer (RPS, FPE) and the
-         application that bundles them. proxy.transform.impl selects the transformer at runtime among
-         the extensions present on the application classpath. -->
+    <!-- The common base (rgd-proxy-spi), one Quarkus extension per transformer (RPS, FPE), the optional
+         Flight SQL server extension, and the two applications built from them:
+         - rgd-http-proxy: RPS + FPE, without Flight SQL;
+         - rgd-http-proxy-flightsql: the same application plus the Flight SQL server.
+         proxy.transform.impl selects the transformer at runtime among the extensions present on the
+         application classpath. -->
     <modules>
         <module>rgd-proxy-spi</module>
         <module>rgd-proxy-rps</module>
         <module>rgd-proxy-fpe</module>
+        <module>rgd-proxy-flightsql</module>
         <module>rgd-http-proxy</module>
+        <module>rgd-http-proxy-flightsql</module>
     </modules>
 
     <properties>
@@ -33,6 +38,9 @@
         <bouncycastle.version>1.81</bouncycastle.version>
         <json-path.version>2.9.0</json-path.version>
         <jandex.version>3.3.2</jandex.version>
+        <mssql-jdbc.version>12.8.1.jre11</mssql-jdbc.version>
+        <h2.version>2.3.232</h2.version>
+        <javafaker.version>1.0.2</javafaker.version>
         <compiler-plugin.version>3.11.0</compiler-plugin.version>
         <surefire-plugin.version>3.0.0</surefire-plugin.version>
     </properties>
@@ -93,6 +101,22 @@
                 <artifactId>rgd-proxy-fpe-deployment</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.ubp.rgd.proxy</groupId>
+                <artifactId>rgd-proxy-flightsql</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ubp.rgd.proxy</groupId>
+                <artifactId>rgd-proxy-flightsql-deployment</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <!-- The application classes, reused by rgd-http-proxy-flightsql -->
+            <dependency>
+                <groupId>com.ubp.rgd.proxy</groupId>
+                <artifactId>rgd-http-proxy</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- Third party libraries -->
             <dependency>
@@ -114,6 +138,48 @@
                 <groupId>org.bouncycastle</groupId>
                 <artifactId>bcpkix-jdk18on</artifactId>
                 <version>${bouncycastle.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.arrow</groupId>
+                <artifactId>flight-core</artifactId>
+                <version>${arrow.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.arrow</groupId>
+                <artifactId>flight-sql</artifactId>
+                <version>${arrow.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.arrow</groupId>
+                <artifactId>arrow-jdbc</artifactId>
+                <version>${arrow.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.arrow</groupId>
+                <artifactId>arrow-memory-netty</artifactId>
+                <version>${arrow.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.arrow</groupId>
+                <artifactId>flight-sql-jdbc-driver</artifactId>
+                <version>${arrow.version}</version>
+            </dependency>
+            <!-- Driver of the database proxied by Flight SQL, also used by the RPS secrets manager
+                 lookup: one version for both, overriding the Quarkus BOM -->
+            <dependency>
+                <groupId>com.microsoft.sqlserver</groupId>
+                <artifactId>mssql-jdbc</artifactId>
+                <version>${mssql-jdbc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.h2database</groupId>
+                <artifactId>h2</artifactId>
+                <version>${h2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.javafaker</groupId>
+                <artifactId>javafaker</artifactId>
+                <version>${javafaker.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

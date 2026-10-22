@@ -358,9 +358,9 @@ This anonymization proxy uses micrometer and prometheus endpoint is available.
 
 ## Project structure
 
-The project is a Maven multi-module build (version 2.0.0). The transformers are Quarkus extensions,
-so that each tokenizer, with its own dependencies, can be developed, tested and shipped apart from
-the application:
+The project is a Maven multi-module build (version 2.0.0). The transformers and the Flight SQL server
+are Quarkus extensions, so that each of them, with its own dependencies, can be developed, tested and
+shipped apart from the application:
 
 | Module | Artifact | Content |
 | --- | --- | --- |
@@ -369,7 +369,10 @@ the application:
 | `rgd-proxy-rps/deployment` | `rgd-proxy-rps-deployment` | Build steps of the RPS extension and its Quarkus tests. |
 | `rgd-proxy-fpe/runtime` | `rgd-proxy-fpe` | FPE extension (`com.ubp.rgd.proxy.fpe`): `FPEEndPointTransformer` (BouncyCastle). |
 | `rgd-proxy-fpe/deployment` | `rgd-proxy-fpe-deployment` | Build steps of the FPE extension and its Quarkus tests. |
-| `rgd-http-proxy` | `rgd-http-proxy` | The application: proxy, `/transform`, file transformation, Flight SQL, WDX1, security. It bundles both extensions and builds the uber-jar. Its configuration is in `rgd-http-proxy/config`. |
+| `rgd-proxy-flightsql/runtime` | `rgd-proxy-flightsql` | Optional Flight SQL extension (`com.ubp.rgd.proxy.flightsql`): the Arrow Flight SQL server, the `transform()` SQL extensions, the result set detokenization and its mapping configuration (`flightsql.config`). The only module depending on Apache Arrow. Also holds the ODBC client package and the `PersonFlightSqlLoader` tool. |
+| `rgd-proxy-flightsql/deployment` | `rgd-proxy-flightsql-deployment` | Build steps of the Flight SQL extension and its Quarkus tests. |
+| `rgd-http-proxy` | `rgd-http-proxy` | The application: proxy, `/transform`, file transformation, WDX1, security. It bundles both transformer extensions and builds the uber-jar `rgd-http-proxy-<version>-runner.jar`, **without Flight SQL**. Its configuration is in `rgd-http-proxy/config`. |
+| `rgd-http-proxy-flightsql` | `rgd-http-proxy-flightsql` | No code: the same application plus the Flight SQL extension, packaged as `rgd-http-proxy-flightsql-<version>-runner.jar`. It reads the same `rgd-http-proxy/config`. |
 
 The application talks to the transformers only through the SPI: it never uses a RegData or an FPE
 class. `proxy.transform.impl` selects, at runtime, one of the extensions present.
@@ -381,6 +384,27 @@ class. `proxy.transform.impl` selects, at runtime, one of the extensions present
   (a runtime module holding an `AbstractEndPointTransformer` subclass annotated
   `@TransformerImpl("<NAME>")`, and a deployment module whose processor registers it as an
   unremovable bean), then add it to the root `pom.xml` and to the application's dependencies.
+
+### Two runners: with or without Flight SQL
+
+Quarkus wires its extensions when the runner is built, not when it starts: a feature cannot be
+switched on by dropping a jar next to the runner. Each `mvn package` (or `mvn install`) therefore
+builds both runners:
+
+| Runner | Content |
+| --- | --- |
+| `rgd-http-proxy/target/rgd-http-proxy-<version>-runner.jar` | RPS + FPE, no Flight SQL, no Apache Arrow. |
+| `rgd-http-proxy-flightsql/target/rgd-http-proxy-flightsql-<version>-runner.jar` | RPS + FPE + Flight SQL. |
+
+The deployment chooses the feature set by choosing the runner. Both read the same
+`config/application.properties`; the `proxy.flight-sql.*` options are ignored by the plain runner,
+and in the Flight SQL runner the server only listens when `proxy.flight-sql.enabled=true`. The
+startup log lists `rgd-proxy-flightsql` among the installed features when the extension is present.
+The Azure pipeline publishes both runners; `tools/start-quarkus.ps1` and `tools/install-service.ps1`
+take a `-FlightSql` switch to use the second one.
+
+The Flight SQL runner has no code of its own: it takes the application classes from the
+`rgd-http-proxy` jar, which carries a Jandex index for that purpose.
 
 ## Building and testing
 
@@ -394,6 +418,12 @@ The following system environment variables must be set prior top launch JUnit te
 To build and test the server you use standard maven command, from the repository root: `mvn install`.
 The application tests run from `rgd-http-proxy/` (Quarkus requires it) and read `rgd-http-proxy/config`.
 The extension tests are self-contained and need neither the credentials nor a database.
+`rgd-http-proxy-flightsql` has a smoke test only: the application endpoints are served and the Flight
+SQL server listens, in front of an in-memory H2 database.
+
+The build-time configuration (Swagger UI and OpenAPI paths, etc.) is read from
+`rgd-http-proxy/config/application.properties` whatever the directory Maven is started from: the
+`quarkus-maven-plugin` of both runner modules sets `quarkus.config.locations` to that file.
 
 Be sure to adjust test config if required. The default configuration should be ok for basic testing.
 
@@ -408,6 +438,9 @@ The test is doing 2 calls and compare clear and protected data.
 ## Flight SQL server
 
 The proxy can also expose an **Apache Arrow Flight SQL** server that proxies a whole JDBC datasource.
+It is an optional feature, only present in the `rgd-http-proxy-flightsql` runner (see
+[Two runners](#two-runners-with-or-without-flight-sql)), and enabled there with
+`proxy.flight-sql.enabled=true`.
 Every statement is executed on the proxied database, and each value of the result sets matching an
 RPS token (`RG{...}`) — or any pattern declared in the mapping file — is detokenized through the
 RegData engine before being streamed back to the client. A token can be resolved from its column,
@@ -680,7 +713,7 @@ parameter schema: statements without parameters keep working unchanged.
 
 ### Loading test data
 
-`rgd-http-proxy/src/test/java/com/ubp/rgd/tools/PersonFlightSqlLoader.java` generates random persons and writes them
+`rgd-proxy-flightsql/runtime/src/test/java/com/ubp/rgd/tools/PersonFlightSqlLoader.java` generates random persons and writes them
 into a `PERSON` table **through the proxy**, using the Arrow Flight SQL JDBC driver and plain SQL (no
 JPA). It then reads the rows back and reports how many values came back detokenized.
 
@@ -689,11 +722,11 @@ By default it does not fabricate tokens: it generates clear values and wraps eac
 in. The round trip is therefore a genuine one — tokenized by the engine on the way in, detokenized on
 the way out.
 
-Start the proxy with `proxy.flight-sql.enabled=true`, then, from `rgd-http-proxy/` (after a
-`mvn install -DskipTests` at the root):
+Start the Flight SQL runner with `proxy.flight-sql.enabled=true`, then, from the repository root
+(after a `mvn install -DskipTests`):
 
 ```
-mvn -Pflight-sql-loader test-compile exec:exec \
+mvn -Pflight-sql-loader -pl rgd-proxy-flightsql/runtime test-compile exec:exec \
     -Dloader.args="--user sa --password secret --rows 1000 --create-table --insert-mode literal"
 ```
 
@@ -746,13 +779,13 @@ Flight handshake.
 ### The client package
 
 ```bash
-mvn -Podbc-package -DskipTests package
-# -> rgd-http-proxy/target/rgd-flightsql-odbc-<version>.zip
+mvn -Podbc-package -DskipTests package -pl rgd-proxy-flightsql/runtime -am
+# -> rgd-proxy-flightsql/runtime/target/rgd-flightsql-odbc-<version>.zip
 ```
 
 The `odbc-package` profile downloads the driver MSI from the Apache Arrow GitHub release (with Arrow's
 `LICENSE.txt` and `NOTICE.txt`), **fails the build if its SHA-256 differs** from the pinned one, and
-zips it with the scripts of `rgd-http-proxy/src/odbc/`. It is kept out of the default build so that it does not
+zips it with the scripts of `rgd-proxy-flightsql/runtime/src/odbc/`. It is kept out of the default build so that it does not
 depend on GitHub. Properties:
 
 | Property | Default |
@@ -763,7 +796,7 @@ depend on GitHub. Properties:
 | `odbc.driver.version` / `odbc.driver.sha256` | `25.0.1` / the checksum published with the release asset |
 | `odbc.driver.url` | the GitHub release asset; point it to a mirror (Artifactory) when GitHub is not reachable |
 
-e.g. `mvn -Podbc-package -DskipTests package -Dodbc.dsn.host=flightsql-test.example.com`. When
+e.g. `mvn -Podbc-package -DskipTests package -pl rgd-proxy-flightsql/runtime -am -Dodbc.dsn.host=flightsql-test.example.com`. When
 upgrading the driver, update `odbc.driver.version` and `odbc.driver.sha256` together.
 
 The zip holds:
@@ -831,6 +864,10 @@ covers the application module only, changes to the SPI or the extensions need a 
 
 `mvn -pl rgd-http-proxy quarkus:dev -Djvm.args="--add-opens=java.base/java.nio=ALL-UNNAMED"`
 
+The dev mode of `rgd-http-proxy` has no Flight SQL server; to work on Flight SQL, run the extension
+tests (`mvn -pl rgd-proxy-flightsql/runtime,rgd-proxy-flightsql/deployment test`) or the Flight SQL
+runner below.
+
 Package with native profile :
 
 `mvn clean package -Pnative`
@@ -838,6 +875,10 @@ Package with native profile :
 Launch server:
 
 `cd rgd-http-proxy && java --add-opens=java.base/java.nio=ALL-UNNAMED -jar ./target/rgd-http-proxy-2.0.0-runner.jar`
+
+Launch server with the Flight SQL feature (`tools/start-quarkus.ps1 -FlightSql` on Windows):
+
+`cd rgd-http-proxy && java --add-opens=java.base/java.nio=ALL-UNNAMED -Dproxy.flight-sql.enabled=true -jar ../rgd-http-proxy-flightsql/target/rgd-http-proxy-flightsql-2.0.0-runner.jar`
 
 Change version accordingly.
 

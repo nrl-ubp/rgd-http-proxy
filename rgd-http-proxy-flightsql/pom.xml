@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.ubp.rgd.proxy</groupId>
+        <artifactId>rgd-http-proxy-parent</artifactId>
+        <version>2.0.0</version>
+    </parent>
+
+    <!-- The runner jar is target/rgd-http-proxy-flightsql-<version>-runner.jar -->
+    <artifactId>rgd-http-proxy-flightsql</artifactId>
+    <name>RGD proxy - application with the Flight SQL server</name>
+    <description>The rgd-http-proxy application plus the Flight SQL server extension. No code of its own: the
+        application classes come from the rgd-http-proxy jar, whose Jandex index lets Quarkus discover them.</description>
+
+    <properties>
+        <quarkus.package.jar.type>uber-jar</quarkus.package.jar.type>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-http-proxy</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-flightsql</artifactId>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-maven-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <!-- The build-time settings (Swagger UI, OpenAPI paths...) are read from
+                         config/application.properties relative to the current directory: name the
+                         file explicitly so that the build works from any directory, and shares the configuration of rgd-http-proxy.
+                         Build only: at runtime the file is still ./config/application.properties. -->
+                    <systemProperties>
+                        <quarkus.config.locations>${project.basedir}/../rgd-http-proxy/config/application.properties</quarkus.config.locations>
+                    </systemProperties>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build</goal>
+                            <goal>generate-code</goal>
+                            <goal>generate-code-tests</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Apache Arrow needs access to java.nio internals for its off-heap allocator -->
+                    <argLine>--add-opens=java.base/java.nio=ALL-UNNAMED</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

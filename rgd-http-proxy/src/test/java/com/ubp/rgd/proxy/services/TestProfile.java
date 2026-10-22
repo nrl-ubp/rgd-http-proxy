@@ -23,9 +23,7 @@ public class TestProfile implements QuarkusTestProfile {
                 "proxy.transform.endpoint.authorized-spn", "HTTP/dcle01.corp.ubp.ch",
                 "proxy.transform.endpoint.right-context-target", "WDX1",
                 "proxy.transform.endpoint.right-context-module", "WDX1Proxy",
-                "proxy.transform.endpoint.right-context-right", "Transform",
-                "proxy.flight-sql.jdbc-url", "jdbc:jtds:sqlserver://msvgvzwdxev004s/CDM_Datamart;encrypt=true;trustServerCertificate=true",
-                "proxy.flight-sql.enabled", "true"
+                "proxy.transform.endpoint.right-context-right", "Transform"
         ));
 
         props.put("proxy.transform.config-file", "./src/test/resources/rps_transform_config.json");
