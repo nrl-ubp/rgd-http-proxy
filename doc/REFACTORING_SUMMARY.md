@@ -1,5 +1,9 @@
 # File Transformation Feature - Refactoring Summary
 
+> **Superseded.** The file transformation has since moved to its own Maven module,
+> `rgd-proxy-filetransform`, in the package `com.ubp.rgd.proxy.filetransform` (configuration in
+> `filetransform.config`, trigger app in `filetransform.tools`). This page records an earlier step.
+
 ## Refactoring Completed
 
 The file transformation feature has been refactored to maintain consistency with the existing project structure.

@@ -11,12 +11,49 @@
         <version>2.0.0</version>
     </parent>
 
-    <artifactId>rgd-proxy-fpe-parent</artifactId>
-    <packaging>pom</packaging>
-    <name>RGD proxy - FPE transformer extension (parent)</name>
+    <artifactId>rgd-proxy-fpe</artifactId>
+    <name>RGD proxy - FPE transformer</name>
+    <description>Format Preserving Encryption (NIST SP 800-38G FF1) of the values, no tokenization engine needed.</description>
 
-    <modules>
-        <module>runtime</module>
-        <module>deployment</module>
-    </modules>
+    <dependencies>
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-spi</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-arc</artifactId>
+        </dependency>
+
+        <!-- FF1 Format Preserving Encryption -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Lets Quarkus discover the beans, REST resources and OpenAPI annotations of this plain jar -->
+            <plugin>
+                <groupId>io.smallrye</groupId>
+                <artifactId>jandex-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>make-index</id>
+                        <goals>
+                            <goal>jandex</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

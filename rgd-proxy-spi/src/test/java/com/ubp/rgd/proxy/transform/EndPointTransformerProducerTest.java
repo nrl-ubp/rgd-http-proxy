@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Picking the wrong implementation would protect the data with another algorithm than the one the
  * environment expects, and the two are not interchangeable, so an unusable value must stop the
  * application rather than be silently ignored. The CDI lookup itself is covered by the wiring tests
- * of the extensions.
+ * of the application.
  */
 class EndPointTransformerProducerTest {
 
@@ -48,7 +48,7 @@ class EndPointTransformerProducerTest {
     }
 
     @Test
-    @DisplayName("An implementation whose extension is not in the application is rejected")
+    @DisplayName("An implementation whose module is not in the application is rejected")
     void absentImplementationFails() {
         IllegalStateException failure = assertThrows(IllegalStateException.class,
                 () -> EndPointTransformerProducer.select("FPE", List.of(TransformerImpl.RPS)));

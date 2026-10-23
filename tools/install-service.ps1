@@ -1,8 +1,7 @@
 # PowerShell script to install the RGD HTTP Proxy as a Windows Service using Apache Commons Procrun.
 #
 # Prerequisites:
-# - The application must be built (mvn install) to produce the uber-jar in rgd-http-proxy/target/,
-#   or with -FlightSql the runner containing the Flight SQL server in rgd-http-proxy-flightsql/target/.
+# - The application must be built (mvn install) to produce the uber-jar in rgd-http-proxy/target/.
 # - Java must be installed and JAVA_HOME set, or adjust the $javaPath variable below.
 # - This script must be run as an Administrator.
 
@@ -10,18 +9,13 @@ param (
     [string]$serviceName = "RGDHttpProxy",
     [string]$serviceDisplayName = "RGD HTTP Proxy",
     [string]$serviceDescription = "HTTP Proxy with Kerberos support for RegData.",
-    [string]$javaPath = "C:\_ETL\programs\jdk-17.0.2\bin\java.exe",
-    [switch]$FlightSql
+    [string]$javaPath = "C:\_ETL\programs\jdk-17.0.2\bin\java.exe"
 )
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptDir
 $prunsrv = Join-Path $scriptDir "procrun\prunsrv.exe"
-$jarPath = if ($FlightSql) {
-    Join-Path $projectRoot "rgd-http-proxy-flightsql\target\rgd-http-proxy-flightsql-2.0.0-runner.jar"
-} else {
-    Join-Path $projectRoot "rgd-http-proxy\target\rgd-http-proxy-2.0.0-runner.jar"
-}
+$jarPath = Join-Path $projectRoot "rgd-http-proxy\target\rgd-http-proxy-2.0.0-runner.jar"
 
 # Use the standard 64-bit prunsrv.exe
 if (Test-Path (Join-Path $scriptDir "procrun\prunsrv.exe")) {

@@ -20,10 +20,9 @@
     </properties>
 
     <dependencies>
-        <!-- The transformer SPI and the transformer extensions. proxy.transform.impl selects one of the
-             extensions present here at runtime: remove an extension to ship the proxy without it.
-             The Flight SQL server extension is not here: rgd-http-proxy-flightsql adds it to this
-             application. -->
+        <!-- The SPI and the feature modules, all part of the uber-jar. proxy.transform.impl selects one of
+             the transformers present here at runtime; proxy.file-transform.enabled and
+             proxy.flight-sql.enabled switch the file transformation and the Flight SQL server on. -->
         <dependency>
             <groupId>com.ubp.rgd.proxy</groupId>
             <artifactId>rgd-proxy-spi</artifactId>
@@ -35,6 +34,14 @@
         <dependency>
             <groupId>com.ubp.rgd.proxy</groupId>
             <artifactId>rgd-proxy-fpe</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-filetransform</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-flightsql</artifactId>
         </dependency>
 
         <!-- Logging facade used by all our classes -->
@@ -177,6 +184,12 @@
             <artifactId>javafaker</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- In-memory database proxied by the Flight SQL server in the tests -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -204,19 +217,12 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Indexes the application classes in the jar, so that rgd-http-proxy-flightsql, which
-                 depends on this jar, discovers its beans, resources and OpenAPI annotations -->
             <plugin>
-                <groupId>io.smallrye</groupId>
-                <artifactId>jandex-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>make-index</id>
-                        <goals>
-                            <goal>jandex</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Apache Arrow (Flight SQL) needs access to java.nio internals for its off-heap allocator -->
+                    <argLine>--add-opens=java.base/java.nio=ALL-UNNAMED</argLine>
+                </configuration>
             </plugin>
             <!-- Maven Exec Plugin -->
             <plugin>

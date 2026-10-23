@@ -19,10 +19,10 @@ import java.util.TreeSet;
 /**
  * Provides the {@link EndPointTransformer} the proxy runs with, chosen by {@code proxy.transform.impl}.
  * <p>
- * The implementations are contributed by Quarkus extensions ({@code rgd-proxy-rps},
- * {@code rgd-proxy-fpe}), each one qualified with {@link TransformerImpl}. None of them is therefore
+ * The implementations are contributed by the modules {@code rgd-proxy-rps} and
+ * {@code rgd-proxy-fpe}, each one qualified with {@link TransformerImpl}. None of them is therefore
  * the default bean, and application code injecting a plain {@code EndPointTransformer} gets the one
- * produced here. Leaving an extension out of the application removes its implementation, no code
+ * produced here. Leaving a module out of the application removes its implementation, no code
  * change needed.
  *
  * <pre>
@@ -98,7 +98,7 @@ public class EndPointTransformerProducer {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Unknown transformer implementation '" + name
                         + "'. proxy.transform.impl accepts "
-                        + (available.isEmpty() ? "nothing: no transformer extension is present in the application"
+                        + (available.isEmpty() ? "nothing: no transformer module is present in the application"
                                 : String.join(" or ", available)) + "."));
     }
 

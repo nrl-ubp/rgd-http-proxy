@@ -11,12 +11,78 @@
         <version>2.0.0</version>
     </parent>
 
-    <artifactId>rgd-proxy-rps-parent</artifactId>
-    <packaging>pom</packaging>
-    <name>RGD proxy - RPS transformer extension (parent)</name>
+    <artifactId>rgd-proxy-rps</artifactId>
+    <name>RGD proxy - RPS transformer</name>
+    <description>Tokenization through the RegData RPS engine, with the resolution of the secrets manager that created a token.</description>
 
-    <modules>
-        <module>runtime</module>
-        <module>deployment</module>
-    </modules>
+    <dependencies>
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-spi</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-arc</artifactId>
+        </dependency>
+
+        <!-- RegData Protection Suite client: only this module depends on it -->
+        <dependency>
+            <groupId>ch.regdata.rps.engine.client</groupId>
+            <artifactId>rps-engine-api-client</artifactId>
+        </dependency>
+
+        <!-- Resolution of the secrets manager that created a token: MongoDB then SQL Server lookups,
+             cached -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-mongodb-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-agroal</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jdbc-mssql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-cache</artifactId>
+        </dependency>
+
+        <!-- MD5 of the RPSDOC tokens -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Lets Quarkus discover the beans, REST resources and OpenAPI annotations of this plain jar -->
+            <plugin>
+                <groupId>io.smallrye</groupId>
+                <artifactId>jandex-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>make-index</id>
+                        <goals>
+                            <goal>jandex</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

@@ -10,19 +10,19 @@
     <version>2.0.0</version>
     <packaging>pom</packaging>
 
-    <!-- The common base (rgd-proxy-spi), one Quarkus extension per transformer (RPS, FPE), the optional
-         Flight SQL server extension, and the two applications built from them:
-         - rgd-http-proxy: RPS + FPE, without Flight SQL;
-         - rgd-http-proxy-flightsql: the same application plus the Flight SQL server.
-         proxy.transform.impl selects the transformer at runtime among the extensions present on the
-         application classpath. -->
+    <!-- The common base (rgd-proxy-spi), one module per feature (the RPS and FPE transformers, the
+         file transformation, the Flight SQL server), and the application (rgd-http-proxy), which
+         assembles them into a single uber-jar. The feature modules are plain jars with a Jandex
+         index, so that Quarkus discovers their beans and endpoints.
+         proxy.transform.impl selects the transformer at runtime; proxy.file-transform.enabled and
+         proxy.flight-sql.enabled switch the file transformation and the Flight SQL server on. -->
     <modules>
         <module>rgd-proxy-spi</module>
         <module>rgd-proxy-rps</module>
         <module>rgd-proxy-fpe</module>
+        <module>rgd-proxy-filetransform</module>
         <module>rgd-proxy-flightsql</module>
         <module>rgd-http-proxy</module>
-        <module>rgd-http-proxy-flightsql</module>
     </modules>
 
     <properties>
@@ -88,33 +88,17 @@
             </dependency>
             <dependency>
                 <groupId>com.ubp.rgd.proxy</groupId>
-                <artifactId>rgd-proxy-rps-deployment</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.ubp.rgd.proxy</groupId>
                 <artifactId>rgd-proxy-fpe</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.ubp.rgd.proxy</groupId>
-                <artifactId>rgd-proxy-fpe-deployment</artifactId>
+                <artifactId>rgd-proxy-filetransform</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.ubp.rgd.proxy</groupId>
                 <artifactId>rgd-proxy-flightsql</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.ubp.rgd.proxy</groupId>
-                <artifactId>rgd-proxy-flightsql-deployment</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <!-- The application classes, reused by rgd-http-proxy-flightsql -->
-            <dependency>
-                <groupId>com.ubp.rgd.proxy</groupId>
-                <artifactId>rgd-http-proxy</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -190,11 +174,6 @@
                 <plugin>
                     <groupId>io.quarkus</groupId>
                     <artifactId>quarkus-maven-plugin</artifactId>
-                    <version>${quarkus.platform.version}</version>
-                </plugin>
-                <plugin>
-                    <groupId>io.quarkus</groupId>
-                    <artifactId>quarkus-extension-maven-plugin</artifactId>
                     <version>${quarkus.platform.version}</version>
                 </plugin>
                 <plugin>

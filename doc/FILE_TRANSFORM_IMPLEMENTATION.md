@@ -3,19 +3,23 @@
 ## Overview
 Added a file transformation feature to the RGD HTTP Proxy that allows batch processing of JSON files with the same tokenization capabilities used for REST API payloads.
 
+> The feature is now the `rgd-proxy-filetransform` Maven module (package
+> `com.ubp.rgd.proxy.filetransform`), always included in the application. The locations below are
+> up to date; see the README for the module layout.
+
 ## Files Created
 
 ### 1. Configuration Class
-**Location:** `src/main/java/com/ubp/rgd/proxy/transform/config/FileTransformConfig.java`
+**Location:** `rgd-proxy-filetransform/src/main/java/com/ubp/rgd/proxy/filetransform/config/FileTransformConfig.java`
 - Defines the structure for file transformation configuration
 - Supports multiple configurations for different source/target directories
 - Reuses existing `EntityTransformConfig` for JSON path transformations
 - Similar structure to `EndPointTransformConfig` but adapted for file processing
-- **Package:** Placed in `transform.config` package for consistency with other transform configs
+- **Package:** `filetransform.config`, alongside the service in the module
 
 ### 2. File Transform Service
-**Location:** `src/main/java/com/ubp/rgd/proxy/services/FileTransformService.java`
-- `@ApplicationScoped` CDI bean that runs automatically on application startup
+**Location:** `rgd-proxy-filetransform/src/main/java/com/ubp/rgd/proxy/filetransform/FileTransformService.java`
+- `@Startup` `@ApplicationScoped` CDI bean, created at application startup; its schedulers stop at shutdown
 - Scheduled background process that scans directories at configurable intervals
 - Handles file transformation workflow:
   - Scans source directories for matching files
@@ -47,7 +51,7 @@ Added a file transformation feature to the RGD HTTP Proxy that allows batch proc
 - Best practices and troubleshooting
 
 ### 5. Unit Tests
-**Location:** `src/test/java/com/ubp/rgd/proxy/services/FileTransformConfigTest.java`
+**Location:** `rgd-proxy-filetransform/src/test/java/com/ubp/rgd/proxy/filetransform/config/FileTransformConfigTest.java`
 - Tests for configuration serialization/deserialization
 - Validates JSON config structure
 - Tests for sorting and mapping transform configs
@@ -177,7 +181,7 @@ Files are processed every 30 seconds and moved to `./data/protected/`:
 
 ### Unit Tests
 ```bash
-mvn test -Dtest=FileTransformConfigTest
+mvn test -pl rgd-proxy-filetransform -Dtest=FileTransformConfigTest
 ```
 
 ### Integration Testing

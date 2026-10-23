@@ -1,4 +1,0 @@
-name: "RGD proxy Flight SQL server"
-description: "Apache Arrow Flight SQL server proxying a JDBC datasource, with transform() tokenization and result set detokenization (proxy.flight-sql.enabled=true)"
-metadata:
-  unlisted: true

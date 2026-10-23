@@ -1,4 +1,0 @@
-name: "RGD proxy RPS transformer"
-description: "Tokenization through the RegData RPS engine (proxy.transform.impl=RPS)"
-metadata:
-  unlisted: true

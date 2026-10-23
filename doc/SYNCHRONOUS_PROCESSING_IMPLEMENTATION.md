@@ -72,20 +72,20 @@ POST /api/file-transform/trigger/{name}         - Trigger processing
 ## Files Created/Modified
 
 ### Created Files:
-1. **src/main/java/com/ubp/rgd/proxy/services/FileTransformResource.java**
+1. **rgd-proxy-filetransform/src/main/java/com/ubp/rgd/proxy/filetransform/FileTransformResource.java**
    - REST API endpoints for on-demand processing
    
-2. **src/main/java/com/ubp/rgd/proxy/tools/FileTransformTriggerApp.java**
+2. **rgd-proxy-filetransform/src/main/java/com/ubp/rgd/proxy/filetransform/tools/FileTransformTriggerApp.java**
    - Command-line trigger application
 
 3. **doc/FILE_TRANSFORM_SYNCHRONOUS.md**
    - Comprehensive documentation for sync processing
 
 ### Modified Files:
-1. **src/main/java/com/ubp/rgd/proxy/transform/config/FileTransformConfig.java**
+1. **rgd-proxy-filetransform/src/main/java/com/ubp/rgd/proxy/filetransform/config/FileTransformConfig.java**
    - Added `scanIntervalSeconds` field
 
-2. **src/main/java/com/ubp/rgd/proxy/services/FileTransformService.java**
+2. **rgd-proxy-filetransform/src/main/java/com/ubp/rgd/proxy/filetransform/FileTransformService.java**
    - Changed to per-config scheduling
    - Added public methods for external invocation
    - Return file counts from processing

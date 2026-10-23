@@ -2,6 +2,7 @@ package com.ubp.rgd.proxy.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ubp.rgd.proxy.exception.UnknownSecretsManagerException;
+import com.ubp.rgd.proxy.transform.DefaultSecretsManagerProvider;
 import com.ubp.rgd.proxy.transform.config.SecretsManagerMappingConfig;
 import io.quarkus.runtime.Startup;
 import jakarta.annotation.PostConstruct;
@@ -36,7 +37,7 @@ import java.util.UUID;
  */
 @Startup
 @ApplicationScoped
-public class SecretsManagerResolver {
+public class SecretsManagerResolver implements DefaultSecretsManagerProvider {
 
     private static final Logger LOG = LoggerFactory.getLogger(SecretsManagerResolver.class);
 
@@ -66,6 +67,7 @@ public class SecretsManagerResolver {
     }
 
     /** @return the secrets manager used when a request does not carry the header */
+    @Override
     public UUID defaultSecretsManager() {
         return defaultSecretsManager;
     }

@@ -4,6 +4,9 @@ import io.quarkus.test.junit.QuarkusTestProfile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.ServerSocket;
 import java.util.Map;
 
 public class TestProfile implements QuarkusTestProfile {
@@ -35,7 +38,18 @@ public class TestProfile implements QuarkusTestProfile {
 
         props.putAll(Map.of("proxy.file-transform.enabled","true",
                             "proxy.file-transform.config-file","./src/test/resources/file_transform_config.json"));
+        // Flight SQL stays disabled unless a profile enables it; a free port keeps the tests away from
+        // a proxy that may be running on the machine
+        props.put("proxy.flight-sql.port", Integer.toString(freePort()));
 
         return props;
+    }
+
+    public static int freePort() {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }

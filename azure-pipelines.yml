@@ -68,8 +68,8 @@ stages:
         inputs:
           targetType: inline
           script: |
-            # install, not compile: the application module resolves the SPI and the RPS/FPE
-            # extensions as artifacts, and their deployment modules are needed by the Quarkus build
+            # install, not compile: the application module resolves the SPI and the feature
+            # modules as artifacts
             mvn install -DskipTests
       - task: Bash@3
         displayName: Setting up application.properties file from sample
@@ -96,7 +96,6 @@ stages:
             mvn install
       - script: |
           cp ./rgd-http-proxy/target/rgd-http-proxy-*-runner.jar $(Build.StagingDirectory)
-          cp ./rgd-http-proxy-flightsql/target/rgd-http-proxy-flightsql-*-runner.jar $(Build.StagingDirectory)
         displayName: 'Copy artifact to Build.StagingDirectory'
       - task: PublishBuildArtifacts@1
         inputs:

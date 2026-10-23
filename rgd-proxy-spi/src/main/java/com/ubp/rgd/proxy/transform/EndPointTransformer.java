@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
  * use its default one; the signatures without that parameter are shortcuts for {@code null}.
  *
  * <p>
- * The implementations are provided by Quarkus extensions: {@code rgd-proxy-rps} (tokenization through
+ * The implementations are provided by the modules {@code rgd-proxy-rps} (tokenization through
  * the RegData RPS engine) and {@code rgd-proxy-fpe} (Format Preserving Encryption).
  *
  * @see EndPointTransformerProducer
