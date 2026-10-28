@@ -128,7 +128,8 @@ public class PostFilter implements ContainerResponseFilter {
 
             } catch (TransformException e) {
                 LOG.error("POST filter: Cannot transform response to tokenizer.", e);
-                requestContext.abortWith(Response.status(500).entity(e.getMessage()).build());
+                responseContext.setStatus(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+                responseContext.setEntity(e.getMessage());
             }
         } else {
             LOG.info("POST filter: No need to transform: {} > {}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
