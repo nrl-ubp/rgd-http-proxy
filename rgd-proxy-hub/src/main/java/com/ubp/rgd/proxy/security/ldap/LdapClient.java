@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
-import javax.naming.NamingException;
 import javax.naming.directory.*;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -76,7 +75,8 @@ public class LdapClient {
             // Attempt to connect and authenticate
             return new InitialDirContext(env);
         } catch (Exception e) {
-            LOG.error("Cannot connect to LDAP server using user/password for: {}\\{}", domainName, userDn, e);
+            LOG.error("Cannot connect to LDAP server using user/password for: {} \\ {}", domainName, userDn);
+            LOG.error("LDAP Error: ", e);
             return null;
         }
     }
