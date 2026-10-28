@@ -15,14 +15,14 @@ Use Basic auth over HTTPS support for dev activities while full Kerberos support
 Both auth schemes are using Kerberos login Module to authenticate and load authorization AD groups. 
 
 ## Configuration 
-The application can be configured using files in the `rgd-http-proxy/config` folder (see
+The application can be configured using files in the `rgd-proxy-hub` folder (see
 [Project structure](#project-structure)). The application reads them as `./config/...`, relative to
-its working directory: start it, and run the Maven commands below, from `rgd-http-proxy/`.
+its working directory: start it, and run the Maven commands below, from `rgd-proxy-hub`.
 - application.properties : main configuration file for the application. **See the SAMPLE application.properties to configure the applicaiton.**
 - krb5.ini and login.conf are configuration file for the Kerberos configuration and jass login config  used by GSSAPI.
 - certs folder contains the rgd.keytab file and the HTTPS ssl certificate and key. See main application.properties file to configure the app.
-To get keytab file for each environment must be obtained from cyberark. Certs for SSL HTTPS connection must be obtained from windows team.
-For development, you can generate self signed certs using the maven command `mvn exec:java`, run from `rgd-http-proxy/`.
+  To get keytab file for each environment must be obtained from cyberark. Certs for SSL HTTPS connection must be obtained from windows team.
+  For development, you can generate self signed certs using the maven command `mvn exec:java`, run from `rgd-proxy-hub`.
 
 The `com.ubp.rgd.proxy.tools.ConfigGenerator` program can be used as a sample configuration generator.  
 
@@ -360,7 +360,7 @@ This anonymization proxy uses micrometer and prometheus endpoint is available.
 
 The project is a Maven multi-module build (version 2.0.0): a common base, one module per feature, and
 the application, which assembles them into a **single uber-jar**,
-`rgd-http-proxy/target/rgd-http-proxy-<version>-runner.jar`.
+`rgd-proxy-hub`.
 
 | Module | Artifact | Content |
 | --- | --- | --- |
@@ -369,7 +369,7 @@ the application, which assembles them into a **single uber-jar**,
 | `rgd-proxy-fpe` | `rgd-proxy-fpe` | FPE transformer (`com.ubp.rgd.proxy.fpe`): `FPEEndPointTransformer` (BouncyCastle). |
 | `rgd-proxy-filetransform` | `rgd-proxy-filetransform` | File transformation (`com.ubp.rgd.proxy.filetransform`): `FileTransformService`, the `/api/file-transform` endpoints, the configuration (`filetransform.config`) and the `FileTransformTriggerApp` batch tool (`filetransform.tools`). See [File transformation](#file-transformation). |
 | `rgd-proxy-flightsql` | `rgd-proxy-flightsql` | Flight SQL server (`com.ubp.rgd.proxy.flightsql`): the Arrow Flight SQL server, the `transform()` SQL extensions, the result set detokenization and its mapping configuration (`flightsql.config`). The only module depending on Apache Arrow. Also holds the ODBC client package and the `PersonFlightSqlLoader` tool. |
-| `rgd-http-proxy` | `rgd-http-proxy` | The application: proxy, `/transform`, WDX1, security. It depends on every feature module and builds the uber-jar. Its configuration is in `rgd-http-proxy/config`; its tests include the Quarkus wiring tests of the features (`com.ubp.rgd.proxy.wiring`). |
+| `rgd-proxy-hub` | `rgd-proxy-hub` | The application: proxy, `/transform`, WDX1, security. It depends on every feature module and builds the uber-jar. Its configuration is in `rgd-proxy-hub`; its tests include the Quarkus wiring tests of the features (`com.ubp.rgd.proxy.wiring`). |
 
 The feature modules are plain jars carrying a Jandex index (`jandex-maven-plugin`), which is all
 Quarkus needs to discover their beans, REST endpoints and OpenAPI annotations: there is no Quarkus
@@ -386,7 +386,7 @@ The application talks to the transformers only through the SPI: it never uses a 
 class. `proxy.transform.impl` selects, at runtime, one of the transformers present.
 
 - **Removing a transformer**: drop its dependency (`rgd-proxy-rps` or `rgd-proxy-fpe`) from
-  `rgd-http-proxy/pom.xml`. No code change is needed; `proxy.transform.impl` must then name the
+  `rgd-proxy-hub`. No code change is needed; `proxy.transform.impl` must then name the
   remaining one. Note that `FlightSqlDetokenizeService` still reads `proxy.transform.client-id`.
 - **Adding a transformer**: create a `rgd-proxy-<name>` module on the model of `rgd-proxy-fpe`: a
   jar with a Jandex index holding an `AbstractEndPointTransformer` subclass annotated
@@ -403,13 +403,13 @@ The following system environment variables must be set prior top launch JUnit te
 - proxy.transform.identity-url : url of the identity provider for RegData. Shenzo: https://identity-rgd-poc-corp-ubp.ch
 
 To build and test the server you use standard maven command, from the repository root: `mvn install`.
-The application tests run from `rgd-http-proxy/` (Quarkus requires it) and read `rgd-http-proxy/config`.
+The application tests run from `rgd-proxy-hub` (Quarkus requires it) and read `rgd-proxy-hub`.
 The unit tests of the feature modules are self-contained and need neither the credentials nor a
-database. The Quarkus wiring tests of the features (`rgd-http-proxy/src/test/java/com/ubp/rgd/proxy/wiring`)
+database. The Quarkus wiring tests of the features (`rgd-proxy-hub`)
 run in the application, the Flight SQL one in front of an in-memory H2 database.
 
 The build-time configuration (Swagger UI and OpenAPI paths, etc.) is read from
-`rgd-http-proxy/config/application.properties` whatever the directory Maven is started from: the
+`rgd-proxy-hub` whatever the directory Maven is started from: the
 `quarkus-maven-plugin` of the application sets `quarkus.config.locations` to that file.
 
 Be sure to adjust test config if required. The default configuration should be ok for basic testing.

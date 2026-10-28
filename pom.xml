@@ -17,12 +17,13 @@
          proxy.transform.impl selects the transformer at runtime; proxy.file-transform.enabled and
          proxy.flight-sql.enabled switch the file transformation and the Flight SQL server on. -->
     <modules>
+        <module>./lib/rps-engine-client-java</module>
         <module>rgd-proxy-spi</module>
         <module>rgd-proxy-rps</module>
         <module>rgd-proxy-fpe</module>
         <module>rgd-proxy-filetransform</module>
         <module>rgd-proxy-flightsql</module>
-        <module>rgd-http-proxy</module>
+        <module>rgd-proxy-hub</module>
     </modules>
 
     <properties>
