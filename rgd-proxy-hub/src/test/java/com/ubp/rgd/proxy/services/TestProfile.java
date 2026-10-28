@@ -34,13 +34,21 @@ public class TestProfile implements QuarkusTestProfile {
         props.put("proxy.transform.http-secrets-manager-mapping-file", "./src/test/resources/secrets_manager_mapping.json");
         // Token secrets manager resolution: no database is reachable in the tests, the lookups are mocked
         props.put("proxy.secrets-manager-lookup.mongodb.database", "rgd-test");
-        props.put("proxy.transform.client-id", "3150a79e-3084-4946-aeb5-e7e73aea3904");
 
         props.putAll(Map.of("proxy.file-transform.enabled","true",
                             "proxy.file-transform.config-file","./src/test/resources/file_transform_config.json"));
+
         // Flight SQL stays disabled unless a profile enables it; a free port keeps the tests away from
-        // a proxy that may be running on the machine
+        // a proxy that may be running on the machine and force the config not to start the sql server extentsion
         props.put("proxy.flight-sql.port", Integer.toString(freePort()));
+        props.put("proxy.flight-sql.enabled", "false");
+
+        // RPS client connection is given by env variables or default values for shenzo
+        String clientId = System.getProperty("proxy.transform.client-id", "3689c3d7-5f1e-4cda-967b-8b5b979c40e8");
+        String clientSecret = System.getProperty("proxy.transform.client-secret","46094e476a0840d3abdfaf583c633dec0a49323c256247f98ebc0f06a966e060");
+
+        props.put("proxy.transform.client-id", clientId);
+        props.put("proxy.transform.client-secret", clientSecret);
 
         return props;
     }
