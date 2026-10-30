@@ -2,6 +2,7 @@ package com.ubp.rgd.proxy.services.wdx1.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonRootName;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -9,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 @JsonRootName("wdx1-concat-config")
+@RegisterForReflection
 public class WDX1ConcatConfig {
 
     @JsonProperty(value="right-context")

@@ -1,0 +1,29 @@
+{
+  "resources": {
+    "includes": [
+      {
+        "pattern": "\\Qcom/ibm/icu/ICUConfig.properties\\E"
+      },
+      {
+        "pattern": "com/ibm/icu/impl/data/icudata/(langInfo\\.res|nfc\\.nrm|nfkc\\.nrm|pnames\\.icu|ucase\\.icu|uprops\\.icu)"
+      },
+      {
+        "pattern": "com/ibm/icu/impl/data/icudata/translit/.*"
+      },
+      {
+        "pattern": "com/ibm/icu/impl/data/icudata/brkitr/(root\\.res|en(_[A-Za-z_]+)?\\.res|word\\.brk|th(_[A-Za-z_]+)?\\.res|Thai[A-Za-z0-9_]*\\.res|thaidict\\.dict)"
+      }
+    ]
+  },
+  "bundles": [
+    {
+      "name": "sun.security.util.Resources"
+    },
+    {
+      "name": "sun.security.util.AuthResources"
+    },
+    {
+      "name": "com.sun.jndi.ldap.jndiprovider"
+    }
+  ]
+}

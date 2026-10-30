@@ -1,0 +1,245 @@
+{
+  "resources": {
+    "includes": [
+      {
+        "pattern": "\\QMETA-INF/BuildInfo.properties\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/IBM930ByteToChar.dat\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/IBM930CharToByte.dat\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/ccsid_merged.map\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/compinfo.properties\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/jmqiCharsets.dat\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/jmqiversion.properties\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/product.properties\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/version.properties\\E"
+      },
+      {
+        "pattern": "\\Qcom/ibm/mq/jmqi/internal/ciphermappings.json\\E"
+      },
+      {
+        "pattern": "\\Qmqji.properties\\E"
+      },
+      {
+        "pattern": "com/ibm/(mq|msg)/.*(version|BuildInfo)\\.properties"
+      }
+    ]
+  },
+  "bundles": [
+    {
+      "name": "com.ibm.mq.ese.nls.AMS_MessageResourceBundle"
+    },
+    {
+      "name": "com.ibm.mq.headers.internal.HeaderMessages"
+    },
+    {
+      "name": "com.ibm.mq.jakarta.jms.admin.resources.JMSADM_MessageResourceBundle"
+    },
+    {
+      "name": "com.ibm.mq.jakarta.jms.resources.JMSMQ_MessageResourceBundle"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq6047"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq6051"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq6052"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq6090"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq6271"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq8562"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq8568"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq8598"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9181"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9184"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9204"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9205"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9206"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9208"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9213"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9214"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9231"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9248"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9487"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9496"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9503"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9509"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9516"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9520"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9523"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9524"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9525"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9528"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9530"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9535"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9536"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9546"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9547"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9555"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9558"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9566"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9567"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9568"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9633"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9635"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9636"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9640"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9641"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9643"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9666"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9694"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9695"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9696"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9714"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9771"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9913"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9915"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.amq9999"
+    },
+    {
+      "name": "com.ibm.mq.jmqi.internal.messages"
+    },
+    {
+      "name": "com.ibm.msg.client.commonservices.resources.JMSCS_MessageResourceBundle"
+    },
+    {
+      "name": "com.ibm.msg.client.commonservices.tools.mainControllerMessages"
+    },
+    {
+      "name": "com.ibm.msg.client.commonservices.trace.controllerMessages"
+    },
+    {
+      "name": "com.ibm.msg.client.jakarta.jms.internal.resources.JMSCC_MessageResourceBundle"
+    },
+    {
+      "name": "com.ibm.msg.client.jakarta.wmq.common.internal.resources.JMSCMQ_MessageResourceBundle"
+    },
+    {
+      "name": "com.ibm.msg.client.jakarta.wmq.compat.base.internal.resources.mqv6"
+    },
+    {
+      "name": "com.ibm.msg.client.jakarta.wmq.compat.jms.internal.services.resources.MQJMS_MessageResourceBundle"
+    },
+    {
+      "name": "com.ibm.msg.client.jakarta.wmq.factories.resources.JMSFMQ_MessageResourceBundle"
+    },
+    {
+      "name": "com.ibm.msg.client.jakarta.wmq.internal.resources.JMSWMQ_MessageResourceBundle"
+    }
+  ]
+}

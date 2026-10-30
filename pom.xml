@@ -11,11 +11,12 @@
     <packaging>pom</packaging>
 
     <!-- The common base (rgd-proxy-spi), one module per feature (the RPS and FPE transformers, the
-         file transformation, the Flight SQL server), and the application (rgd-http-proxy), which
+         file transformation, the Flight SQL server, the IBM MQ queue proxy), and the application (rgd-proxy-hub), which
          assembles them into a single uber-jar. The feature modules are plain jars with a Jandex
          index, so that Quarkus discovers their beans and endpoints.
-         proxy.transform.impl selects the transformer at runtime; proxy.file-transform.enabled and
-         proxy.flight-sql.enabled switch the file transformation and the Flight SQL server on. -->
+         proxy.transform.impl selects the transformer at runtime; proxy.file-transform.enabled,
+         proxy.flight-sql.enabled and proxy.queue.enabled switch the file transformation, the Flight SQL
+         server and the queue proxy on. -->
     <modules>
         <module>./lib/rps-engine-client-java</module>
         <module>rgd-proxy-spi</module>
@@ -23,6 +24,7 @@
         <module>rgd-proxy-fpe</module>
         <module>rgd-proxy-filetransform</module>
         <module>rgd-proxy-flightsql</module>
+        <module>rgd-proxy-queue</module>
         <module>rgd-proxy-hub</module>
     </modules>
 
@@ -42,6 +44,13 @@
         <mssql-jdbc.version>12.8.1.jre11</mssql-jdbc.version>
         <h2.version>2.3.232</h2.version>
         <javafaker.version>1.0.2</javafaker.version>
+        <!-- IBM MQ Jakarta Messaging client of the queue proxy (its native-image configuration is in
+             rgd-proxy-queue: check it again when upgrading) -->
+        <ibm-mq.version>10.0.1.0</ibm-mq.version>
+        <jakarta.jms-api.version>3.1.0</jakarta.jms-api.version>
+        <!-- Embedded broker standing in for IBM MQ in the queue proxy tests: 2.42.x uses the netty
+             version of Quarkus 3.25 (4.1.121.Final) -->
+        <artemis.version>2.42.0</artemis.version>
         <compiler-plugin.version>3.11.0</compiler-plugin.version>
         <surefire-plugin.version>3.0.0</surefire-plugin.version>
     </properties>
@@ -100,6 +109,11 @@
             <dependency>
                 <groupId>com.ubp.rgd.proxy</groupId>
                 <artifactId>rgd-proxy-flightsql</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ubp.rgd.proxy</groupId>
+                <artifactId>rgd-proxy-queue</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -165,6 +179,26 @@
                 <groupId>com.github.javafaker</groupId>
                 <artifactId>javafaker</artifactId>
                 <version>${javafaker.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ibm.mq</groupId>
+                <artifactId>com.ibm.mq.jakarta.client</artifactId>
+                <version>${ibm-mq.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.jms</groupId>
+                <artifactId>jakarta.jms-api</artifactId>
+                <version>${jakarta.jms-api.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.activemq</groupId>
+                <artifactId>artemis-server</artifactId>
+                <version>${artemis.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.activemq</groupId>
+                <artifactId>artemis-jakarta-client</artifactId>
+                <version>${artemis.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

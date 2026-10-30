@@ -1,0 +1,109 @@
+[
+  {
+    "name": "protect_clients",
+    "concurrency": 1,
+    "input": {
+      "host": "mq-gva.corp.ubp.ch",
+      "port": 1414,
+      "queue-manager": "QMGVA01",
+      "channel": "RGD.SVRCONN",
+      "queue": "RGD.CLIENTS.CLEAR",
+      "credentials": "gva",
+      "cipher-suite": "TLS_AES_256_GCM_SHA384"
+    },
+    "output": {
+      "host": "mq-lux.corp.ubp.ch",
+      "port": 1414,
+      "queue-manager": "QMLUX01",
+      "channel": "RGD.SVRCONN",
+      "queue": "RGD.CLIENTS.PROTECTED",
+      "credentials": "lux",
+      "cipher-suite": "TLS_AES_256_GCM_SHA384"
+    },
+    "error": {
+      "host": "mq-gva.corp.ubp.ch",
+      "port": 1414,
+      "queue-manager": "QMGVA01",
+      "channel": "RGD.SVRCONN",
+      "queue": "RGD.CLIENTS.ERROR",
+      "credentials": "gva",
+      "cipher-suite": "TLS_AES_256_GCM_SHA384"
+    },
+    "right-context": {
+      "Target": "WDX1",
+      "Module": "QueueProxy",
+      "Right": "Transform"
+    },
+    "processing-context": {
+      "Target": "WDX1",
+      "Module": "QueueProxy",
+      "Action": "Protect"
+    },
+    "entity-transform-configs": [
+      {
+        "json-path": "$.client.lastName",
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
+      },
+      {
+        "json-path": "$.client.firstName",
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
+      },
+      {
+        "json-path": "$.client.birthDate",
+        "rps-class-name": "Person",
+        "rps-property-name": "BirthDate"
+      }
+    ]
+  },
+  {
+    "name": "unprotect_clients",
+    "concurrency": 2,
+    "input": {
+      "host": "mq-lux.corp.ubp.ch",
+      "port": 1414,
+      "queue-manager": "QMLUX01",
+      "channel": "RGD.SVRCONN",
+      "queue": "RGD.CLIENTS.TO.UNPROTECT",
+      "credentials": "lux",
+      "cipher-suite": "TLS_AES_256_GCM_SHA384"
+    },
+    "output": {
+      "host": "mq-lux.corp.ubp.ch",
+      "port": 1414,
+      "queue-manager": "QMLUX01",
+      "channel": "RGD.SVRCONN",
+      "queue": "queue:///RGD.CLIENTS.UNPROTECTED?targetClient=1",
+      "credentials": "lux",
+      "cipher-suite": "TLS_AES_256_GCM_SHA384"
+    },
+    "right-context": {
+      "Target": "WDX1",
+      "Module": "QueueProxy",
+      "Right": "Transform"
+    },
+    "processing-context": {
+      "Target": "WDX1",
+      "Module": "QueueProxy",
+      "Action": "Unprotect"
+    },
+    "entity-transform-configs": [
+      {
+        "json-path": "$.client.lastName",
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
+      },
+      {
+        "json-path": "$.client.firstName",
+        "rps-class-name": "Person",
+        "rps-property-name": "ShortString"
+      },
+      {
+        "json-path": "$.client.birthDate",
+        "rps-class-name": "Person",
+        "rps-property-name": "BirthDate"
+      }
+    ]
+  }
+]

@@ -369,6 +369,7 @@ the application, which assembles them into a **single uber-jar**,
 | `rgd-proxy-fpe` | `rgd-proxy-fpe` | FPE transformer (`com.ubp.rgd.proxy.fpe`): `FPEEndPointTransformer` (BouncyCastle). |
 | `rgd-proxy-filetransform` | `rgd-proxy-filetransform` | File transformation (`com.ubp.rgd.proxy.filetransform`): `FileTransformService`, the `/api/file-transform` endpoints, the configuration (`filetransform.config`) and the `FileTransformTriggerApp` batch tool (`filetransform.tools`). See [File transformation](#file-transformation). |
 | `rgd-proxy-flightsql` | `rgd-proxy-flightsql` | Flight SQL server (`com.ubp.rgd.proxy.flightsql`): the Arrow Flight SQL server, the `transform()` SQL extensions, the result set detokenization and its mapping configuration (`flightsql.config`). The only module depending on Apache Arrow. Also holds the ODBC client package and the `PersonFlightSqlLoader` tool. |
+| `rgd-proxy-queue` | `rgd-proxy-queue` | IBM MQ queue proxy (`com.ubp.rgd.proxy.queue`): the reactive pipelines of the routes, the IBM MQ connections (`IbmMqConnectionFactoryProvider`), the `/api/queue/routes` endpoints, the readiness check and the route configuration (`queue.config`). The only module depending on the IBM MQ client. See [IBM MQ queue proxy](#ibm-mq-queue-proxy). |
 | `rgd-proxy-hub` | `rgd-proxy-hub` | The application: proxy, `/transform`, WDX1, security. It depends on every feature module and builds the uber-jar. Its configuration is in `rgd-proxy-hub`; its tests include the Quarkus wiring tests of the features (`com.ubp.rgd.proxy.wiring`). |
 
 The feature modules are plain jars carrying a Jandex index (`jandex-maven-plugin`), which is all
@@ -381,6 +382,7 @@ configuration:
 | Transformer | `proxy.transform.impl` (`RPS` or `FPE`) |
 | File transformation | `proxy.file-transform.enabled` (default `false`) |
 | Flight SQL server | `proxy.flight-sql.enabled` (default `false`) |
+| IBM MQ queue proxy | `proxy.queue.enabled` (default `false`) |
 
 The application talks to the transformers only through the SPI: it never uses a RegData or an FPE
 class. `proxy.transform.impl` selects, at runtime, one of the transformers present.
@@ -405,7 +407,8 @@ The following system environment variables must be set prior top launch JUnit te
 To build and test the server you use standard maven command, from the repository root: `mvn install`.
 The application tests run from `rgd-proxy-hub` (Quarkus requires it) and read `rgd-proxy-hub`.
 The unit tests of the feature modules are self-contained and need neither the credentials nor a
-database. The Quarkus wiring tests of the features (`rgd-proxy-hub`)
+database; the queue proxy tests replace the queue managers with embedded ActiveMQ Artemis brokers. The
+Quarkus wiring tests of the features (`rgd-proxy-hub`)
 run in the application, the Flight SQL one in front of an in-memory H2 database.
 
 The build-time configuration (Swagger UI and OpenAPI paths, etc.) is read from
@@ -413,6 +416,8 @@ The build-time configuration (Swagger UI and OpenAPI paths, etc.) is read from
 `quarkus-maven-plugin` of the application sets `quarkus.config.locations` to that file.
 
 Be sure to adjust test config if required. The default configuration should be ok for basic testing.
+
+For the native executable and its container image, see [Native build and container image](#native-build-and-container-image).
 
 There is one integration test that goes with full steps of the transformation
 A mocked server is launched pr the test runs. This basic http server exposes one endpoitn that serve 
@@ -464,6 +469,154 @@ the wait.
 
 > **The class name changed** when the file transformation became a module of its own: it was
 > `com.ubp.rgd.proxy.tools.FileTransformTriggerApp`. Update the scheduler jobs accordingly.
+
+## IBM MQ queue proxy
+
+The proxy transforms the messages flowing between IBM MQ queues: it listens on input queues, transforms
+the JSON payload of each message with the transformer selected by `proxy.transform.impl` and the same
+`entity-transform-configs` as the REST payloads, and puts the result on an output queue. The queues of
+a route may be on different hosts and queue managers. The feature is the `rgd-proxy-queue` module.
+
+| Property | Description |
+| --- | --- |
+| `proxy.queue.enabled` | Starts the routes (default `false`). |
+| `proxy.queue.config-file` | The routes, default `./config/mq_transform_config.json`. |
+| `proxy.queue.credentials.<alias>.user` / `.password` | The user and password of a credentials alias named by the routes. Set the password through the environment, e.g. `PROXY_QUEUE_CREDENTIALS_GVA_PASSWORD`. |
+| `proxy.queue.receive-timeout` | How long a consumer waits for a message before polling again (default `1s`); also how long stopping may take. |
+| `proxy.queue.reconnect.initial-delay` / `.max-delay` | Backoff of a route that lost a queue manager or the engine (default `1s`, doubling up to `60s`). |
+| `proxy.queue.application-name` | The application name the queue managers show for the connections (default `rgd-proxy-queue`). |
+| `proxy.queue.client-log` | Where the IBM MQ client writes its own log (default `./logs/mqjms.log`, rotated as `mqjms.log.0`...). |
+
+### Routes
+
+`mq_transform_config.json` lists the routes (sample: `rgd-proxy-hub/config/mq_transform_config.json`):
+
+```json
+[
+  {
+    "name": "protect_clients",
+    "concurrency": 1,
+    "input":  { "host": "mq-gva", "port": 1414, "queue-manager": "QMGVA01", "channel": "RGD.SVRCONN",
+                "queue": "RGD.CLIENTS.CLEAR", "credentials": "gva", "cipher-suite": "TLS_AES_256_GCM_SHA384" },
+    "output": { "host": "mq-lux", "port": 1414, "queue-manager": "QMLUX01", "channel": "RGD.SVRCONN",
+                "queue": "RGD.CLIENTS.PROTECTED", "credentials": "lux", "cipher-suite": "TLS_AES_256_GCM_SHA384" },
+    "error":  { "host": "mq-gva", "port": 1414, "queue-manager": "QMGVA01", "channel": "RGD.SVRCONN",
+                "queue": "RGD.CLIENTS.ERROR", "credentials": "gva", "cipher-suite": "TLS_AES_256_GCM_SHA384" },
+    "right-context":      { "Target": "WDX1", "Module": "QueueProxy", "Right": "Transform" },
+    "processing-context": { "Target": "WDX1", "Module": "QueueProxy", "Action": "Protect" },
+    "entity-transform-configs": [
+      { "json-path": "$.client.lastName", "rps-class-name": "Person", "rps-property-name": "ShortString" }
+    ]
+  }
+]
+```
+
+| Route field | Description |
+| --- | --- |
+| `name` | Unique name, used in the logs, the metrics and `/api/queue/routes`. |
+| `concurrency` | Consumers of the input queue (default 1). With 1 the messages keep their order; more consumers trade the order for throughput. |
+| `input`, `output` | The queue read, the queue written. |
+| `error` | Optional: where the messages that cannot be transformed go, see below. |
+| `right-context`, `processing-context` | The evidences sent to the transformer. `processing-context.Action` (`Protect` or `Unprotect`) is mandatory. |
+| `entity-transform-configs` | What to transform in the payload, as for the REST payloads. |
+
+| Endpoint field | Description |
+| --- | --- |
+| `host`, `port` | The listener of the queue manager (port default 1414). |
+| `queue-manager`, `channel` | The queue manager and its server-connection channel. |
+| `queue` | The queue name, or an IBM MQ queue URI: `queue:///RGD.OUT?targetClient=1` sends the messages without JMS header (no MQRFH2) to a non-JMS application, which drops the message properties. |
+| `credentials` | Optional alias of the `proxy.queue.credentials.<alias>.*` properties; without it, no user is sent (channel authentication by MCAUSER or TLS certificate). |
+| `cipher-suite` | Optional TLS cipher suite of the channel, see [TLS](#tls-of-the-queue-managers). |
+
+Endpoints naming the same host, port, queue manager, channel, credentials and cipher suite share one
+connection, whatever the number of routes and consumers. The file is validated at startup when the
+queue proxy is enabled: a missing field, an unknown credentials alias, a duplicate name, an invalid
+`Action` or a route reading and writing the same queue stops the application, with every defect listed.
+
+### How a message is processed
+
+Each consumer of a route is a reactive pipeline (Mutiny) on its own thread, running indefinitely:
+
+1. **receive** a message from the input queue (`QueueListener`), in a transacted session;
+2. **transform** its payload with the injected `EndPointTransformer` (`QueueMessageTransformer`);
+3. **send** the result to the output queue (`QueueProducer`);
+4. **commit**, which removes the message from the input queue.
+
+A consumer only receives the next message once the previous one is committed: the pace is set by the
+slowest of the queue managers and the transformer, and nothing piles up in the proxy.
+
+- The payload is the text of a text message, or the UTF-8 content of a bytes message, and must be a
+  JSON object or array.
+- The transformed message has the type of the received one and keeps its correlation id, JMS type, user
+  properties, persistence, priority and remaining time to live. The reply-to queue is not copied.
+- Protecting uses the default secrets manager of `proxy.transform.http-secrets-manager-mapping-file`;
+  unprotecting lets the transformer resolve the secrets manager of each token, as for the files.
+
+The queue proxy is built on the IBM MQ Jakarta Messaging client rather than on SmallRye Reactive
+Messaging: the routes are read from a file at startup, whereas Reactive Messaging channels must all be
+declared at build time.
+
+### Delivery and failures
+
+- When the output queue is on the queue manager of the input queue, receiving and sending are one
+  transaction: each message is transformed **exactly once**. Across queue managers, the output is
+  committed before the input: a crash between the two commits sends the message again on restart
+  (**at-least-once**); the consumers of the output queue must tolerate duplicates.
+- A message that **cannot be transformed** (not JSON, not a text or bytes message, a value the
+  transformer rejects) goes, unchanged, to the error queue with these properties:
+
+  | Property | Content |
+  | --- | --- |
+  | `RgdRoute` | The route. |
+  | `RgdErrorReason` | What went wrong, `ExceptionClass: message`. |
+  | `RgdErrorClass` | The class of the root cause. |
+  | `RgdErrorTime` | When, ISO-8601. |
+  | `RgdOriginalMessageId` | The message id of the received message. |
+
+  Without an error queue, the message is rolled back and received again after the backoff delay. Give
+  the input queue a backout threshold and queue (`BOTHRESH`, `BOQNAME`): IBM MQ then moves the message
+  aside after that many attempts, otherwise the route retries it forever.
+- When the **infrastructure** fails (a queue manager, the transformation engine or a database
+  unreachable: I/O errors, timeouts, messaging errors, 5xx responses), the message is rolled back, the
+  consumer disconnects and connects again after the backoff, indefinitely; the route shows
+  `RECONNECTING` meanwhile. No message is lost nor sent to the error queue for such failures.
+
+The user of each channel needs `+connect +inq` on its queue manager, `+get +browse +inq` on the input
+queue and `+put` on the output and error queues.
+
+### TLS of the queue managers
+
+With a `cipher-suite`, the connection is secured with TLS, using the key and trust stores of the JVM:
+
+```
+-Djavax.net.ssl.trustStore=./config/certs/mq-truststore.p12 -Djavax.net.ssl.trustStorePassword=...
+-Djavax.net.ssl.keyStore=./config/certs/mq-keystore.p12 -Djavax.net.ssl.keyStorePassword=...   # mutual TLS only
+-Dcom.ibm.mq.cfg.useIBMCipherMappings=false
+```
+
+`useIBMCipherMappings=false` is needed on the non-IBM JVMs, so that `cipher-suite` takes the standard
+names (`TLS_AES_256_GCM_SHA384`, `TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384`...) matching the `SSLCIPH` of
+the channel.
+
+### Monitoring the routes
+
+- `GET /api/queue/routes` and `GET /api/queue/routes/{name}`: the state of each route (`STARTING`,
+  `RUNNING`, `RECONNECTING`, `STOPPED`), its connected consumers, its queues, the messages transformed,
+  sent to the error queue and rolled back since startup, and the last error. No credentials.
+- The readiness check `rgd-queue-routes` (`/health/ready`) is up when the queue proxy is disabled or
+  every consumer of every route is connected, and gives the state of each route. A queue manager outage
+  therefore makes the whole proxy not ready.
+- Metrics, tagged with `route`:
+
+  | Metric | Content |
+  | --- | --- |
+  | `ubp_proxy_queue_messages_total{outcome}` | Messages `transformed`, sent to the `error_queue`, `rolled_back`. |
+  | `ubp_proxy_queue_transform_seconds` | Duration of the transformations. |
+  | `ubp_proxy_queue_route_up` | 1 while every consumer of the route is connected. |
+
+The queue proxy also runs in the native executable (see [Native build](#native-build-and-container-image)),
+although IBM does not support its client in a native image: the configuration it needs is part of the
+`rgd-proxy-queue` module, verified against IBM MQ 10.0.1.
 
 ## Flight SQL server
 
@@ -886,6 +1039,136 @@ caller's own database identity:
 JDBC types ODBC cannot represent (`ARRAY`, `STRUCT`, `OTHER`, vendor codes...) are left out of the
 type list rather than mislabelled; notably JDBC `ROWID` (-8), whose code means `WCHAR` in ODBC.
 
+## Native build and container image
+
+The profile `native` of `rgd-proxy-hub` compiles the proxy, with every feature, to a Linux native
+executable (GraalVM / Mandrel), which `rgd-proxy-hub/src/main/docker/Dockerfile.native-micro` packages
+in a container image for `linux/amd64` and `linux/arm64`. The JVM uber-jar is unchanged.
+
+| | JVM uber-jar | Native executable (arm64, all features enabled) |
+| --- | --- | --- |
+| Size | ~114 MB jar, plus a JVM | ~166 MB executable, ~184 MB image |
+| Startup | ~0.6 s | ~0.1 s |
+| Memory at rest (RSS) | ~320 MB | ~35 MB |
+
+### Building the executable
+
+Prerequisites: podman or docker, with ~12 GB of memory for its VM on macOS/Windows. No local GraalVM:
+the executable is built in the Mandrel builder container (`quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-21`),
+so it is a Linux executable whatever the host. To build with a GraalVM installed on the host instead,
+see [Building with a local GraalVM](#building-with-a-local-graalvm).
+
+```
+mvn install -DskipTests                               # the modules, once
+mvn package -Dnative -DskipTests -pl rgd-proxy-hub    # ~2 min, ~5 GB of memory
+# -> rgd-proxy-hub/target/rgd-proxy-hub-<version>-runner-linux-<arch>
+```
+
+- The architecture is the one of the host (`amd64` or `arm64`). **GraalVM cannot cross-compile**: build
+  each architecture on a host of that architecture, e.g. an amd64 Linux build agent and an arm64 host.
+  `-Dnative.arch=amd64|arm64` forces the other one by running the builder container under emulation
+  (QEMU): possible, but slow and not supported by GraalVM.
+- As for the JVM build, the build-time settings are read from `rgd-proxy-hub/config/application.properties`.
+- The executable targets any x86-64 or ARMv8 server (`quarkus.native.march=compatibility`) and uses
+  the `en-US` locale whatever the build host. For a build dedicated to known hardware, add
+  `-Dquarkus.native.march=native`.
+
+### Building with a local GraalVM
+
+Give the home of a GraalVM for JDK 21 (Oracle GraalVM, GraalVM Community or Mandrel) and the profile
+`native-local` builds with its `native-image`, without any container:
+
+```
+mvn package -Dnative -DskipTests -pl rgd-proxy-hub \
+    -Dnative.graalvm-home=/Library/Java/JavaVirtualMachines/graalvm-jdk-21.0.11+9.1/Contents/Home
+# -> rgd-proxy-hub/target/rgd-proxy-hub-<version>-runner-<os>-<arch>
+```
+
+GraalVM builds for the operating system **and** the architecture it runs on:
+
+| Build host | Executable | Use |
+| --- | --- | --- |
+| Linux amd64 / arm64 | `-runner-linux-amd64` / `-runner-linux-arm64` | Same as the container build: goes in the image (`tools/build-native-image.sh`). The build host needs no podman or docker. |
+| macOS (Apple silicon or Intel) | `-runner-macos-arm64` / `-runner-macos-amd64` | Runs on the Mac only, e.g. for development; never packaged in the image. |
+| Windows | `-runner-windows-amd64` | Not tested. |
+
+- `-Dnative.arch` has no effect: there is no emulation outside the container.
+- The host needs the C toolchain `native-image` links with: on macOS the Xcode command line tools
+  (`xcode-select --install`); on Linux `gcc`, `glibc-devel` and `zlib-devel` (RHEL names; `build-essential`
+  and `zlib1g-dev` on Debian/Ubuntu); on Windows the Visual Studio C++ build tools.
+- Run a macOS executable from the directory holding `config/`, like the jar:
+  `cd rgd-proxy-hub && ./target/rgd-proxy-hub-2.0.0-runner-macos-arm64`.
+- Everything else (native configuration of the modules, `march`, locale) is shared with the container build.
+- Verified: a macOS arm64 executable built by Oracle GraalVM 21.0.11 (~90 s, ~183 MB, ~0.1 s startup) passes
+  the same tests as the container build, IBM MQ and Flight SQL included; a Linux arm64 executable built
+  by the GraalVM (Mandrel) of a Linux host without container build goes in the image and passes them too.
+
+### Building the image
+
+Gather the executables in `rgd-proxy-hub/target`, then:
+
+```
+tools/build-native-image.sh -t <registry>/rgd-proxy-hub:<version> [--push] [--runtime podman|docker]
+```
+
+With one executable the script builds a single-architecture image; with both `amd64` and `arm64` a
+multi-architecture image (manifest list), which docker can only push (`--push`), podman also keep
+locally. The Dockerfile has no `RUN` instruction, so assembling the other architecture needs no
+emulation. The base image is `quay.io/quarkus/ubi9-quarkus-micro-image:2.0` (UBI 9 micro with glibc).
+
+### Running the container
+
+```
+podman run -p 8080:8080 -p 8443:8443 -p 32010:32010 \
+    -v ./config:/work/config:ro -v ./data:/work/data \
+    -e PROXY_QUEUE_CREDENTIALS_GVA_PASSWORD=... \
+    <registry>/rgd-proxy-hub:<version> [-D<property>=<value>...]
+```
+
+- The configuration directory of the environment (`application.properties`, certificates, keytab,
+  `krb5.ini`, `login.conf`, the transform, file, queue and Flight SQL configurations) is mounted on
+  `/work/config`, the working directory being `/work`; mount the directories of the file
+  transformation as well. Secrets are better given as environment variables.
+- The process runs as user 1001 and cannot listen below port 1024: keep `quarkus.http.ssl-port=8443`
+  (not the `%prod` 443 of the Windows service) and map the host port, e.g. `-p 443:8443`.
+- The arguments after the image name go to the executable, e.g. the trust store of the IBM MQ TLS
+  channels (`-Djavax.net.ssl.trustStore=/work/config/certs/mq-truststore.p12 ...`). The
+  `--add-opens` flag of the JVM is built into the executable.
+- The command-line tools (`FileTransformTriggerApp`, `KeyAndCertificateGenerator`, `PersonFlightSqlLoader`,
+  `SwaggerTransformConfigGenerator`) are not in the executable: use the JVM jar, or `curl` for the
+  trigger endpoint.
+
+### Native configuration of the modules
+
+Libraries found by reflection, resources and class initialization need declaring for a native image.
+Each module carries its own, in
+`src/main/resources/META-INF/native-image/com.ubp.rgd.proxy/<module>/` (`native-image.properties`,
+`reflect-config.json`, `resource-config.json`), and the JSON configuration classes carry
+`@RegisterForReflection` (the SPI ones are in its `reflect-config.json`, the RegData client models in
+`RpsClientNativeReflection`):
+
+| Module | What the native image needs |
+| --- | --- |
+| `rgd-proxy-spi`, `rgd-proxy-rps` | The configuration classes and the RegData API models read and written by Jackson. |
+| `rgd-proxy-hub` | ICU4J transliteration data (WDX1 names), the Kerberos (JGSS), JAAS, JNDI LDAP and SASL GSSAPI classes and security providers. |
+| `rgd-proxy-flightsql` | Arrow, grpc-netty and protobuf initialized at run time, `java.nio` opened to Arrow, the Flight SQL protobuf messages, the Arrow schema classes; the Netty allocation manager is selected explicitly (`FlightSqlServerService`). |
+| `rgd-proxy-queue` | The IBM MQ client initialized at run time, the classes it loads by name, its message catalogs, CCSID and charset data. |
+
+When a new class is read from JSON, annotate it with `@RegisterForReflection`. When upgrading Apache
+Arrow, the IBM MQ client or ICU4J, check the native executable again: the configuration was collected
+with the GraalVM tracing agent and the native image tested against these flows (arm64):
+
+- REST endpoints, Swagger UI, health, metrics; FPE `/transform`; WDX1 concat with ICU transliteration of
+  12 scripts (identical to the JVM); file transformation, scheduled and triggered.
+- Flight SQL in plaintext and TLS: login, `transform()`, `transform_search()`, detokenized results,
+  prepared statements, metadata (against H2 in a test build; with SQL Server, up to the connection).
+- IBM MQ queue proxy against IBM MQ 10.0.1: transformation with headers kept, error queue, reconnection
+  after a queue manager restart, wrong password.
+- Kerberos and LDAP up to the network only (keytab/password login, SPNEGO acceptor, LDAP SASL GSSAPI
+  bind): **verify them in the target environment**, with its KDC and Active Directory.
+- Not exercised: the RPS engine and the MongoDB / SQL Server lookups of the secrets managers (Quarkus
+  extensions, and the RegData client models are registered).
+
 ## Useful commands
 
 Launch proxy in dev mode, from the repository root (after a `mvn install -DskipTests`; live reload
@@ -894,9 +1177,7 @@ covers the application module only, changes to the SPI or the feature modules ne
 `mvn -pl rgd-http-proxy quarkus:dev -Djvm.args="--add-opens=java.base/java.nio=ALL-UNNAMED"`
 
 
-Package with native profile :
-
-`mvn clean package -Pnative`
+Native executable and container image: see [Native build and container image](#native-build-and-container-image).
 
 Launch server:
 

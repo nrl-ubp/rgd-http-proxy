@@ -1,0 +1,208 @@
+[
+  {
+    "name": "com.ibm.mq.MQEnvironment",
+    "methods": [
+      {
+        "name": "forceAllowClientConnection",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "com.ibm.mq.constants.CMQC",
+    "allPublicFields": true
+  },
+  {
+    "name": "com.ibm.mq.constants.MQConstants",
+    "allPublicFields": true
+  },
+  {
+    "name": "com.ibm.mq.ese.jmqi.ESEJMQI",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "com.ibm.mq.jmqi.JmqiEnvironment",
+          "int",
+          "com.ibm.mq.jmqi.JmqiMQ"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "com.ibm.mq.headers.internal.MQMessageWrapper",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.io.DataInput"
+        ]
+      },
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.io.DataOutput"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "com.ibm.mq.jakarta.jms.MQConnectionFactory",
+    "fields": [
+      {
+        "name": "portSet"
+      }
+    ]
+  },
+  {
+    "name": "com.ibm.mq.jakarta.jms.MQJMSComponent",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "com.ibm.mq.jmqi.internal.charset.CustomCharset",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.ibm.mq.jmqi.internal.charset.HP1051Charset",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.ibm.mq.jmqi.internal.charset.IBM37Charset",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.ibm.mq.jmqi.internal.charset.IBM437Charset",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.ibm.mq.jmqi.internal.charset.IBM500Charset",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.ibm.mq.jmqi.internal.charset.IBM850Charset",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.ibm.mq.jmqi.internal.charset.IBM866Charset",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.ibm.mq.jmqi.internal.charset.IBM930Charset",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.ibm.mq.jmqi.internal.charset.MixedByteCharset",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.ibm.mq.jmqi.internal.charset.SingleByteCharset",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.ibm.mq.jmqi.remote.api.RemoteFAP",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "com.ibm.mq.jmqi.JmqiEnvironment",
+          "int"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "com.ibm.msg.client.commonservices.j2se.J2SEComponent",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "com.ibm.msg.client.commonservices.propertystore.PropertyStoreControl",
+    "queryAllPublicMethods": true
+  },
+  {
+    "name": "com.ibm.msg.client.commonservices.propertystore.PropertyStoreControlImpl",
+    "queryAllPublicConstructors": true
+  },
+  {
+    "name": "com.ibm.msg.client.jakarta.jms.internal.JMSComponent",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "com.ibm.msg.client.jakarta.jms.internal.JmsFactoryFactoryImpl",
+    "methods": [
+      {
+        "name": "getInstance",
+        "parameterTypes": [
+          "java.lang.String"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "com.ibm.msg.client.jakarta.wmq.factories.WMQComponent",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "java.io.DataInputStream",
+    "allPublicMethods": true
+  },
+  {
+    "name": "java.io.FilterInputStream",
+    "methods": [
+      {
+        "name": "mark",
+        "parameterTypes": [
+          "int"
+        ]
+      },
+      {
+        "name": "reset",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "java.io.InputStream",
+    "methods": [
+      {
+        "name": "mark",
+        "parameterTypes": [
+          "int"
+        ]
+      },
+      {
+        "name": "reset",
+        "parameterTypes": []
+      }
+    ]
+  }
+]

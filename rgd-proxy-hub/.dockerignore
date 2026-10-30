@@ -1,0 +1,3 @@
+# The native container image only needs the executables (src/main/docker/Dockerfile.native-micro)
+*
+!target/*-runner-linux-*

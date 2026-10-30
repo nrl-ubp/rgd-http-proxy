@@ -5,6 +5,7 @@ import com.ubp.rgd.proxy.security.ldap.LdapClient;
 import io.quarkus.cache.Cache;
 import io.quarkus.cache.CacheName;
 import io.quarkus.cache.CaffeineCache;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -19,6 +20,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 @ApplicationScoped
+@RegisterForReflection
 public class BasicToken extends SecurityToken {
 
     private static final Logger LOG = LoggerFactory.getLogger(BasicToken.class);

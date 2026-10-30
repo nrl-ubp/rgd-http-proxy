@@ -1,6 +1,7 @@
 package com.ubp.rgd.proxy.flightsql.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,6 +22,7 @@ import java.util.Map;
  *
  * @see FlightSqlPhaseConfig
  */
+@RegisterForReflection
 public class FlightSqlMappingConfig {
 
     /**

@@ -17,12 +17,20 @@
 
     <properties>
         <quarkus.package.jar.type>uber-jar</quarkus.package.jar.type>
+        <!-- The build host, named as in the native executables: linux, macos or windows; amd64 or arm64
+             (set by the profiles native-host-*) -->
+        <native.host.os>linux</native.host.os>
+        <native.host.arch>amd64</native.host.arch>
+        <!-- Target of the native build in the Mandrel container (profile native): amd64 or arm64. Defaults
+             to the architecture of the host; -Dnative.arch=... forces the other one, built under emulation. -->
+        <native.arch>${native.host.arch}</native.arch>
     </properties>
 
     <dependencies>
         <!-- The SPI and the feature modules, all part of the uber-jar. proxy.transform.impl selects one of
-             the transformers present here at runtime; proxy.file-transform.enabled and
-             proxy.flight-sql.enabled switch the file transformation and the Flight SQL server on. -->
+             the transformers present here at runtime; proxy.file-transform.enabled, proxy.flight-sql.enabled
+             and proxy.queue.enabled switch the file transformation, the Flight SQL server and the IBM MQ
+             queue proxy on. -->
         <dependency>
             <groupId>com.ubp.rgd.proxy</groupId>
             <artifactId>rgd-proxy-spi</artifactId>
@@ -42,6 +50,10 @@
         <dependency>
             <groupId>com.ubp.rgd.proxy</groupId>
             <artifactId>rgd-proxy-flightsql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-queue</artifactId>
         </dependency>
 
         <!-- Logging facade used by all our classes -->
@@ -190,6 +202,17 @@
             <artifactId>h2</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Embedded broker standing in for the IBM MQ queue managers in the queue proxy tests -->
+        <dependency>
+            <groupId>org.apache.activemq</groupId>
+            <artifactId>artemis-server</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.activemq</groupId>
+            <artifactId>artemis-jakarta-client</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -234,5 +257,93 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Native executable for Linux, to embed in a container image (src/main/docker/Dockerfile.native-micro):
+               mvn package -Dnative [-DskipTests] [-Dnative.arch=amd64|arm64]
+             -> target/rgd-proxy-hub-<version>-runner-linux-<arch>
+             GraalVM cannot cross-compile: the build runs in the Mandrel builder container for the target
+             platform, natively when it is the architecture of the host, under emulation otherwise (slow).
+             Needs podman or docker with ~12 GB of memory for the container. See the README, "Native build and
+             container image".
+             With -Dnative.graalvm-home=<GraalVM 21 home>, the profile native-local builds with that GraalVM
+             instead of the container. -->
+        <profile>
+            <id>native</id>
+            <activation>
+                <property>
+                    <name>native</name>
+                </property>
+            </activation>
+            <properties>
+                <quarkus.native.enabled>true</quarkus.native.enabled>
+                <quarkus.package.jar.enabled>false</quarkus.package.jar.enabled>
+                <quarkus.package.runner-suffix>-runner-linux-${native.arch}</quarkus.package.runner-suffix>
+                <!-- A Linux executable whatever the host, built by the JDK 21 Mandrel of the Quarkus images -->
+                <quarkus.native.container-build>true</quarkus.native.container-build>
+                <quarkus.native.builder-image>quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-21</quarkus.native.builder-image>
+                <quarkus.native.container-runtime-options>--platform=linux/${native.arch}</quarkus.native.container-runtime-options>
+                <!-- Runs on any x86-64 or ARMv8 server rather than on recent CPUs only -->
+                <quarkus.native.march>compatibility</quarkus.native.march>
+                <quarkus.native.native-image-xmx>10g</quarkus.native.native-image-xmx>
+                <!-- The same executable whatever the locale of the machine building it -->
+                <quarkus.default-locale>en-US</quarkus.default-locale>
+                <skipITs>true</skipITs>
+            </properties>
+        </profile>
+        <!-- Native executable built by a local GraalVM rather than in the container, with -Dnative:
+               mvn package -Dnative -Dnative.graalvm-home=<GraalVM 21 home> [-DskipTests]
+             -> target/rgd-proxy-hub-<version>-runner-<os>-<arch>, for the OS and architecture of the host
+             (GraalVM builds for the host only: -Dnative.arch is ignored). Only the linux executables go in
+             the container image; a macos or windows one runs on its build host. Needs the C toolchain of the
+             host (Xcode command line tools on macOS; gcc, glibc-devel, zlib-devel on Linux).
+             Declared after the profile native, so that its properties win. -->
+        <profile>
+            <id>native-local</id>
+            <activation>
+                <property>
+                    <name>native.graalvm-home</name>
+                </property>
+            </activation>
+            <properties>
+                <quarkus.native.container-build>false</quarkus.native.container-build>
+                <quarkus.native.graalvm-home>${native.graalvm-home}</quarkus.native.graalvm-home>
+                <quarkus.package.runner-suffix>-runner-${native.host.os}-${native.host.arch}</quarkus.package.runner-suffix>
+            </properties>
+        </profile>
+        <profile>
+            <id>native-host-arm64</id>
+            <activation>
+                <os>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <native.host.arch>arm64</native.host.arch>
+            </properties>
+        </profile>
+        <profile>
+            <id>native-host-macos</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                </os>
+            </activation>
+            <properties>
+                <native.host.os>macos</native.host.os>
+            </properties>
+        </profile>
+        <profile>
+            <id>native-host-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <native.host.os>windows</native.host.os>
+            </properties>
+        </profile>
+    </profiles>
 
 </project>

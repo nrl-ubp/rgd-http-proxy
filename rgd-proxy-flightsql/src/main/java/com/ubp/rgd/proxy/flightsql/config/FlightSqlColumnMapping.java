@@ -1,6 +1,7 @@
 package com.ubp.rgd.proxy.flightsql.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 
 /**
  * Maps a database table / column to the RPS class and property names used to detokenize the values
@@ -9,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * The {@code table} entry is optional: when omitted (or set to {@code *}) the mapping applies to any
  * table exposing a column with that name.
  */
+@RegisterForReflection
 public class FlightSqlColumnMapping {
 
     /** Wildcard accepted for the {@code table} entry. */

@@ -1,0 +1,2166 @@
+[
+  {
+    "name": "com.google.protobuf.ExtensionRegistry",
+    "methods": [
+      {
+        "name": "getEmptyRegistry",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "io.grpc.ClientInterceptor"
+  },
+  {
+    "name": "io.grpc.ServerInterceptor"
+  },
+  {
+    "name": "io.grpc.internal.MessageFramer$BufferChainOutputStream",
+    "fields": [
+      {
+        "name": "bufferList"
+      },
+      {
+        "name": "current"
+      }
+    ]
+  },
+  {
+    "name": "io.grpc.internal.ReadableBuffers$BufferInputStream",
+    "fields": [
+      {
+        "name": "buffer"
+      }
+    ]
+  },
+  {
+    "name": "io.grpc.internal.SerializingExecutor",
+    "fields": [
+      {
+        "name": "runState"
+      }
+    ]
+  },
+  {
+    "name": "io.grpc.netty.AbstractNettyHandler",
+    "methods": [
+      {
+        "name": "channelActive",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "exceptionCaught",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Throwable"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "io.grpc.netty.NettyServer$1"
+  },
+  {
+    "name": "io.grpc.netty.NettyServerHandler",
+    "methods": [
+      {
+        "name": "channelInactive",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "close",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "write",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object",
+          "io.netty.channel.ChannelPromise"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "io.grpc.netty.NettyWritableBuffer",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "io.netty.buffer.ByteBuf"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "io.grpc.netty.ProtocolNegotiators$GrpcNegotiationHandler",
+    "methods": [
+      {
+        "name": "userEventTriggered",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "io.grpc.netty.ProtocolNegotiators$ProtocolNegotiationHandler",
+    "methods": [
+      {
+        "name": "userEventTriggered",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "io.grpc.netty.ProtocolNegotiators$WaitUntilActiveHandler",
+    "methods": [
+      {
+        "name": "channelActive",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "io.grpc.netty.WriteBufferingAndExceptionHandler",
+    "methods": [
+      {
+        "name": "channelInactive",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelRead",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object"
+        ]
+      },
+      {
+        "name": "close",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "connect",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.net.SocketAddress",
+          "java.net.SocketAddress",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "exceptionCaught",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Throwable"
+        ]
+      },
+      {
+        "name": "flush",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "write",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object",
+          "io.netty.channel.ChannelPromise"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "io.netty.bootstrap.ServerBootstrap$1"
+  },
+  {
+    "name": "io.netty.bootstrap.ServerBootstrap$ServerBootstrapAcceptor",
+    "methods": [
+      {
+        "name": "channelRead",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object"
+        ]
+      },
+      {
+        "name": "exceptionCaught",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Throwable"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "io.netty.buffer.AbstractByteBufAllocator",
+    "queryAllDeclaredMethods": true
+  },
+  {
+    "name": "io.netty.buffer.AbstractReferenceCountedByteBuf",
+    "fields": [
+      {
+        "name": "refCnt"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.buffer.PooledByteBufAllocator",
+    "fields": [
+      {
+        "name": "directArenas"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.channel.AbstractChannelHandlerContext",
+    "fields": [
+      {
+        "name": "handlerState"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.channel.ChannelDuplexHandler",
+    "methods": [
+      {
+        "name": "bind",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.net.SocketAddress",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "close",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "connect",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.net.SocketAddress",
+          "java.net.SocketAddress",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "deregister",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "disconnect",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "flush",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "read",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "write",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object",
+          "io.netty.channel.ChannelPromise"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "io.netty.channel.ChannelInboundHandlerAdapter",
+    "methods": [
+      {
+        "name": "channelActive",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelInactive",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelRead",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object"
+        ]
+      },
+      {
+        "name": "channelReadComplete",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelRegistered",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelUnregistered",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelWritabilityChanged",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "exceptionCaught",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Throwable"
+        ]
+      },
+      {
+        "name": "userEventTriggered",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "io.netty.channel.ChannelInitializer",
+    "methods": [
+      {
+        "name": "channelRegistered",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "exceptionCaught",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Throwable"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "io.netty.channel.ChannelOutboundBuffer",
+    "fields": [
+      {
+        "name": "totalPendingSize"
+      },
+      {
+        "name": "unwritable"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.channel.DefaultChannelConfig",
+    "fields": [
+      {
+        "name": "autoRead"
+      },
+      {
+        "name": "writeBufferWaterMark"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.channel.DefaultChannelPipeline",
+    "fields": [
+      {
+        "name": "estimatorHandle"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.channel.DefaultChannelPipeline$HeadContext",
+    "methods": [
+      {
+        "name": "bind",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.net.SocketAddress",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "channelActive",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelInactive",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelRead",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object"
+        ]
+      },
+      {
+        "name": "channelReadComplete",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelRegistered",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelUnregistered",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelWritabilityChanged",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "close",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "connect",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.net.SocketAddress",
+          "java.net.SocketAddress",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "deregister",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "disconnect",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "exceptionCaught",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Throwable"
+        ]
+      },
+      {
+        "name": "flush",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "read",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "userEventTriggered",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object"
+        ]
+      },
+      {
+        "name": "write",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object",
+          "io.netty.channel.ChannelPromise"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "io.netty.channel.DefaultChannelPipeline$TailContext",
+    "methods": [
+      {
+        "name": "channelActive",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelInactive",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelRead",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object"
+        ]
+      },
+      {
+        "name": "channelReadComplete",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelRegistered",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelUnregistered",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelWritabilityChanged",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "exceptionCaught",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Throwable"
+        ]
+      },
+      {
+        "name": "userEventTriggered",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "io.netty.channel.EventLoopGroup"
+  },
+  {
+    "name": "io.netty.handler.codec.ByteToMessageDecoder",
+    "methods": [
+      {
+        "name": "channelRead",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object"
+        ]
+      },
+      {
+        "name": "userEventTriggered",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "io.netty.handler.codec.http2.Http2ConnectionHandler",
+    "methods": [
+      {
+        "name": "bind",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.net.SocketAddress",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "channelReadComplete",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "channelWritabilityChanged",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "connect",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "java.net.SocketAddress",
+          "java.net.SocketAddress",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "deregister",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "disconnect",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext",
+          "io.netty.channel.ChannelPromise"
+        ]
+      },
+      {
+        "name": "flush",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      },
+      {
+        "name": "read",
+        "parameterTypes": [
+          "io.netty.channel.ChannelHandlerContext"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "io.netty.util.AbstractReferenceCounted",
+    "fields": [
+      {
+        "name": "refCnt"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.util.DefaultAttributeMap",
+    "fields": [
+      {
+        "name": "attributes"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.util.Recycler$DefaultHandle",
+    "fields": [
+      {
+        "name": "state"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.util.ReferenceCountUtil",
+    "queryAllDeclaredMethods": true
+  },
+  {
+    "name": "io.netty.util.concurrent.DefaultPromise",
+    "fields": [
+      {
+        "name": "result"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.util.concurrent.SingleThreadEventExecutor",
+    "fields": [
+      {
+        "name": "state"
+      },
+      {
+        "name": "threadProperties"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.util.internal.shaded.org.jctools.queues.BaseMpscLinkedArrayQueueColdProducerFields",
+    "fields": [
+      {
+        "name": "producerLimit"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.util.internal.shaded.org.jctools.queues.BaseMpscLinkedArrayQueueConsumerFields",
+    "fields": [
+      {
+        "name": "consumerIndex"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.util.internal.shaded.org.jctools.queues.BaseMpscLinkedArrayQueueProducerFields",
+    "fields": [
+      {
+        "name": "producerIndex"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.util.internal.shaded.org.jctools.queues.unpadded.MpscUnpaddedArrayQueueConsumerIndexField",
+    "fields": [
+      {
+        "name": "consumerIndex"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.util.internal.shaded.org.jctools.queues.unpadded.MpscUnpaddedArrayQueueProducerIndexField",
+    "fields": [
+      {
+        "name": "producerIndex"
+      }
+    ]
+  },
+  {
+    "name": "io.netty.util.internal.shaded.org.jctools.queues.unpadded.MpscUnpaddedArrayQueueProducerLimitField",
+    "fields": [
+      {
+        "name": "producerLimit"
+      }
+    ]
+  },
+  {
+    "name": "java.nio.Bits",
+    "fields": [
+      {
+        "name": "MAX_MEMORY"
+      },
+      {
+        "name": "UNALIGNED"
+      }
+    ]
+  },
+  {
+    "name": "java.nio.Buffer",
+    "fields": [
+      {
+        "name": "address"
+      }
+    ]
+  },
+  {
+    "name": "java.nio.ByteBuffer",
+    "methods": [
+      {
+        "name": "alignedSlice",
+        "parameterTypes": [
+          "int"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "java.nio.DirectByteBuffer",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "long",
+          "long"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "jdk.internal.misc.Unsafe",
+    "methods": [
+      {
+        "name": "getUnsafe",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginSavepointRequest",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginSavepointRequest$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginSavepointRequest$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginSavepointRequestOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginSavepointResult",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginSavepointResult$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginSavepointResult$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginSavepointResultOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginTransactionRequest",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginTransactionRequest$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginTransactionRequest$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginTransactionRequestOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginTransactionResult",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginTransactionResult$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginTransactionResult$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionBeginTransactionResultOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCancelQueryRequest",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCancelQueryRequest$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCancelQueryRequest$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCancelQueryRequestOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCancelQueryResult",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCancelQueryResult$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCancelQueryResult$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCancelQueryResult$CancelResult",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCancelQueryResult$CancelResult$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCancelQueryResultOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionClosePreparedStatementRequest",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionClosePreparedStatementRequest$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionClosePreparedStatementRequest$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionClosePreparedStatementRequestOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCreatePreparedStatementRequest",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCreatePreparedStatementRequest$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCreatePreparedStatementRequest$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCreatePreparedStatementRequestOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCreatePreparedStatementResult",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCreatePreparedStatementResult$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCreatePreparedStatementResult$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCreatePreparedStatementResultOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCreatePreparedSubstraitPlanRequest",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCreatePreparedSubstraitPlanRequest$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCreatePreparedSubstraitPlanRequest$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionCreatePreparedSubstraitPlanRequestOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionEndSavepointRequest",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionEndSavepointRequest$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionEndSavepointRequest$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionEndSavepointRequest$EndSavepoint",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionEndSavepointRequest$EndSavepoint$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionEndSavepointRequestOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionEndTransactionRequest",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionEndTransactionRequest$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionEndTransactionRequest$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionEndTransactionRequest$EndTransaction",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionEndTransactionRequest$EndTransaction$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$ActionEndTransactionRequestOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetCatalogs",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetCatalogs$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetCatalogs$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetCatalogsOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetCrossReference",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetCrossReference$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetCrossReference$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetCrossReferenceOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetDbSchemas",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetDbSchemas$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetDbSchemas$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetDbSchemasOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetExportedKeys",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetExportedKeys$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetExportedKeys$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetExportedKeysOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetImportedKeys",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetImportedKeys$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetImportedKeys$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetImportedKeysOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetPrimaryKeys",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetPrimaryKeys$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetPrimaryKeys$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetPrimaryKeysOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetSqlInfo",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetSqlInfo$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetSqlInfo$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetSqlInfoOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetTableTypes",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetTableTypes$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetTableTypes$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetTableTypesOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetTables",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetTables$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetTables$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetTablesOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetXdbcTypeInfo",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetXdbcTypeInfo$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetXdbcTypeInfo$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandGetXdbcTypeInfoOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandPreparedStatementQuery",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandPreparedStatementQuery$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandPreparedStatementQuery$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandPreparedStatementQueryOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandPreparedStatementUpdate",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandPreparedStatementUpdate$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandPreparedStatementUpdate$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandPreparedStatementUpdateOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementIngest",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementIngest$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementIngest$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementIngest$OptionsDefaultEntryHolder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementIngest$TableDefinitionOptions",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementIngest$TableDefinitionOptions$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementIngest$TableDefinitionOptions$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementIngest$TableDefinitionOptions$TableExistsOption",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementIngest$TableDefinitionOptions$TableExistsOption$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementIngest$TableDefinitionOptions$TableNotExistOption",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementIngest$TableDefinitionOptions$TableNotExistOption$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementIngest$TableDefinitionOptionsOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementIngestOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementQuery",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementQuery$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementQuery$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementQueryOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementSubstraitPlan",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementSubstraitPlan$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementSubstraitPlan$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementSubstraitPlanOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementUpdate",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementUpdate$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementUpdate$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$CommandStatementUpdateOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$DoPutPreparedStatementResult",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$DoPutPreparedStatementResult$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$DoPutPreparedStatementResult$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$DoPutPreparedStatementResultOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$DoPutUpdateResult",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$DoPutUpdateResult$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$DoPutUpdateResult$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$DoPutUpdateResultOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$Nullable",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$Nullable$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$Searchable",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$Searchable$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlInfo",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlInfo$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlNullOrdering",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlNullOrdering$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlOuterJoinsSupportLevel",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlOuterJoinsSupportLevel$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedCaseSensitivity",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedCaseSensitivity$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedElementActions",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedElementActions$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedGroupBy",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedGroupBy$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedPositionedCommands",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedPositionedCommands$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedResultSetConcurrency",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedResultSetConcurrency$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedResultSetType",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedResultSetType$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedSubqueries",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedSubqueries$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedTransaction",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedTransaction$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedTransactions",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedTransactions$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedUnions",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportedUnions$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportsConvert",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlSupportsConvert$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlTransactionIsolationLevel",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SqlTransactionIsolationLevel$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SubstraitPlan",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SubstraitPlan$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SubstraitPlan$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SubstraitPlanOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SupportedAnsi92SqlGrammarLevel",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SupportedAnsi92SqlGrammarLevel$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SupportedSqlGrammar",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$SupportedSqlGrammar$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$TicketStatementQuery",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$TicketStatementQuery$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$TicketStatementQuery$Builder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$TicketStatementQueryOrBuilder",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$UpdateDeleteRules",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$UpdateDeleteRules$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$XdbcDataType",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$XdbcDataType$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$XdbcDatetimeSubcode",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.flight.sql.impl.FlightSql$XdbcDatetimeSubcode$1",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.apache.arrow.memory.Accountant",
+    "fields": [
+      {
+        "name": "allocationLimit"
+      },
+      {
+        "name": "locallyHeldMemory"
+      },
+      {
+        "name": "peakAllocation"
+      }
+    ]
+  },
+  {
+    "name": "org.apache.arrow.memory.BufferLedger",
+    "fields": [
+      {
+        "name": "bufRefCnt"
+      }
+    ]
+  },
+  {
+    "name": "org.apache.arrow.memory.netty.NettyAllocationManager",
+    "fields": [
+      {
+        "name": "FACTORY"
+      }
+    ]
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$ArrowTypeID",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$ArrowTypeVisitor",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$Binary",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$BinaryView",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$Bool",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$ComplexType",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$ComplexTypeVisitor",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$Date",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$Decimal",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$Duration",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$ExtensionType",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$FixedSizeBinary",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$FixedSizeList",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$FloatingPoint",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$Int",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$Interval",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$LargeBinary",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$LargeList",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$LargeListView",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$LargeUtf8",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$List",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$ListView",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$Map",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$Null",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$PrimitiveType",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$PrimitiveTypeVisitor",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$RunEndEncoded",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$Struct",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$Time",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$Timestamp",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$Union",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$Utf8",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ArrowType$Utf8View",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.DictionaryEncoding",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.ExtensionTypeRegistry",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.Field",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.FieldType",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.apache.arrow.vector.types.pojo.Schema",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "sun.misc.Unsafe",
+    "allDeclaredFields": true,
+    "methods": [
+      {
+        "name": "arrayBaseOffset",
+        "parameterTypes": [
+          "java.lang.Class"
+        ]
+      },
+      {
+        "name": "arrayIndexScale",
+        "parameterTypes": [
+          "java.lang.Class"
+        ]
+      },
+      {
+        "name": "copyMemory",
+        "parameterTypes": [
+          "long",
+          "long",
+          "long"
+        ]
+      },
+      {
+        "name": "copyMemory",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long",
+          "java.lang.Object",
+          "long",
+          "long"
+        ]
+      },
+      {
+        "name": "getAndAddLong",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long",
+          "long"
+        ]
+      },
+      {
+        "name": "getAndSetObject",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long",
+          "java.lang.Object"
+        ]
+      },
+      {
+        "name": "getBoolean",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long"
+        ]
+      },
+      {
+        "name": "getByte",
+        "parameterTypes": [
+          "long"
+        ]
+      },
+      {
+        "name": "getByte",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long"
+        ]
+      },
+      {
+        "name": "getDouble",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long"
+        ]
+      },
+      {
+        "name": "getFloat",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long"
+        ]
+      },
+      {
+        "name": "getInt",
+        "parameterTypes": [
+          "long"
+        ]
+      },
+      {
+        "name": "getInt",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long"
+        ]
+      },
+      {
+        "name": "getLong",
+        "parameterTypes": [
+          "long"
+        ]
+      },
+      {
+        "name": "getLong",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long"
+        ]
+      },
+      {
+        "name": "getObject",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long"
+        ]
+      },
+      {
+        "name": "invokeCleaner",
+        "parameterTypes": [
+          "java.nio.ByteBuffer"
+        ]
+      },
+      {
+        "name": "objectFieldOffset",
+        "parameterTypes": [
+          "java.lang.reflect.Field"
+        ]
+      },
+      {
+        "name": "putBoolean",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long",
+          "boolean"
+        ]
+      },
+      {
+        "name": "putByte",
+        "parameterTypes": [
+          "long",
+          "byte"
+        ]
+      },
+      {
+        "name": "putByte",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long",
+          "byte"
+        ]
+      },
+      {
+        "name": "putDouble",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long",
+          "double"
+        ]
+      },
+      {
+        "name": "putFloat",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long",
+          "float"
+        ]
+      },
+      {
+        "name": "putInt",
+        "parameterTypes": [
+          "long",
+          "int"
+        ]
+      },
+      {
+        "name": "putInt",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long",
+          "int"
+        ]
+      },
+      {
+        "name": "putLong",
+        "parameterTypes": [
+          "long",
+          "long"
+        ]
+      },
+      {
+        "name": "putLong",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long",
+          "long"
+        ]
+      },
+      {
+        "name": "putObject",
+        "parameterTypes": [
+          "java.lang.Object",
+          "long",
+          "java.lang.Object"
+        ]
+      },
+      {
+        "name": "storeFence",
+        "parameterTypes": []
+      }
+    ]
+  }
+]

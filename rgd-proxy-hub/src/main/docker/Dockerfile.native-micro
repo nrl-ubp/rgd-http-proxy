@@ -1,0 +1,33 @@
+####
+# Container image of the native executable of the proxy, for linux/amd64 and linux/arm64.
+#
+# Build the executable of each architecture first, on a host of that architecture (see the README,
+# "Native build and container image"):
+#   mvn package -Dnative -DskipTests      -> target/rgd-proxy-hub-<version>-runner-linux-<arch>
+# then, from the repository root:
+#   tools/build-native-image.sh -t <image>[:<tag>] [--push]
+# which builds one image per executable found, combined into a multi-arch image when both are there.
+# For one architecture by hand, from rgd-proxy-hub:
+#   podman build --platform linux/arm64 -f src/main/docker/Dockerfile.native-micro -t rgd-proxy-hub:native .
+#
+# There is no RUN instruction: assembling the image of the other architecture needs no emulation.
+#
+# Run it with the configuration directory of the environment (application.properties, certificates,
+# keytab, krb5.ini, login.conf, the transform configurations) mounted on /work/config:
+#   podman run -p 8080:8080 -p 8443:8443 -v ./config:/work/config:ro rgd-proxy-hub:native
+# The process runs as user 1001: listen on ports above 1024 (map 443 to 8443 with -p 443:8443).
+####
+FROM quay.io/quarkus/ubi9-quarkus-micro-image:2.0
+
+# Set by podman build / docker buildx from --platform: amd64 or arm64
+ARG TARGETARCH
+
+# /work is created by the copy, owned by the user of the application, which writes its logs there
+COPY --chown=1001:root --chmod=0775 target/*-runner-linux-${TARGETARCH} /work/application
+WORKDIR /work
+
+# HTTP, HTTPS, Flight SQL
+EXPOSE 8080 8443 32010
+USER 1001
+
+ENTRYPOINT ["./application", "-Dquarkus.http.host=0.0.0.0"]

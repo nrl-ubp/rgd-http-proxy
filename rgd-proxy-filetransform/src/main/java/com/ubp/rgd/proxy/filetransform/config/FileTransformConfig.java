@@ -2,12 +2,14 @@ package com.ubp.rgd.proxy.filetransform.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.ubp.rgd.proxy.transform.config.EntityTransformConfig;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+@RegisterForReflection
 public class FileTransformConfig {
 
     @JsonProperty(value = "name")

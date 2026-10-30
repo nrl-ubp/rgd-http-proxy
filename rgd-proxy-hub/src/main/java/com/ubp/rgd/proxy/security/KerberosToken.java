@@ -1,6 +1,7 @@
 package com.ubp.rgd.proxy.security;
 
 import com.ubp.rgd.proxy.security.ldap.LdapClient;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 @ApplicationScoped
+@RegisterForReflection
 public class KerberosToken extends SecurityToken {
     private static final Logger LOG = LoggerFactory.getLogger(KerberosToken.class);
 

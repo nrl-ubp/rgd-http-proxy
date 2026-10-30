@@ -1,0 +1,94 @@
+[
+  {
+    "name": "com.ibm.icu.text.BreakIteratorFactory",
+    "allDeclaredConstructors": true
+  },
+  {
+    "name": "com.ibm.icu.text.NullTransliterator",
+    "allDeclaredConstructors": true
+  },
+  {
+    "name": "sun.security.jgss.SunProvider",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "sun.security.jgss.krb5.Krb5MechFactory",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "sun.security.jgss.spnego.SpNegoMechFactory",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "javax.security.auth.kerberos.KerberosPrincipal",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "javax.security.auth.kerberos.KerberosKey",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "javax.security.auth.kerberos.KeyTab",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "javax.security.auth.kerberos.KerberosTicket",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.sun.security.auth.module.Krb5LoginModule",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.sun.jndi.ldap.LdapCtxFactory",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.sun.jndi.url.ldap.ldapURLContextFactory",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.sun.jndi.dns.DnsContextFactory",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.sun.jndi.rmi.registry.RegistryContextFactory",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.sun.security.sasl.Provider",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.sun.security.sasl.ClientFactoryImpl",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.sun.security.sasl.gsskerb.JdkSASL",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.sun.security.sasl.gsskerb.FactoryImpl",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "sun.security.jgss.GSSContextImpl",
+    "allDeclaredFields": true
+  }
+]

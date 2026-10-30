@@ -2,6 +2,7 @@ package com.ubp.rgd.proxy.security;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonRootName;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,6 +12,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @JsonRootName("security-token")
+@RegisterForReflection
 public abstract class SecurityToken {
     private static final Logger LOG = LoggerFactory.getLogger(SecurityToken.class);
 

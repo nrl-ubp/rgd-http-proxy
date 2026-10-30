@@ -57,3 +57,6 @@ tools/procrun/**/*
 **/clients/dotnet/**/obj/**/*
 
 rgd-proxy-hub/config/application.properties
+### Runtime logs (tools/start-quarkus.ps1, IBM MQ client of the queue proxy) ###
+logs/
+mqjms.log*

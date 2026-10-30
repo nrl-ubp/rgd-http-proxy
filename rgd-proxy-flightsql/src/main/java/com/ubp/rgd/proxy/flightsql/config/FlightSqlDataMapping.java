@@ -1,6 +1,7 @@
 package com.ubp.rgd.proxy.flightsql.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,6 +16,7 @@ import java.util.regex.Pattern;
  * matched. The segment sent to the engine is the whole match, so the regex must match the token
  * itself and not only a part of it.
  */
+@RegisterForReflection
 public class FlightSqlDataMapping {
 
     private static final Logger LOG = LoggerFactory.getLogger(FlightSqlDataMapping.class);

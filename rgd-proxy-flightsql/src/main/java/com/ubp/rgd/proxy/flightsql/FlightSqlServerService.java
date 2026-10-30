@@ -33,6 +33,9 @@ public class FlightSqlServerService {
 
     private static final Logger LOG = LoggerFactory.getLogger(FlightSqlServerService.class);
 
+    private static final String ALLOCATION_MANAGER_PROPERTY = "arrow.allocation.manager.type";
+    private static final String ALLOCATION_MANAGER_ENV = "ARROW_ALLOCATION_MANAGER_TYPE";
+
     @ConfigProperty(name = "proxy.flight-sql.enabled", defaultValue = "false")
     boolean enabled;
 
@@ -89,6 +92,7 @@ public class FlightSqlServerService {
             // rather than during it.
             LOG.info("Flight SQL detokenizer ready with {} column mapping(s)",
                     detokenizeService.getMappingConfig().getColumnMappings().size());
+            selectNettyAllocationManager();
             allocator = new RootAllocator(Long.MAX_VALUE);
             producer = new ProxyFlightSqlProducer(allocator, connectionManager, detokenizeService,
                     tokenizeService, batchSize);
@@ -124,6 +128,18 @@ public class FlightSqlServerService {
      * Build the Flight server on the right transport: TLS when material is given, plaintext gRPC
      * otherwise. Shared with the tests, so that they exercise the very wiring the proxy uses.
      */
+    /**
+     * Names the Netty allocation manager (arrow-memory-netty) rather than letting Arrow find it: Arrow looks
+     * for its class files as resources of the classpath, which a native executable does not have. Same
+     * choice as the detection made in a JVM. An explicit {@code arrow.allocation.manager.type} or
+     * {@code ARROW_ALLOCATION_MANAGER_TYPE} is left untouched.
+     */
+    static void selectNettyAllocationManager() {
+        if (System.getProperty(ALLOCATION_MANAGER_PROPERTY) == null && System.getenv(ALLOCATION_MANAGER_ENV) == null) {
+            System.setProperty(ALLOCATION_MANAGER_PROPERTY, "Netty");
+        }
+    }
+
     public static FlightServer.Builder newServerBuilder(BufferAllocator allocator, String host, int port,
                                                         FlightProducer producer,
                                                         CallHeaderAuthenticator authenticator,

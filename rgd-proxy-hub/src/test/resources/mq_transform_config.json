@@ -1,0 +1,13 @@
+[
+  {
+    "name": "protect_persons",
+    "input":  { "host": "localhost", "port": 1414, "queue-manager": "QM1", "channel": "TEST.SVRCONN", "queue": "RGD.PERSONS.IN" },
+    "output": { "host": "localhost", "port": 1414, "queue-manager": "QM1", "channel": "TEST.SVRCONN", "queue": "RGD.PERSONS.OUT" },
+    "error":  { "host": "localhost", "port": 1414, "queue-manager": "QM1", "channel": "TEST.SVRCONN", "queue": "RGD.PERSONS.ERR" },
+    "right-context": { "Module": "QueueProxy" },
+    "processing-context": { "Action": "Protect" },
+    "entity-transform-configs": [
+      { "json-path": "$.name", "rps-class-name": "Person", "rps-property-name": "FirstName" }
+    ]
+  }
+]
