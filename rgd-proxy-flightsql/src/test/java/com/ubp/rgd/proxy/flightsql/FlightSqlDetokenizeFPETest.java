@@ -5,14 +5,19 @@ import com.ubp.rgd.proxy.transform.model.Evidence;
 import com.ubp.rgd.proxy.transform.model.ProcessingContext;
 import com.ubp.rgd.proxy.transform.model.ValueMapping;
 import com.ubp.rgd.proxy.transform.model.MappedValue;
+import com.ubp.rgd.proxy.transform.model.ValueKind;
 import com.ubp.rgd.proxy.fpe.FPEEndPointTransformer;
 import com.ubp.rgd.proxy.flightsql.config.FlightSqlColumnMapping;
 import com.ubp.rgd.proxy.flightsql.config.FlightSqlDataMapping;
 import com.ubp.rgd.proxy.flightsql.config.FlightSqlMappingConfig;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.BigIntVector;
+import org.apache.arrow.vector.DateDayVector;
+import org.apache.arrow.vector.DecimalVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.types.DateUnit;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
@@ -22,8 +27,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +39,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -215,6 +224,132 @@ class FlightSqlDetokenizeFPETest {
 
             assertEquals("123456789", readString(root, 0));
         }
+    }
+
+    @Test
+    @DisplayName("A protected date stored as text is detokenized, it carries no RG{} wrapper")
+    void detokenizesAProtectedDateStoredAsText() throws Exception {
+        String protectedDate = protect("12.05.1980", "Person", "Birth");
+        assertFalse(protectedDate.contains("RG{"), protectedDate);
+
+        try (VectorSchemaRoot root = newRoot("BIRTH", protectedDate, "01.01.1990")) {
+            service.detokenize(root,
+                    List.of(new FlightSqlColumnMapping("PERSON", "BIRTH", "Person", "Birth")),
+                    allocator);
+
+            assertEquals("12.05.1980", readString(root, 0));
+            assertEquals("01.01.1990", readString(root, 1), "a clear date must be left untouched");
+        }
+    }
+
+    @Test
+    @DisplayName("Date and numeric columns are detokenized in place and keep their Arrow type")
+    void detokenizesTypedColumns() throws Exception {
+        String birth = protectTyped("1980-05-12", ValueKind.DATE, "Birth");
+        String age = protectTyped("42", ValueKind.NUMBER, "Age");
+        String balance = protectTyped("-1234.56", ValueKind.NUMBER, "Balance");
+
+        Schema schema = new Schema(List.of(
+                new Field("BIRTH", FieldType.nullable(new ArrowType.Date(DateUnit.DAY)), null),
+                new Field("AGE", FieldType.nullable(new ArrowType.Int(64, true)), null),
+                new Field("BALANCE", FieldType.nullable(new ArrowType.Decimal(10, 2, 128)), null)));
+        try (VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+            root.allocateNew();
+            ((DateDayVector) root.getVector(0)).setSafe(0, (int) LocalDate.parse(birth).toEpochDay());
+            ((DateDayVector) root.getVector(0)).setNull(1);
+            ((BigIntVector) root.getVector(1)).setSafe(0, Long.parseLong(age));
+            ((BigIntVector) root.getVector(1)).setSafe(1, 7);
+            ((DecimalVector) root.getVector(2)).setSafe(0, new BigDecimal(balance));
+            ((DecimalVector) root.getVector(2)).setNull(1);
+            root.setRowCount(2);
+
+            service.detokenize(root, List.of(
+                    new FlightSqlColumnMapping("PERSON", "BIRTH", "Person", "Birth"),
+                    new FlightSqlColumnMapping("PERSON", "AGE", "Person", "Age"),
+                    new FlightSqlColumnMapping("PERSON", "BALANCE", "Person", "Balance")), allocator);
+
+            assertEquals(LocalDate.parse("1980-05-12"),
+                    LocalDate.ofEpochDay(((DateDayVector) root.getVector(0)).get(0)));
+            assertTrue(root.getVector(0).isNull(1));
+            assertEquals(42L, ((BigIntVector) root.getVector(1)).get(0));
+            assertEquals(new BigDecimal("-1234.56"), ((DecimalVector) root.getVector(2)).getObject(0));
+        }
+    }
+
+    @Test
+    @DisplayName("An unmapped date column is detokenized implicitly by a data mapping matching the whole value")
+    void detokenizesAnUnmappedDateColumnImplicitly() throws Exception {
+        String birth = protectTyped("1980-05-12", ValueKind.DATE, "Date");
+        service.setMappingConfig(configWith(List.of(
+                new FlightSqlDataMapping("[3-9]\\d{3}-\\d{2}-\\d{2}", "Person", "Date"))));
+
+        Schema schema = new Schema(List.of(
+                new Field("BIRTH", FieldType.nullable(new ArrowType.Date(DateUnit.DAY)), null)));
+        try (VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+            root.allocateNew();
+            DateDayVector dates = (DateDayVector) root.getVector(0);
+            dates.setSafe(0, (int) LocalDate.parse(birth).toEpochDay());
+            dates.setSafe(1, (int) LocalDate.parse("1990-01-01").toEpochDay());
+            dates.setNull(2);
+            root.setRowCount(3);
+
+            service.detokenize(root, Collections.singletonList(null), allocator);
+
+            assertEquals(LocalDate.parse("1980-05-12"), LocalDate.ofEpochDay(dates.get(0)));
+            assertEquals(LocalDate.parse("1990-01-01"), LocalDate.ofEpochDay(dates.get(1)),
+                    "a date no data mapping claims must be left untouched");
+            assertTrue(dates.isNull(2));
+        }
+    }
+
+    @Test
+    @DisplayName("An unmapped numeric column is detokenized implicitly, a partial match is ignored")
+    void detokenizesAnUnmappedNumericColumnImplicitly() throws Exception {
+        String balance = protectTyped("-1234.56", ValueKind.NUMBER, "Balance");
+        service.setMappingConfig(configWith(List.of(
+                // Matches part of any decimal value: a typed value cannot be partly replaced.
+                new FlightSqlDataMapping("\\d{2}", "Person", "Wrong"),
+                new FlightSqlDataMapping("-?\\d{4}\\.\\d{2}", "Person", "Balance"))));
+
+        Schema schema = new Schema(List.of(
+                new Field("BALANCE", FieldType.nullable(new ArrowType.Decimal(10, 2, 128)), null),
+                new Field("AGE", FieldType.nullable(new ArrowType.Int(64, true)), null)));
+        try (VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+            root.allocateNew();
+            ((DecimalVector) root.getVector(0)).setSafe(0, new BigDecimal(balance));
+            ((BigIntVector) root.getVector(1)).setSafe(0, 123);
+            root.setRowCount(1);
+
+            service.detokenize(root, Arrays.asList(null, null), allocator);
+
+            assertEquals(new BigDecimal("-1234.56"), ((DecimalVector) root.getVector(0)).getObject(0));
+            assertEquals(123L, ((BigIntVector) root.getVector(1)).get(0),
+                    "a value only partly matched must be left untouched");
+        }
+    }
+
+    @Test
+    @DisplayName("A typed column with neither column mapping nor data mapping is left untouched")
+    void leavesAnUnmappedTypedColumnUntouched() throws Exception {
+        Schema schema = new Schema(List.of(new Field("AGE", FieldType.nullable(new ArrowType.Int(64, true)), null)));
+        try (VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+            root.allocateNew();
+            ((BigIntVector) root.getVector(0)).setSafe(0, 42);
+            root.setRowCount(1);
+
+            service.detokenize(root, Collections.singletonList(null), allocator);
+
+            assertEquals(42L, ((BigIntVector) root.getVector(0)).get(0));
+        }
+    }
+
+    private String protectTyped(String clear, ValueKind kind, String propertyName) throws Exception {
+        MappedValue value = new MappedValue(new ValueMapping("Person", propertyName), clear, kind);
+        ProcessingContext processingContext = new ProcessingContext();
+        processingContext.addEvidence(new Evidence("Action", "Protect"));
+        transformer.transformData(new MappedValue[] { value }, new RightContext(), processingContext);
+        assertNotEquals(clear, value.getTransformed());
+        return value.getTransformed();
     }
 
     @Test

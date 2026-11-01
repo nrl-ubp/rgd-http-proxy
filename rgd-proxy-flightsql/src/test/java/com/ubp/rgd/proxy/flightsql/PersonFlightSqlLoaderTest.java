@@ -22,6 +22,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -97,7 +98,7 @@ class PersonFlightSqlLoaderTest {
         // What H2 holds is what the proxy produced from the call, not the call itself: the rewriting
         // really happened before the statement reached the database.
         String stored = storedValue("PERSON", "FIRST_NAME");
-        assertTrue(stored.startsWith("Person.ShortString="), stored);
+        assertTrue(stored.startsWith("Person.shortString="), stored);
         assertFalse(stored.contains("transform("), stored);
     }
 
@@ -107,10 +108,14 @@ class PersonFlightSqlLoaderTest {
         assertEquals(0, PersonFlightSqlLoader.run(args("--rows", "5", "--insert-mode", "literal",
                 "--data-mode", "transform", "--table", "PERSON_ALL")));
 
-        for (String column : List.of("FIRST_NAME", "LAST_NAME", "BIRTH_DATE", "EMAIL", "CITY", "NOTES")) {
-            assertTrue(storedValue("PERSON_ALL", column).startsWith("Person.ShortString="),
-                    column + " should have been tokenized");
+        // Each column is protected with the mapping the read-back resolves it with, otherwise it
+        // would not come back in clear.
+        for (Map.Entry<String, String[]> mapping : PersonFlightSqlLoader.DEFAULT_MAPPINGS.entrySet()) {
+            String expected = mapping.getValue()[0] + "." + mapping.getValue()[1] + "=";
+            assertTrue(storedValue("PERSON_ALL", mapping.getKey()).startsWith(expected),
+                    mapping.getKey() + " should have been tokenized as " + expected);
         }
+        assertTrue(storedValue("PERSON_ALL", "BIRTH_DATE").startsWith("Person.birthDate="));
         assertEquals(5, count("PERSON_ALL"));
     }
 
@@ -140,8 +145,9 @@ class PersonFlightSqlLoaderTest {
     @Test
     @DisplayName("The loader inserts clear data with literal statements, quotes included")
     void shouldLoadClearDataWithLiteralStatements() throws Exception {
-        assertEquals(0, PersonFlightSqlLoader.run(args("--rows", "25", "--insert-mode", "literal",
-                "--data-mode", "clear", "--table", "PERSON_LITERAL")));
+        // 25 rows by 10: two full multi-row inserts and a partial last one.
+        assertEquals(0, PersonFlightSqlLoader.run(args("--rows", "25", "--batch-size", "10",
+                "--insert-mode", "literal", "--data-mode", "clear", "--table", "PERSON_LITERAL")));
 
         assertEquals(25, count("PERSON_LITERAL"));
     }
@@ -163,7 +169,7 @@ class PersonFlightSqlLoaderTest {
 
         // Reading through the proxy detokenizes, reading H2 directly does not: the difference is
         // exactly what the loader reports.
-        assertTrue(storedValue("PERSON_READBACK", "FIRST_NAME").startsWith("Person.ShortString="));
+        assertTrue(storedValue("PERSON_READBACK", "FIRST_NAME").startsWith("Person.shortString="));
         assertEquals(5, count("PERSON_READBACK"));
     }
 

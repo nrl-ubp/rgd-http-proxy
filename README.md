@@ -212,15 +212,75 @@ still give equal tokens, and leading zeros survive: `007` comes back as `007`.
 - **Each property has its own tweak**, derived from `SHA-256("ClassName.PropertyName")`. The same
   value encrypts differently in two properties, so a token cannot be correlated across fields — and a
   token can only be read back with the tweak of the property it belongs to.
-- **Numeric JSON fields become strings.** A tokenized number normally stays a JSON number, but
-  `RG{...}` is not one, so such a field is written back as a string and the existing warning is
-  logged. This is inherent to the wrapped token format.
+- **Numeric JSON fields stay numbers.** See [Dates and numbers](#dates-and-numbers) below.
 - **A value carrying `{` or `}` is left unchanged**, with a warning: a brace kept in place inside the
   token would close it early and the value would come back truncated.
 - **Values that cannot be transformed are left unchanged** rather than failing the request: an empty
   value, a value holding no character of the alphabet (`---`), a value that is not a token when
   unprotecting, and an RPS token, whose header is not an FPE one. Mixed payloads are therefore never
   corrupted.
+
+#### Dates and numbers
+
+Dates and numbers are **not** wrapped in `RG{...}`: a date stays a date and a number stays a number.
+
+**Dates.** The following formats are recognised when the date is the whole value. `-`, `.` and `/` are
+all accepted as separators, but the same one must be used throughout the date:
+
+| Format | Example |
+| --- | --- |
+| `yyyy-mm-dd` | `1980-05-12`, `1980.05.12`, `1980/05/12` |
+| `yyyy-mm-ddThh:mm:ss` (the time is kept as is) | `1980-05-12T08:30:00` |
+| `dd-mm-yyyy` | `12-05-1980`, `12.05.1980`, `12/05/1980` |
+| `ddmmyyyy` | `12051980` |
+
+A date from `0001-01-01` to `2999-12-31` is encrypted into another valid date in the **same format**,
+**always of year 3000 or later**:
+
+```
+"1980-05-12"   ->  "3103-07-28"
+"12.05.1980"   ->  "28.07.3103"
+```
+
+Being in year 3000 or later is how a protected date is recognised, so no wrapper is needed. When
+unprotecting, a date before the year 3000 is treated as clear and left unchanged. A clear date of year
+3000 or later cannot be told apart from a protected one, so it is protected as text (`RG{N...}`)
+instead. A value shaped like a date but not a real one (`2024-02-30`) is also treated as text.
+
+Protected dates are found wherever unprotect looks for tokens: in JSON fields, headers, query
+parameters, `/transform` values and Flight SQL text columns. A `ddmmyyyy` date is only recognised when
+it is the whole value.
+
+**Numbers.** A value read as a **number**, which means a JSON number or a numeric Flight SQL column,
+is encrypted into a number of the same shape. The sign, the decimal point, the exponent and the number
+of digits on each side of the point all stay the same. The integer part and the fraction are encrypted
+separately:
+
+```
+42  ->  66        -1234.56  ->  -4472.27        1.0E10  ->  7.0E10
+```
+
+A number made of zeros only (`0`, `0.0`) is left unchanged. Leading zeros of the integer part and
+trailing zeros of the fraction are kept and never introduced. This keeps the result stable when a JSON
+parser drops insignificant zeros.
+
+- A numeric **string** such as `"00412"` is text, and still gets an `RG{N...}` token.
+- A number carries no marker, so **every** number of a configured property is decrypted on unprotect.
+  Configure only properties that hold protected numbers.
+- Short numbers have very few possible values. For example, there are only 9 one-digit numbers. Their
+  encryption hides which value it is, but cannot resist trying every possibility.
+
+**Flight SQL typed columns.** With FPE, date columns (`DATE`) and numeric columns (integer, floating
+point, `DECIMAL`) are detokenized in place and keep their Arrow type. A column with a **column mapping**
+has every value detokenized. Without one, the column is detokenized implicitly. Each value is read as
+text, in `yyyy-mm-dd` form for a date, and is claimed by the first `data-mappings` regex that matches
+the **whole** value. A value only partly matched, or not matched at all, is returned as is. Large
+floating point values are read in exponent form (`1.0E10`), so their regexes must allow for it, and a
+broad number regex would also "decrypt" clear numbers. A date passed to `transform(...)` in a query is
+encrypted as a date, so it can be compared with a stored protected date. RPS leaves typed columns
+untouched.
+
+Tokens produced before this change (`RG{N...}` for dates and numeric strings) are still decrypted.
 
 ## Bypassing the transformation
 

@@ -12,7 +12,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.regex.Pattern;
@@ -31,22 +34,18 @@ import java.util.regex.Pattern;
  * proxy tokenizes them for real on the way in:</p>
  * <pre>
  * INSERT INTO PERSON (ID, FIRST_NAME, ...)
- * VALUES (1, transform('Person', 'ShortString', 'LU', 'Jean-Claude'), ...)
+ * VALUES (1, transform('Person', 'shortString', 'LU', 'Jean-Claude'), ...), (2, ...)
  * </pre>
  *
  * <p>That makes the whole round trip meaningful: the values are tokenized by the engine on the way
  * in and detokenized on the way out, instead of being random strings the engine has never seen.</p>
  *
- * <p>The class, the property and the jurisdiction are the same for every column, and overridable
- * through {@code --transform-class}, {@code --transform-property} and
- * {@code --transform-jurisdiction}: a {@code transform()} call states its mapping explicitly, the
- * column mappings of {@code config/flight_sql_mapping_config.json} only existing for the implicit
- * detokenization of the columns that declare nothing.</p>
- *
- * <p><b>The read-back is a different matter.</b> It resolves each column through the configured
- * column mappings, so {@code BIRTH_DATE} and {@code EMAIL}, mapped to {@code Person.birthDate} and
- * {@code Person.email}, are detokenized with a different mapping than the one they were tokenized
- * with. That is a property of the configuration, not of this loader.</p>
+ * <p>By default each column is protected with its own mapping, {@link #DEFAULT_MAPPINGS}, which
+ * mirrors the column mappings of {@code config/flight_sql_mapping_config.json}: the read-back
+ * resolves each column through those, and a value only comes back in clear when it is unprotected
+ * with the mapping it was protected with. {@code --transform-class} and {@code --transform-property}
+ * force a single mapping on every column instead, and {@code --transform-jurisdiction} sets the
+ * jurisdiction of the calls.</p>
  *
  * <p>Run it against a proxy whose {@code proxy.flight-sql.enabled} is {@code true}, from the
  * repository root:</p>
@@ -62,11 +61,30 @@ public class PersonFlightSqlLoader {
     private static final Logger LOG = LoggerFactory.getLogger(PersonFlightSqlLoader.class);
 
     /**
-     * Same shape as {@code FlightSqlDetokenizeService.TOKEN_PATTERN}. Used by the read-back only, to
-     * report the values that came back still holding a token.
+     * Any {@code RG{...}} wrapper, whatever the transformer. Used by the read-back only, to report
+     * the values that came back still holding a token. A protected FPE date is not wrapped and cannot
+     * be told apart from a clear date here: it is not counted.
      */
-    private static final Pattern TOKEN_PATTERN =
-            Pattern.compile("RG\\{[A-Z2-7x]{2}[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+\\}");
+    private static final Pattern TOKEN_PATTERN = Pattern.compile("RG\\{[^}]*\\}");
+
+    /**
+     * The {@code ClassName.PropertyName} each column is protected with by default. It mirrors the
+     * column mappings of {@code config/flight_sql_mapping_config.json}, which the read-back resolves:
+     * a value protected with one mapping and unprotected with another does not come back in clear
+     * (with FPE the mapping is the tweak, so it silently comes back as a wrong value).
+     */
+    public static final Map<String, String[]> DEFAULT_MAPPINGS = defaultMappings();
+
+    private static Map<String, String[]> defaultMappings() {
+        Map<String, String[]> mappings = new LinkedHashMap<>();
+        mappings.put("FIRST_NAME", new String[]{"Person", "shortString"});
+        mappings.put("LAST_NAME", new String[]{"Person", "shortString"});
+        mappings.put("BIRTH_DATE", new String[]{"Person", "birthDate"});
+        mappings.put("EMAIL", new String[]{"Person", "email"});
+        mappings.put("CITY", new String[]{"Person", "city"});
+        mappings.put("NOTES", new String[]{"Person", "notes"});
+        return Collections.unmodifiableMap(mappings);
+    }
 
     private static final String[] COLUMNS =
             {"ID", "FIRST_NAME", "LAST_NAME", "BIRTH_DATE", "EMAIL", "CITY", "NOTES"};
@@ -103,8 +121,13 @@ public class PersonFlightSqlLoader {
         String locale = cliArgs.switchValue("--locale", "de-CH");
         String dataMode = cliArgs.switchValue("--data-mode", "transform");
         String insertMode = cliArgs.switchValue("--insert-mode", "prepared");
-        String transformClass = cliArgs.switchValue("--transform-class", "Person");
-        String transformProperty = cliArgs.switchValue("--transform-property", "ShortString");
+        // Both null unless overridden: each column is then protected with its own mapping.
+        String transformClass = cliArgs.switchValue("--transform-class", null);
+        String transformProperty = cliArgs.switchValue("--transform-property", null);
+        if ((transformClass == null) != (transformProperty == null)) {
+            LOG.error("--transform-class and --transform-property must be given together.");
+            return -1;
+        }
         String transformJurisdiction = cliArgs.switchValue("--transform-jurisdiction", "LU");
         long rows = cliArgs.switchLongValue("--rows", 10000L);
         long batchSize = cliArgs.switchLongValue("--batch-size", 1000L);
@@ -147,8 +170,13 @@ public class PersonFlightSqlLoader {
         LOG.info("--create-table   : {}", createTable);
         LOG.info("--read-back      : {} (first {} rows)", readBack, readBackRows);
         if ("transform".equalsIgnoreCase(dataMode)) {
-            LOG.info("--transform-*    : transform('{}', '{}', '{}', <clear value>)",
-                    transformClass, transformProperty, transformJurisdiction);
+            if (transformClass == null) {
+                LOG.info("--transform-*    : per column {}, jurisdiction {}",
+                        DEFAULT_MAPPINGS, transformJurisdiction);
+            } else {
+                LOG.info("--transform-*    : transform('{}', '{}', '{}', <clear value>) for every column",
+                        transformClass, transformProperty, transformJurisdiction);
+            }
         }
 
         Properties properties = new Properties();
@@ -168,7 +196,7 @@ public class PersonFlightSqlLoader {
             long startTime = System.currentTimeMillis();
             long inserted = "prepared".equalsIgnoreCase(insertMode)
                     ? insertPrepared(connection, table, rows, (int) batchSize, generator)
-                    : insertLiteral(connection, table, rows, generator);
+                    : insertLiteral(connection, table, rows, (int) batchSize, generator);
             long elapsed = System.currentTimeMillis() - startTime;
             LOG.info("Inserted {} rows in {} ms ({} rows/s)", inserted, elapsed,
                     elapsed == 0 ? inserted : (inserted * 1000 / elapsed));
@@ -199,10 +227,12 @@ public class PersonFlightSqlLoader {
                                      extension, so the proxy tokenizes them; it requires
                                      --insert-mode literal
                   --insert-mode      prepared (default) or literal
-                  --transform-class        RPS class name of the transform() calls (default Person)
-                  --transform-property     RPS property name (default ShortString)
+                  --transform-class        RPS class name forced on every column, together with
+                                           --transform-property (default: the per column mapping
+                                           of config/flight_sql_mapping_config.json)
+                  --transform-property     RPS property name forced on every column
                   --transform-jurisdiction jurisdiction, ignored by the proxy for now (default LU)
-                  --batch-size       rows per prepared batch (default 1000)
+                  --batch-size       rows per batch (default 1000, at most 1000 in literal mode)
                   --create-table     drop and recreate the target table first
                   --no-read-back     skip the verification query
                   --read-back-rows   rows to display when reading back (default 10)
@@ -264,31 +294,52 @@ public class PersonFlightSqlLoader {
         return inserted;
     }
 
+    /** SQL Server accepts at most 1000 rows in a single {@code VALUES} list. */
+    private static final int MAX_ROWS_PER_INSERT = 1000;
+
     /**
-     * Insert with a plain {@link Statement} and literal values. Note that the driver does not
-     * support {@code Statement.addBatch}, so every row costs one round trip.
+     * Insert with a plain {@link Statement} and literal values. The driver does not support
+     * {@code Statement.addBatch}, so the rows are grouped into one multi-row
+     * {@code INSERT ... VALUES (...), (...)} per batch, portable across H2 and SQL Server, which
+     * costs one round trip and one transform() rewriting per batch.
      */
-    private static long insertLiteral(Connection connection, String table, long rows,
+    private static long insertLiteral(Connection connection, String table, long rows, int batchSize,
                                       Generator generator) throws SQLException {
+        int rowsPerInsert = Math.max(1, Math.min(batchSize, MAX_ROWS_PER_INSERT));
+        String header = "INSERT INTO " + table + " (" + String.join(", ", COLUMNS) + ") VALUES ";
         long inserted = 0;
 
         try (Statement statement = connection.createStatement()) {
+            StringBuilder sql = new StringBuilder(header);
+            int pending = 0;
             for (long row = 0; row < rows; row++) {
                 Object[] values = generator.next(row);
-                StringBuilder sql = new StringBuilder("INSERT INTO ").append(table)
-                        .append(" (").append(String.join(", ", COLUMNS)).append(") VALUES (");
+                sql.append(pending == 0 ? "(" : ", (");
                 for (int i = 0; i < values.length; i++) {
                     sql.append(i == 0 ? "" : ", ").append(literal(values[i]));
                 }
-                sql.append(")");
+                sql.append(')');
+                pending++;
 
-                inserted += statement.executeUpdate(sql.toString());
-                if (inserted % 100 == 0) {
+                if (pending == rowsPerInsert) {
+                    inserted += executeInsert(statement, sql.toString(), pending);
                     LOG.info("Inserted {} / {} rows", inserted, rows);
+                    sql = new StringBuilder(header);
+                    pending = 0;
                 }
+            }
+            if (pending > 0) {
+                inserted += executeInsert(statement, sql.toString(), pending);
+                LOG.info("Inserted {} / {} rows", inserted, rows);
             }
         }
         return inserted;
+    }
+
+    /** Run a multi-row insert, falling back to the row count when the driver reports none. */
+    private static long executeInsert(Statement statement, String sql, int expected) throws SQLException {
+        int count = statement.executeUpdate(sql);
+        return count > 0 ? count : expected;
     }
 
     /**
@@ -419,17 +470,35 @@ public class PersonFlightSqlLoader {
             Object[] values = new Object[clear.length];
             values[0] = clear[0];
             for (int i = 1; i < clear.length; i++) {
-                values[i] = transformCall(clear[i].toString());
+                values[i] = transformCall(COLUMNS[i], clear[i].toString());
             }
             return values;
         }
 
         /**
+         * Wrap a clear value of a column in a call of the {@code transform()} SQL extension, with the
+         * mapping forced on the command line or, by default, the mapping of that column.
+         */
+        public SqlExpression transformCall(String column, String clearValue) {
+            if (className != null) {
+                return transformCall(clearValue);
+            }
+            String[] mapping = DEFAULT_MAPPINGS.get(column);
+            return call(mapping[0], mapping[1], clearValue);
+        }
+
+        /**
          * Wrap a clear value in a call of the {@code transform()} SQL extension, which the proxy
          * replaces by the token of that value before the statement reaches the database server.
+         * Uses the forced mapping, {@code Person.shortString} when none was given.
          */
         public SqlExpression transformCall(String clearValue) {
-            return new SqlExpression("transform(" + quote(className) + ", " + quote(propertyName)
+            return call(className == null ? "Person" : className,
+                    propertyName == null ? "shortString" : propertyName, clearValue);
+        }
+
+        private SqlExpression call(String clazz, String property, String clearValue) {
+            return new SqlExpression("transform(" + quote(clazz) + ", " + quote(property)
                     + ", " + quote(jurisdiction) + ", " + quote(clearValue) + ")");
         }
     }

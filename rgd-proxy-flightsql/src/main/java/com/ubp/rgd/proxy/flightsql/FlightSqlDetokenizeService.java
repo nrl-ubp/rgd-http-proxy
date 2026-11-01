@@ -54,8 +54,11 @@ import java.util.regex.Pattern;
  * What a token looks like is asked to the transformer rather than hardcoded, because it differs from
  * one implementation to the next.
  * <p>
- * Only the variable-width (string) columns are scanned, and all the tokens of a record batch are
- * batched into a single transformation call.
+ * Only the variable-width (string) columns are scanned for tokens, and all the tokens of a record
+ * batch are batched into a single transformation call. When the transformer keeps the dates and the
+ * numbers of their type once protected, the date and numeric columns are detokenized too, value by
+ * value, and keep their Arrow type: through their column mapping, or implicitly through the first
+ * data mapping whose regex matches the whole value.
  */
 @ApplicationScoped
 public class FlightSqlDetokenizeService {
@@ -197,10 +200,10 @@ public class FlightSqlDetokenizeService {
                 mapping = mappingConfig.findMapping(table, metaData.getColumnName(i));
             }
             if (mapping != null) {
-                LOG.debug("Column {}.{} will be detokenized as {}",
+                LOG.info("Column {}.{} will be detokenized as {}",
                         table, metaData.getColumnLabel(i), mapping);
             } else {
-                LOG.debug("Column {}.{} has no column mapping and will be detokenized implicitly.",
+                LOG.info("Column {}.{} has no column mapping and will be detokenized implicitly.",
                         table, metaData.getColumnLabel(i));
             }
             mappings.add(mapping);
@@ -236,12 +239,18 @@ public class FlightSqlDetokenizeService {
         }
 
         List<ColumnPlan> plans = new ArrayList<>();
+        List<TypedColumnPlan> typedPlans = new ArrayList<>();
         List<MappedValue> flatValues = new ArrayList<>();
 
         for (int col = 0; col < root.getFieldVectors().size() && col < mappings.size(); col++) {
             FlightSqlColumnMapping mapping = mappings.get(col);
             FieldVector vector = root.getVector(col);
             if (!(vector instanceof VariableWidthFieldVector textVector)) {
+                TypedColumnPlan typedPlan = buildTypedColumnPlan(vector, mapping, root.getRowCount());
+                if (typedPlan != null) {
+                    typedPlans.add(typedPlan);
+                    flatValues.addAll(typedPlan.values().values());
+                }
                 continue;
             }
             ColumnPlan plan = buildColumnPlan(col, textVector, mapping, root.getRowCount());
@@ -255,12 +264,77 @@ public class FlightSqlDetokenizeService {
             return;
         }
 
-        LOG.debug("Detokenizing {} token(s) over {} column(s)", flatValues.size(), plans.size());
+        LOG.debug("Detokenizing {} token(s) over {} column(s)", flatValues.size(), plans.size() + typedPlans.size());
         transformValues(flatValues);
 
         for (ColumnPlan plan : plans) {
             applyColumnPlan(root, plan, allocator);
         }
+        for (TypedColumnPlan typedPlan : typedPlans) {
+            typedPlan.apply();
+        }
+    }
+
+    /**
+     * Scan a date or numeric column, for a transformer that keeps the dates and the numbers of their
+     * type once protected: their protected values are still dates and numbers, stored as such.
+     * <p>
+     * A typed value can only be replaced as a whole. With an explicit column mapping every non null
+     * value is detokenized with it. Without one the column is detokenized implicitly: each value, in
+     * its text form ({@code yyyy-mm-dd} for a date), is claimed by the first data mapping whose regex
+     * matches it <b>whole</b>, and a value no data mapping claims is left untouched. The token mapping
+     * index tier does not apply, a typed value carries no index.
+     *
+     * @param vector        the column
+     * @param columnMapping the explicit column mapping, {@code null} to run in implicit mode
+     * @param rowCount      the number of rows of the batch
+     * @return the plan, or {@code null} when the column holds nothing to detokenize
+     */
+    private TypedColumnPlan buildTypedColumnPlan(FieldVector vector, FlightSqlColumnMapping columnMapping,
+                                                 int rowCount) {
+        if (!transformer.preservesValueTypes()) {
+            return null;
+        }
+        TypedColumn column = TypedColumn.of(vector);
+        if (column == null) {
+            return null;
+        }
+        ValueMapping columnRpsMapping = columnMapping == null ? null
+                : new ValueMapping(columnMapping.getRpsClassName(), columnMapping.getRpsPropertyName());
+        List<FlightSqlDataMapping> dataMappings = mappingConfig.getUsableDataMappings();
+        if (columnRpsMapping == null && dataMappings.isEmpty()) {
+            return null;
+        }
+        Map<Integer, MappedValue> values = new HashMap<>();
+        for (int row = 0; row < rowCount; row++) {
+            if (vector.isNull(row)) {
+                continue;
+            }
+            String text = column.read(row);
+            ValueMapping rpsMapping = columnRpsMapping != null ? columnRpsMapping
+                    : resolveTypedMapping(text, dataMappings);
+            if (rpsMapping != null) {
+                values.put(row, new MappedValue(rpsMapping, text, column.kind()));
+            }
+        }
+        return values.isEmpty() ? null : new TypedColumnPlan(column, values);
+    }
+
+    /**
+     * Resolve the mapping of a typed value in implicit mode.
+     *
+     * @param text         the value in its text form
+     * @param dataMappings the usable data mappings, in declaration order
+     * @return the mapping of the first data mapping whose regex matches the whole value, or
+     *         {@code null} when none does
+     */
+    static ValueMapping resolveTypedMapping(String text, List<FlightSqlDataMapping> dataMappings) {
+        for (FlightSqlDataMapping dataMapping : dataMappings) {
+            if (dataMapping.getPattern().matcher(text).matches()) {
+                return new ValueMapping(dataMapping.getRpsClassName(), dataMapping.getRpsPropertyName());
+            }
+        }
+        return null;
     }
 
     /**
@@ -528,6 +602,26 @@ public class FlightSqlDetokenizeService {
         });
     }
 
+
+    /** All the non null values of a date or numeric column, keyed by row. */
+    private record TypedColumnPlan(TypedColumn column, Map<Integer, MappedValue> values) {
+
+        /** Write the detokenized values back, leaving a value that cannot be written untouched. */
+        void apply() {
+            values.forEach((row, value) -> {
+                String transformed = value.getTransformed();
+                if (transformed == null || transformed.equals(value.getOriginal())) {
+                    return;
+                }
+                try {
+                    column.write(row, transformed);
+                } catch (RuntimeException e) {
+                    LOG.warn("Could not write the detokenized value of row {} back into its column, leaving it"
+                            + " untouched: {}", row, e.getMessage());
+                }
+            });
+        }
+    }
 
     /** All the cells of a single column that hold at least one segment to detokenize. */
     private record ColumnPlan(int columnIndex, List<CellPlan> cells) {

@@ -252,7 +252,10 @@ public class TransformService {
         }
 
         ValueMapping mapping = new ValueMapping(value.getClassName(), value.getPropertyName());
-        Pattern pattern = ValuePlan.extractionPattern(action, value.getExtractRegExp());
+        // A transformer preserving the value types also produces tokens that are not wrapped in RG{},
+        // such as a protected date: only it knows how to locate them.
+        Pattern pattern = ValuePlan.extractionPattern(action, value.getExtractRegExp(),
+                transformer != null && transformer.preservesValueTypes() ? transformer.tokenPattern() : null);
 
         return ValuePlan.of(mapping, value.getValue(), pattern);
     }

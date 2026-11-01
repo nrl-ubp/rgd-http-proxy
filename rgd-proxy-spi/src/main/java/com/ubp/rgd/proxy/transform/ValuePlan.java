@@ -1,5 +1,6 @@
 package com.ubp.rgd.proxy.transform;
 
+import com.ubp.rgd.proxy.transform.model.ValueKind;
 import com.ubp.rgd.proxy.transform.model.ValueMapping;
 import com.ubp.rgd.proxy.transform.model.MappedValue;
 
@@ -61,6 +62,23 @@ public final class ValuePlan {
      * @throws TransformException when the configured extract regex is not a valid regex
      */
     public static Pattern extractionPattern(String action, String extractRegex) throws TransformException {
+        return extractionPattern(action, extractRegex, TOKEN_PATTERN);
+    }
+
+    /**
+     * {@link #extractionPattern(String, String)} with the pattern locating the tokens to unprotect
+     * given by the transformer, for a transformer whose tokens are not all wrapped in
+     * <code>RG{...}</code>.
+     *
+     * @param action       the RPS action, typically taken from the {@code Action} evidence
+     * @param extractRegex the extract regex configured for the value, may be {@code null}
+     * @param tokenPattern the pattern locating the tokens on unprotect, {@link #TOKEN_PATTERN} when
+     *                     {@code null}
+     * @return the pattern locating the segments to transform, or {@code null} for the whole value
+     * @throws TransformException when the configured extract regex is not a valid regex
+     */
+    public static Pattern extractionPattern(String action, String extractRegex, Pattern tokenPattern)
+            throws TransformException {
         if (ACTION_PROTECT.equalsIgnoreCase(action)) {
             if (extractRegex == null || extractRegex.isEmpty()) {
                 return null;
@@ -75,7 +93,7 @@ public final class ValuePlan {
         // TODO add search action
 
         if (ACTION_UNPROTECT.equalsIgnoreCase(action) || action == null) {
-            return TOKEN_PATTERN;
+            return tokenPattern == null ? TOKEN_PATTERN : tokenPattern;
         }
         return null;
     }
@@ -90,10 +108,24 @@ public final class ValuePlan {
      * @return the plan holding the values to hand over to the engine
      */
     public static ValuePlan of(ValueMapping mapping, String value, Pattern pattern) {
+        return of(mapping, value, pattern, ValueKind.TEXT);
+    }
+
+    /**
+     * {@link #of(ValueMapping, String, Pattern)} for a value of a known type. The type is only
+     * carried by a value transformed as a whole: a segment of a value is always text.
+     *
+     * @param mapping the RPS class and property the value belongs to
+     * @param value   the original value
+     * @param pattern the pattern locating the segments, or {@code null} to transform the whole value
+     * @param kind    the type the value was read with
+     * @return the plan holding the values to hand over to the engine
+     */
+    public static ValuePlan of(ValueMapping mapping, String value, Pattern pattern, ValueKind kind) {
         List<MappedValue> rpsValues = new ArrayList<>();
         if (pattern == null) {
             // Whole value transformed as a single segment.
-            rpsValues.add(new MappedValue(mapping, value));
+            rpsValues.add(new MappedValue(mapping, value, kind));
         } else {
             Matcher matcher = pattern.matcher(value);
             while (matcher.find()) {

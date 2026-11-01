@@ -15,6 +15,10 @@ import java.util.regex.Pattern;
  * segments inside the returned values, and supplies the RPS class / property names of the segments it
  * matched. The segment sent to the engine is the whole match, so the regex must match the token
  * itself and not only a part of it.
+ * <p>
+ * A date or numeric column, detokenized when the transformer keeps the value types, can only be
+ * replaced as a whole: its value, in text form ({@code yyyy-mm-dd} for a date), is claimed by the
+ * first data mapping whose regex matches it <b>entirely</b>.
  */
 @RegisterForReflection
 public class FlightSqlDataMapping {

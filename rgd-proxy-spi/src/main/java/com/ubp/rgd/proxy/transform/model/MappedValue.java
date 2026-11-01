@@ -8,12 +8,22 @@ public class MappedValue {
 
     private final ValueMapping mapping;
     private final String original;
+    private final ValueKind kind;
     private String transformed;
     private String error;
 
     public MappedValue(ValueMapping mapping, String original) {
+        this(mapping, original, ValueKind.TEXT);
+    }
+
+    public MappedValue(ValueMapping mapping, String original, ValueKind kind) {
         this.mapping = mapping;
         this.original = original;
+        this.kind = kind == null ? ValueKind.TEXT : kind;
+    }
+
+    public ValueKind getKind() {
+        return kind;
     }
 
     public ValueMapping getMapping() {

@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -51,6 +52,8 @@ public class SecretsManagerForwardingTest {
         InOrder inOrder = inOrder(transformer);
         inOrder.verify(transformer).transformData(any(), any(), any(), eq(CH));
         inOrder.verify(transformer, times(3)).transformData(any(), any(), any(), eq(LU));
+        // Asked to locate the tokens of each value, which has nothing to do with the secrets manager.
+        verify(transformer, atLeast(0)).preservesValueTypes();
         verifyNoMoreInteractions(transformer);
     }
 

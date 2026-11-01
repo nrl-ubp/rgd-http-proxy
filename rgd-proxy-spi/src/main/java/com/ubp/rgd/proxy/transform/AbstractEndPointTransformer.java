@@ -3,6 +3,7 @@ package com.ubp.rgd.proxy.transform;
 import com.ubp.rgd.proxy.transform.model.RightContext;
 import com.ubp.rgd.proxy.transform.model.Evidence;
 import com.ubp.rgd.proxy.transform.model.ProcessingContext;
+import com.ubp.rgd.proxy.transform.model.ValueKind;
 import com.ubp.rgd.proxy.transform.model.ValueMapping;
 import com.ubp.rgd.proxy.transform.model.MappedValue;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -289,7 +290,9 @@ public abstract class AbstractEndPointTransformer implements EndPointTransformer
             ValueMapping mapping = new ValueMapping(attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName());
 
             // Compiled once per configured path, not once per matched value.
-            Pattern extractionPattern = ValuePlan.extractionPattern(action, attrCfg.getExtractRegex());
+            boolean preservesTypes = preservesValueTypes();
+            Pattern extractionPattern = ValuePlan.extractionPattern(action, attrCfg.getExtractRegex(),
+                    preservesTypes ? tokenPattern() : null);
             Pattern datePattern = Pattern.compile(EntityTransformConfig.DATE_REGEXP);
 
             for (int i = 0; i < values.size(); i++) {
@@ -301,13 +304,18 @@ public abstract class AbstractEndPointTransformer implements EndPointTransformer
                 }
                 boolean numeric = rawValue instanceof Number;
                 String oldValue = String.valueOf(rawValue);
-                Matcher dateMatcher = datePattern.matcher(oldValue);
-                boolean isDate = dateMatcher.find();
+                // A transformer preserving the value types recognises more date formats, and a date
+                // it protected stays a date: it is located as a whole value, not as an RG{} token.
+                boolean isDate = !numeric && (preservesTypes
+                        ? DateValues.isDate(oldValue)
+                        : datePattern.matcher(oldValue).find());
                 LOG.debug("MappedValue: {} = {} : {}", oldValue, attrCfg.getRpsClassName(), attrCfg.getRpsPropertyName());
 
                 // A number carries neither separators nor RG{} tokens, so it is always transformed
                 // as a whole. Segmenting it would break the tokenization of numeric values.
-                ValuePlan plan = ValuePlan.of(mapping, oldValue, numeric ? null : isDate ? datePattern : extractionPattern);
+                Pattern pattern = numeric ? null : isDate ? (preservesTypes ? null : datePattern) : extractionPattern;
+                ValueKind kind = numeric ? ValueKind.NUMBER : isDate ? ValueKind.DATE : ValueKind.TEXT;
+                ValuePlan plan = ValuePlan.of(mapping, oldValue, pattern, kind);
                 if (plan.rpsValues().isEmpty() && !numeric && !isDate) {
                     LOG.debug("Did not recognize the token form as string, nor numeric, nor date. Assuming it is kept as is. {}",
                             matchedPaths.get(i));

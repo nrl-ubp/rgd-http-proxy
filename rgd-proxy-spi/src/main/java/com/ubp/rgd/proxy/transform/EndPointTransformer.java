@@ -150,4 +150,18 @@ public interface EndPointTransformer {
      * @return {@code true} when the mapping index can be read from the tokens
      */
     boolean supportsTokenMappingIndex();
+
+    /**
+     * Whether this transformer hands back a date as a date and a number as a number, rather than
+     * wrapping them in a <code>RG{...}</code> token.
+     * <p>
+     * When it does, its protected dates and numbers cannot be located by the <code>RG{...}</code>
+     * wrapper anymore: the callers then locate the values to unprotect with {@link #tokenPattern()},
+     * and send a whole date or a whole number to the transformer as a single value.
+     *
+     * @return {@code true} when dates and numbers keep their type once protected
+     */
+    default boolean preservesValueTypes() {
+        return false;
+    }
 }

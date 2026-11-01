@@ -1,8 +1,13 @@
 package com.ubp.rgd.proxy.fpe;
 
+import com.jayway.jsonpath.DocumentContext;
+import com.jayway.jsonpath.JsonPath;
+import com.ubp.rgd.proxy.transform.DateValues;
 import com.ubp.rgd.proxy.transform.ValuePlan;
+import com.ubp.rgd.proxy.transform.config.HeaderTransformConfig;
 import com.ubp.rgd.proxy.transform.model.Evidence;
 import com.ubp.rgd.proxy.transform.model.ProcessingContext;
+import com.ubp.rgd.proxy.transform.model.ValueKind;
 import com.ubp.rgd.proxy.transform.model.ValueMapping;
 import com.ubp.rgd.proxy.transform.model.MappedValue;
 import com.ubp.rgd.proxy.transform.config.EndPointTransformConfig;
@@ -14,13 +19,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -286,6 +294,198 @@ class FPEEndPointTransformerTest {
         MappedValue value = new MappedValue(new ValueMapping("Person", "Name"), null);
         transformer.transformData(new MappedValue[]{value}, null, processingContext("Protect"));
         assertEquals(null, value.getTransformed());
+    }
+
+    // ---------------------------------------------------------------- dates
+
+    private String protectAs(String clear, ValueKind kind) {
+        return transformer.transform(clear, kind, TWEAK, true);
+    }
+
+    private String unprotectAs(String token, ValueKind kind) {
+        return transformer.transform(token, kind, TWEAK, false);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"2024-01-15", "2024.01.15", "2024/01/15", "15-01-2024", "15.01.2024", "15/01/2024",
+            "15012024", "2024-01-15T10:20:30", "0001-01-01", "2999-12-31", "29/02/2000"})
+    @DisplayName("A date is protected into a date of year 3000 or later, in the same format, and round trips")
+    void dateStaysADate(String clearDate) {
+        String protectedDate = protectAs(clearDate, ValueKind.TEXT);
+
+        assertFalse(protectedDate.contains("RG{"), "a date must not be wrapped: " + protectedDate);
+        assertNotEquals(clearDate, protectedDate);
+        DateValues.ParsedDate parsed = DateValues.parse(protectedDate);
+        assertNotNull(parsed, "must still be a valid date: " + protectedDate);
+        assertTrue(parsed.date().getYear() >= 3000, "must land in year 3000 or later: " + protectedDate);
+        assertEquals(DateValues.parse(clearDate).order(), parsed.order());
+        assertEquals(DateValues.parse(clearDate).separator(), parsed.separator());
+        assertEquals(DateValues.parse(clearDate).time(), parsed.time());
+
+        assertEquals(clearDate, unprotectAs(protectedDate, ValueKind.TEXT));
+    }
+
+    @Test
+    @DisplayName("A protected date is located by the token pattern, a clear one is not")
+    void tokenPatternFindsProtectedDates() {
+        String protectedDate = protectAs("1980-05-12", ValueKind.TEXT);
+
+        assertTrue(transformer.tokenPattern().matcher(protectedDate).matches(), protectedDate);
+        assertTrue(transformer.tokenPattern().matcher("Born on " + protectedDate + ".").find());
+        assertFalse(transformer.tokenPattern().matcher("1980-05-12").find());
+        assertFalse(transformer.tokenPattern().matcher("born 12345678901").find());
+    }
+
+    @Test
+    @DisplayName("Unprotecting a clear date, before year 3000, leaves it untouched")
+    void clearDateIsLeftUntouchedOnUnprotect() {
+        assertEquals("1980-05-12", unprotectAs("1980-05-12", ValueKind.TEXT));
+        assertEquals("12/05/1980", unprotectAs("12/05/1980", ValueKind.DATE));
+    }
+
+    @Test
+    @DisplayName("A clear date of year 3000 or later is protected as text, never mistaken for a protected one")
+    void farFutureDateIsProtectedAsText() {
+        String token = protectAs("3500-01-01", ValueKind.TEXT);
+
+        assertTrue(token.startsWith("RG{"), token);
+        assertEquals("3500-01-01", unprotectAs(token, ValueKind.TEXT));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"2024-02-30", "2024-13-01", "2024-01/15", "0000-01-01", "12345678"})
+    @DisplayName("Something that only looks like a date is protected as text")
+    void invalidDateIsText(String value) {
+        assertTrue(protectAs(value, ValueKind.TEXT).startsWith("RG{"));
+    }
+
+    // ---------------------------------------------------------------- numbers
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "7", "42", "-17", "100", "4096", "12345", "123456", "1234567890",
+            "12345678901234567890", "3.14", "-0.5", "0.001", "1.0", "1.50", "123.456789", "1.0E10", "-2.5E-7",
+            "99999.99999"})
+    @DisplayName("A number is protected into a number with the same form, and round trips")
+    void numberStaysANumber(String clearNumber) {
+        String protectedNumber = protectAs(clearNumber, ValueKind.NUMBER);
+
+        assertFalse(protectedNumber.contains("RG{"), "a number must not be wrapped: " + protectedNumber);
+        assertEquals(clearNumber.length(), protectedNumber.length(), protectedNumber);
+        assertEquals(clearNumber.replaceAll("\\d", "9"), protectedNumber.replaceAll("\\d", "9"),
+                "sign, point and exponent must stay in place: " + protectedNumber);
+        new BigDecimal(protectedNumber);
+
+        assertEquals(clearNumber, unprotectAs(protectedNumber, ValueKind.NUMBER));
+    }
+
+    @Test
+    @DisplayName("A number is really encrypted, not just copied")
+    void numberIsEncrypted() {
+        assertNotEquals("1234567890", protectAs("1234567890", ValueKind.NUMBER));
+        assertNotEquals("3.14159", protectAs("3.14159", ValueKind.NUMBER));
+    }
+
+    @Test
+    @DisplayName("Small numbers are permuted within their own length, one to one")
+    void smallNumbersArePermutedOneToOne() {
+        Set<String> seen = new HashSet<>();
+        for (int i = 100; i < 1000; i++) {
+            String protectedNumber = protectAs(Integer.toString(i), ValueKind.NUMBER);
+            assertEquals(3, protectedNumber.length());
+            assertNotEquals('0', protectedNumber.charAt(0));
+            assertTrue(seen.add(protectedNumber), "two numbers encrypted to " + protectedNumber);
+            assertEquals(Integer.toString(i), unprotectAs(protectedNumber, ValueKind.NUMBER));
+        }
+    }
+
+    @Test
+    @DisplayName("A protected fraction survives a parser dropping insignificant zeros")
+    void protectedFractionSurvivesNormalization() {
+        for (int i = 1; i < 100; i++) {
+            String clear = "0." + String.format("%02d", i);
+            String reparsed = Double.toString(Double.parseDouble(protectAs(clear, ValueKind.NUMBER)));
+            assertEquals(Double.parseDouble(clear), Double.parseDouble(unprotectAs(reparsed, ValueKind.NUMBER)));
+        }
+    }
+
+    @Test
+    @DisplayName("A numeric string is text: it keeps its token")
+    void numericStringKeepsItsToken() {
+        assertTrue(protectAs("00412", ValueKind.TEXT).startsWith("RG{N"));
+    }
+
+    @Test
+    @DisplayName("Something that is not a plain number is left untouched")
+    void notAPlainNumberIsLeftUntouched() {
+        assertEquals("NaN", protectAs("NaN", ValueKind.NUMBER));
+        assertEquals("Infinity", protectAs("Infinity", ValueKind.NUMBER));
+    }
+
+    // ---------------------------------------------------------------- end to end
+
+    @Test
+    @DisplayName("Dates and numbers keep their JSON type through a payload round trip")
+    void payloadKeepsDatesAndNumbers() throws Exception {
+        String json = "{\"birth\":\"1980-05-12\",\"since\":\"12.05.1980\",\"age\":42,\"balance\":-1234.56,"
+                + "\"account\":\"00412\"}";
+        MultivaluedMap<String, String> headers = new MultivaluedHashMap<>();
+        MultivaluedMap<String, String> params = new MultivaluedHashMap<>();
+
+        String protectedJson = transformer.transform(json, headers, params, typedConfig("Protect"));
+        DocumentContext document = JsonPath.parse(protectedJson);
+
+        String birth = document.read("$.birth");
+        assertTrue(DateValues.parse(birth).date().getYear() >= 3000, protectedJson);
+        String since = document.read("$.since");
+        assertTrue(since.matches("\\d{2}\\.\\d{2}\\.\\d{4}"), protectedJson);
+        assertTrue(document.read("$.age") instanceof Number, protectedJson);
+        assertTrue(document.read("$.balance") instanceof Number, protectedJson);
+        assertTrue(document.<String>read("$.account").startsWith("RG{N"), protectedJson);
+
+        String clearJson = transformer.transform(protectedJson, headers, params, typedConfig("Unprotect"));
+        assertEquals(json, clearJson);
+    }
+
+    @Test
+    @DisplayName("A date in a header round trips and stays a date")
+    void headerDateRoundTrips() throws Exception {
+        MultivaluedMap<String, String> headers = new MultivaluedHashMap<>();
+        headers.add("X-Birth", "1980-05-12");
+        MultivaluedMap<String, String> params = new MultivaluedHashMap<>();
+
+        EndPointTransformConfig protect = typedConfig("Protect");
+        protect.setHeaderTransformConfigs(Set.of(header()));
+        transformer.transform("{}", headers, params, protect);
+        String protectedDate = headers.getFirst("X-Birth");
+        assertTrue(DateValues.parse(protectedDate).date().getYear() >= 3000, protectedDate);
+
+        EndPointTransformConfig unprotect = typedConfig("Unprotect");
+        unprotect.setHeaderTransformConfigs(Set.of(header()));
+        transformer.transform("{}", headers, params, unprotect);
+        assertEquals("1980-05-12", headers.getFirst("X-Birth"));
+    }
+
+    private static HeaderTransformConfig header() {
+        HeaderTransformConfig header = new HeaderTransformConfig();
+        header.setName("X-Birth");
+        header.setRpsClassName("Person");
+        header.setRpsPropertyName("Birth");
+        return header;
+    }
+
+    private static EndPointTransformConfig typedConfig(String action) {
+        EndPointTransformConfig cfg = new EndPointTransformConfig();
+        cfg.setEndpointTransformWhen("Protect".equals(action) ? "BEFORE" : "AFTER");
+        Map<String, String> evidences = new HashMap<>();
+        evidences.put("Action", action);
+        cfg.setProcessingContextEvidences(evidences);
+        cfg.setEntityTransformConfigs(Set.of(
+                entity("$.birth", "Birth", null),
+                entity("$.since", "Since", null),
+                entity("$.age", "Age", null),
+                entity("$.balance", "Balance", null),
+                entity("$.account", "Account", null)));
+        return cfg;
     }
 
     // ---------------------------------------------------------------- end to end

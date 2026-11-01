@@ -1,6 +1,8 @@
 package com.ubp.rgd.proxy.fpe;
 
 import com.ubp.rgd.proxy.transform.AbstractEndPointTransformer;
+import com.ubp.rgd.proxy.transform.DateValues;
+import com.ubp.rgd.proxy.transform.model.ValueKind;
 import com.ubp.rgd.proxy.transform.TransformerImpl;
 import com.ubp.rgd.proxy.transform.ValuePlan;
 import com.ubp.rgd.proxy.transform.model.RightContext;
@@ -19,9 +21,15 @@ import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.HexFormat;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -32,7 +40,7 @@ import java.util.regex.Pattern;
  * directions of the same deterministic cipher, keyed by {@code proxy.transform.fpe.key}.
  *
  * <h2>Token format</h2>
- * The ciphertext is wrapped like an RPS token, <code>RG{...}</code>, because that is how
+ * A text value is wrapped like an RPS token, <code>RG{...}</code>, because that is how
  * {@link ValuePlan} locates the values to unprotect. Inside the braces comes a two character header
  * followed by the ciphertext:
  * <pre>
@@ -49,6 +57,23 @@ import java.util.regex.Pattern;
  * <pre>
  *     "12-34"  ->  "RG{N4" + encrypted digits with the dash back in place + "}"
  * </pre>
+ *
+ * <h2>Dates and numbers</h2>
+ * A date stays a date and a number stays a number, neither is wrapped in <code>RG{...}</code>:
+ * <ul>
+ *     <li>A date in one of the formats of {@link DateValues} ({@code yyyy-mm-dd}, {@code dd-mm-yyyy}
+ *     with {@code -}, {@code .} or {@code /}, an optional {@code Thh:mm:ss} time, or {@code ddmmyyyy})
+ *     is encrypted into another valid date written in the same format. Every protected date is of
+ *     year 3000 or later, which is what identifies it as protected: on unprotect, an earlier date is
+ *     left untouched. A clear date of year 3000 or later is protected as text, in a token.</li>
+ *     <li>A value read as a number ({@link ValueKind#NUMBER}, a JSON number for instance) is
+ *     encrypted into another number with the same sign, the same number of digits before and after
+ *     the decimal point, and the same exponent. A number has no marker, so every number of a
+ *     configured property is decrypted on unprotect. A numeric <em>string</em> is text and gets a
+ *     token.</li>
+ * </ul>
+ * A short number lives in a tiny domain, nine values for a single digit: its encryption only hides
+ * which of those values it is, it cannot resist an enumeration.
  *
  * <h2>Determinism</h2>
  * The same clear value always gives the same token within the same property. That is a property of
@@ -82,6 +107,53 @@ public class FPEEndPointTransformer extends AbstractEndPointTransformer {
      * plenty to separate the properties from one another.
      */
     private static final int TWEAK_LENGTH = 8;
+
+    /**
+     * Locates the values to unprotect: an <code>RG{...}</code> token, or a date of year 3000 or
+     * later in one of the formats of {@link DateValues}.
+     */
+    static final Pattern TOKEN_PATTERN = Pattern.compile(
+            ValuePlan.TOKEN_PATTERN.pattern()
+                    + "|(?<![\\w./-])(?:[3-9]\\d{3}([-./])\\d{2}\\1\\d{2}(?:T\\d{2}:\\d{2}:\\d{2})?"
+                    + "|\\d{2}([-./])\\d{2}\\2[3-9]\\d{3})(?!\\w|[-./]\\w)"
+                    + "|^\\d{4}[3-9]\\d{3}$");
+
+    /** Day number of the first date that can be protected, 0001-01-01. */
+    private static final long FIRST_CLEAR_DAY = LocalDate.of(1, 1, 1).toEpochDay();
+
+    /** Day number of the first protected date, 3000-01-01. Every protected date is on or after it. */
+    private static final long FIRST_PROTECTED_DAY = LocalDate.of(3000, 1, 1).toEpochDay();
+
+    /** Number of dates that can be protected, from 0001-01-01 to 2999-12-31. */
+    private static final long DATE_DOMAIN = FIRST_PROTECTED_DAY - FIRST_CLEAR_DAY;
+
+    /**
+     * Largest domain permuted with a precomputed table rather than with FF1 directly. FF1 requires a
+     * million values at least, and reaching a small domain by cycle walking would take too many
+     * rounds.
+     */
+    private static final int TABLE_DOMAIN_LIMIT = 10_000;
+
+    /** Digits FF1 needs at least with radix 10, BouncyCastle requiring a million values. */
+    private static final int MIN_FF1_DIGITS = 6;
+
+    /** Upper bound of {@link #tables}, cleared beyond: properties come from configuration and queries. */
+    private static final int MAX_CACHED_TABLES = 1024;
+
+    /** Tweak tags, so that a date, an integer part and a fraction never share a permutation. */
+    private static final byte TAG_DATE = 'D';
+    private static final byte TAG_INTEGER = 'I';
+    private static final byte TAG_FRACTION = 'F';
+
+    /** A number as written by {@link String#valueOf(Object)}: sign, integer part, fraction, exponent. */
+    private static final Pattern NUMBER = Pattern.compile("^(-?)(\\d+)(?:\\.(\\d+))?([eE][+-]?\\d+)?$");
+
+    /** Permutations of the small domains, keyed by tweak and domain size. */
+    private final Map<String, Permutation> tables = new ConcurrentHashMap<>();
+
+    /** A permutation of {@code [0, n)} and its inverse. */
+    private record Permutation(int[] forward, int[] inverse) {
+    }
 
     /**
      * An alphabet, its radix and the shortest input the cipher accepts for it.
@@ -206,12 +278,27 @@ public class FPEEndPointTransformer extends AbstractEndPointTransformer {
      * its alphabet at their exact position: a dash, a space or punctuation can legitimately appear
      * inside it. A brace is the only character it can never contain, which is what this pattern
      * expresses.
+     * <p>
+     * A protected date is not wrapped, so the pattern also matches the dates of year 3000 or later,
+     * which is where every protected date lands. The compact {@code ddmmyyyy} form is only matched
+     * as a whole value, since any run of eight digits could otherwise be taken for a date.
      *
      * @return the FPE token pattern
      */
     @Override
     public Pattern tokenPattern() {
-        return ValuePlan.TOKEN_PATTERN;
+        return TOKEN_PATTERN;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @return {@code true}, a protected date is a date of year 3000 or later and a protected number
+     *         is a number with as many digits
+     */
+    @Override
+    public boolean preservesValueTypes() {
+        return true;
     }
 
     /**
@@ -253,8 +340,287 @@ public class FPEEndPointTransformer extends AbstractEndPointTransformer {
             byte[] tweak = tweakOf(value.getMapping());
             // every value must get a transformed value, otherwise
             // reassembling the payload fails.
-            value.setTransformed(protect ? protect(original, tweak) : unprotect(original, tweak));
+            value.setTransformed(transform(original, value.getKind(), tweak, protect));
         }
+    }
+
+    /**
+     * Protect or unprotect a single value, depending on its type.
+     * <ul>
+     *     <li>a number, i.e. a value read as a number, stays a number with as many digits;</li>
+     *     <li>a date in one of the formats of {@link DateValues} stays a date in the same format;</li>
+     *     <li>anything else is wrapped in an <code>RG{...}</code> token.</li>
+     * </ul>
+     *
+     * @param original the value to transform
+     * @param kind     the type the value was read with
+     * @param tweak    the tweak of the property the value belongs to
+     * @param protect  whether to protect or to unprotect
+     * @return the transformed value, or the value unchanged when it cannot be transformed
+     */
+    String transform(String original, ValueKind kind, byte[] tweak, boolean protect) {
+        if (kind == ValueKind.NUMBER) {
+            return transformNumber(original, tweak, protect);
+        }
+        DateValues.ParsedDate date = DateValues.parse(original);
+        if (date != null) {
+            boolean protectedDate = date.date().getYear() >= 3000;
+            if (protect && !protectedDate) {
+                return transformDate(original, date, tweak, true);
+            }
+            if (!protect) {
+                // A date before the year 3000 was never protected: it is clear already.
+                return protectedDate ? transformDate(original, date, tweak, false) : original;
+            }
+            // A date of year 3000 or later would be taken for a protected one on the way back, so it
+            // is protected as text instead.
+        }
+        return protect ? protect(original, tweak) : unprotect(original, tweak);
+    }
+
+    /**
+     * Encrypt or decrypt a date into another valid date, written in the very same format.
+     * <p>
+     * The day is numbered from 0001-01-01, permuted among the days up to 2999-12-31 and written from
+     * 3000-01-01 onwards: a protected date is therefore always of year 3000 or later, which is how it
+     * is recognised on the way back. A time following the date is kept as is.
+     *
+     * @param original the value, for the value returned unchanged
+     * @param date     the parsed date
+     * @param tweak    the tweak of the property
+     * @param protect  whether to encrypt or to decrypt
+     * @return the transformed date, or the value unchanged when it is out of the protected range
+     */
+    private String transformDate(String original, DateValues.ParsedDate date, byte[] tweak, boolean protect) {
+        long day = date.date().toEpochDay();
+        long index = day - (protect ? FIRST_CLEAR_DAY : FIRST_PROTECTED_DAY);
+        if (index < 0 || index >= DATE_DOMAIN) {
+            LOG.debug("Date out of the protected range, leaving it unchanged.");
+            return original;
+        }
+        try {
+            long permuted = permute(index, DATE_DOMAIN, subTweak(tweak, TAG_DATE, 0), protect);
+            long result = permuted + (protect ? FIRST_PROTECTED_DAY : FIRST_CLEAR_DAY);
+            return date.format(LocalDate.ofEpochDay(result));
+        } catch (RuntimeException e) {
+            LOG.warn("Could not {} a date with FPE, leaving it unchanged: {}",
+                    protect ? "protect" : "unprotect", e.getMessage());
+            return original;
+        }
+    }
+
+    /**
+     * Encrypt or decrypt a number into another number of the same form.
+     * <p>
+     * The sign, the decimal point and the exponent stay where they are. The integer part and the
+     * fraction are permuted separately, each among the values of the same number of digits, so that
+     * the result still reads as the same number once parsed again:
+     * <ul>
+     *     <li>the integer part keeps its leading zeros and never gains one;</li>
+     *     <li>the fraction keeps its trailing zeros and never gains one, so that a JSON parser
+     *     dropping insignificant zeros cannot change the number of digits to decrypt.</li>
+     * </ul>
+     * A number made of zeros only is left unchanged.
+     *
+     * @param original the number as text
+     * @param tweak    the tweak of the property
+     * @param protect  whether to encrypt or to decrypt
+     * @return the transformed number, or the value unchanged when it is not a plain number
+     */
+    String transformNumber(String original, byte[] tweak, boolean protect) {
+        Matcher matcher = NUMBER.matcher(original);
+        if (!matcher.matches()) {
+            LOG.debug("Numeric value is not a plain number, leaving it unchanged.");
+            return original;
+        }
+        try {
+            String integer = transformInteger(matcher.group(2), tweak, protect);
+            String fraction = matcher.group(3) == null ? "" : "." + transformFraction(matcher.group(3), tweak, protect);
+            String exponent = matcher.group(4) == null ? "" : matcher.group(4);
+            return matcher.group(1) + integer + fraction + exponent;
+        } catch (RuntimeException e) {
+            LOG.warn("Could not {} a number with FPE, leaving it unchanged: {}",
+                    protect ? "protect" : "unprotect", e.getMessage());
+            return original;
+        }
+    }
+
+    /**
+     * Permute the significant digits of an integer part among the integers of as many digits.
+     */
+    private String transformInteger(String digits, byte[] tweak, boolean protect) {
+        int zeros = 0;
+        while (zeros < digits.length() && digits.charAt(zeros) == '0') {
+            zeros++;
+        }
+        String significant = digits.substring(zeros);
+        if (significant.isEmpty()) {
+            return digits;
+        }
+        int length = significant.length();
+        byte[] subTweak = subTweak(tweak, TAG_INTEGER, length);
+        String permuted;
+        if (length >= MIN_FF1_DIGITS) {
+            permuted = walk(significant, subTweak, protect, d -> d.charAt(0) != '0');
+        } else {
+            // Integers of that length without leading zero: [10^(n-1), 10^n), numbered from 0.
+            long low = pow10(length - 1);
+            long index = Long.parseLong(significant) - low;
+            permuted = Long.toString(permute(index, 9 * low, subTweak, protect) + low);
+        }
+        return digits.substring(0, zeros) + permuted;
+    }
+
+    /**
+     * Permute the significant digits of a fraction among the fractions of as many digits.
+     */
+    private String transformFraction(String digits, byte[] tweak, boolean protect) {
+        int end = digits.length();
+        while (end > 0 && digits.charAt(end - 1) == '0') {
+            end--;
+        }
+        String significant = digits.substring(0, end);
+        if (significant.isEmpty()) {
+            return digits;
+        }
+        int length = significant.length();
+        byte[] subTweak = subTweak(tweak, TAG_FRACTION, length);
+        String permuted;
+        if (length >= MIN_FF1_DIGITS) {
+            permuted = walk(significant, subTweak, protect, d -> d.charAt(d.length() - 1) != '0');
+        } else {
+            // Fractions of that length without trailing zero, numbered from 0: 9 of them per tens.
+            long value = Long.parseLong(significant);
+            long index = (value / 10) * 9 + (value % 10 - 1);
+            long result = permute(index, 9 * pow10(length - 1), subTweak, protect);
+            long fraction = (result / 9) * 10 + result % 9 + 1;
+            permuted = String.format("%0" + length + "d", fraction);
+        }
+        return permuted + digits.substring(end);
+    }
+
+    /**
+     * Permute an index among {@code [0, domain)}.
+     * <p>
+     * A small domain is permuted with a table, a large one with FF1 over enough digits, cycle
+     * walking until the result falls back inside the domain.
+     *
+     * @param index   the index to permute, inside the domain
+     * @param domain  the size of the domain
+     * @param tweak   the tweak, specific to the domain
+     * @param forward whether to apply the permutation or its inverse
+     * @return the permuted index, inside the domain
+     */
+    private long permute(long index, long domain, byte[] tweak, boolean forward) {
+        if (domain <= TABLE_DOMAIN_LIMIT) {
+            Permutation table = tableOf(tweak, (int) domain);
+            return forward ? table.forward[(int) index] : table.inverse[(int) index];
+        }
+        int digits = Math.max(MIN_FF1_DIGITS, Long.toString(domain - 1).length());
+        String padded = String.format("%0" + digits + "d", index);
+        return Long.parseLong(walk(padded, tweak, forward, d -> Long.parseLong(d) < domain));
+    }
+
+    /**
+     * Run FF1 with radix 10 over the given digits, again and again until the result belongs to the
+     * domain. This is cycle walking: since the start belongs to the domain, the walk always ends.
+     *
+     * @param digits   the digits to transform, at least {@value #MIN_FF1_DIGITS}
+     * @param tweak    the tweak
+     * @param encrypt  whether to encrypt or to decrypt
+     * @param inDomain whether a result belongs to the domain
+     * @return the transformed digits, of the same length
+     */
+    private String walk(String digits, byte[] tweak, boolean encrypt, Predicate<String> inDomain) {
+        FPEFF1Engine engine = new FPEFF1Engine();
+        engine.init(encrypt, new FPEParameters(key, 10, tweak));
+        byte[] input = new byte[digits.length()];
+        for (int i = 0; i < input.length; i++) {
+            input[i] = (byte) (digits.charAt(i) - '0');
+        }
+        byte[] output = new byte[input.length];
+        String result;
+        do {
+            engine.processBlock(input, 0, input.length, output, 0);
+            StringBuilder text = new StringBuilder(output.length);
+            for (byte digit : output) {
+                text.append((char) ('0' + digit));
+            }
+            result = text.toString();
+            byte[] swap = input;
+            input = output;
+            output = swap;
+        } while (!inDomain.test(result));
+        return result;
+    }
+
+    /**
+     * The keyed permutation of a small domain, built once and cached.
+     * <p>
+     * Every index is encrypted with FF1 over {@value #MIN_FF1_DIGITS} digits, then the indexes are
+     * ranked by their ciphertext. FF1 being a pseudo random permutation, so is the ranking.
+     */
+    private Permutation tableOf(byte[] tweak, int domain) {
+        String cacheKey = HexFormat.of().formatHex(tweak) + ':' + domain;
+        Permutation cached = tables.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
+        FPEFF1Engine engine = new FPEFF1Engine();
+        engine.init(true, new FPEParameters(key, 10, tweak));
+        long[] ranked = new long[domain];
+        byte[] input = new byte[MIN_FF1_DIGITS];
+        byte[] output = new byte[MIN_FF1_DIGITS];
+        for (int i = 0; i < domain; i++) {
+            int value = i;
+            for (int d = MIN_FF1_DIGITS - 1; d >= 0; d--) {
+                input[d] = (byte) (value % 10);
+                value /= 10;
+            }
+            engine.processBlock(input, 0, MIN_FF1_DIGITS, output, 0);
+            long encrypted = 0;
+            for (byte digit : output) {
+                encrypted = encrypted * 10 + digit;
+            }
+            // The ciphertexts are distinct, so sorting on them alone gives a strict order.
+            ranked[i] = encrypted * TABLE_DOMAIN_LIMIT + i;
+        }
+        Arrays.sort(ranked);
+
+        int[] forward = new int[domain];
+        int[] inverse = new int[domain];
+        for (int rank = 0; rank < domain; rank++) {
+            int index = (int) (ranked[rank] % TABLE_DOMAIN_LIMIT);
+            forward[index] = rank;
+            inverse[rank] = index;
+        }
+
+        if (tables.size() >= MAX_CACHED_TABLES) {
+            tables.clear();
+        }
+        Permutation permutation = new Permutation(forward, inverse);
+        tables.put(cacheKey, permutation);
+        return permutation;
+    }
+
+    /**
+     * Derive the tweak of a domain from the tweak of a property, so that the same property never
+     * reuses a permutation across the dates, the integer parts and the fractions of each length.
+     */
+    private static byte[] subTweak(byte[] tweak, byte tag, int length) {
+        byte[] derived = Arrays.copyOf(tweak, tweak.length + 2);
+        derived[tweak.length] = tag;
+        derived[tweak.length + 1] = (byte) length;
+        return derived;
+    }
+
+    private static long pow10(int exponent) {
+        long result = 1;
+        for (int i = 0; i < exponent; i++) {
+            result *= 10;
+        }
+        return result;
     }
 
     /**

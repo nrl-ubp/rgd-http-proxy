@@ -44,19 +44,19 @@
   ],
   "column-mappings": [
     {
-      "table": "PERSON",
+      "table": "*",
       "column": "FIRST_NAME",
       "rps-class-name": "Person",
       "rps-property-name": "shortString"
     },
     {
-      "table": "PERSON",
+      "table": "*",
       "column": "LAST_NAME",
       "rps-class-name": "Person",
       "rps-property-name": "shortString"
     },
     {
-      "table": "PERSON",
+      "table": "*",
       "column": "BIRTH_DATE",
       "rps-class-name": "Person",
       "rps-property-name": "birthDate"
@@ -66,6 +66,18 @@
       "column": "EMAIL",
       "rps-class-name": "Person",
       "rps-property-name": "email"
+    },
+    {
+      "table": "*",
+      "column": "CITY",
+      "rps-class-name": "Person",
+      "rps-property-name": "city"
+    },
+    {
+      "table": "*",
+      "column": "NOTES",
+      "rps-class-name": "Person",
+      "rps-property-name": "notes"
     }
   ]
 }
