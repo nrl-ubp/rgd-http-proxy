@@ -1,0 +1,3159 @@
+[ {
+  "endpoint-path" : "/openapi/v1/clients",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/clients/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/contact-points/emails",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Email",
+    "json-path" : "$.email"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/contact-point/phones",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.number"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/contact-points/postal-addresses",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.line1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.line2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.line3"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.city"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.line6"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/contact-points/postal-addresses/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.line1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.line2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.line3"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.city"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.line6"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/contact-reports",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.description"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/contact-reports/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.description"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/notes",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.subject"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.noteText"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/notes/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.subject"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.noteText"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/organisations",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.dateOfEstablishment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/organisations/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.dateOfEstablishment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/person-to-account-roles/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.comments"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.eBankingComment"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/person-to-account-roles",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.comments"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.eBankingComment"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/person-to-client-roles/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.comments"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.eBankingComment"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/person-to-client-roles",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.comments"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.eBankingComment"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/person-to-person-roles/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.comments"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.eBankingComment"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/person-to-person-roles",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.comments"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.eBankingComment"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/persons",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.birthDate"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.firstName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.lastName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/persons/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.birthDate"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.firstName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.lastName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/products",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "AccountName",
+    "json-path" : "$.name",
+    "extract-regex" : "(?:\\b(?:[A-Za-z0-9]\\s+)+[A-Za-z0-9]\\b)|(?:[A-Za-z0-9]+(?:[~'][A-Za-z0-9]+)*)"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/products/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "AccountName",
+    "json-path" : "$.name",
+    "extract-regex" : "(?:\\b(?:[A-Za-z0-9]\\s+)+[A-Za-z0-9]\\b)|(?:[A-Za-z0-9]+(?:[~'][A-Za-z0-9]+)*)"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/prospects",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/prospects/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Account",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "AccountName",
+    "json-path" : "$.longName",
+    "extract-regex" : "(?:\\b(?:[A-Za-z0-9]\\s+)+[A-Za-z0-9]\\b)|(?:[A-Za-z0-9]+(?:[~'][A-Za-z0-9]+)*)"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "AccountName",
+    "json-path" : "$.shortName",
+    "extract-regex" : "(?:\\b(?:[A-Za-z0-9]\\s+)+[A-Za-z0-9]\\b)|(?:[A-Za-z0-9]+(?:[~'][A-Za-z0-9]+)*)"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.generalInstructions"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.legalInstructions"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.complianceInstructions"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.blockingRecords[*].comment"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Account/[^/]+",
+  "endpoint-methods" : [ "GET" ],
+  "endpoint-transform-when" : "AFTER",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Unprotect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.crId.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "AccountName",
+    "json-path" : "$.longName",
+    "extract-regex" : "(?:\\b(?:[A-Za-z0-9]\\s+)+[A-Za-z0-9]\\b)|(?:[A-Za-z0-9]+(?:[~'][A-Za-z0-9]+)*)"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "AccountName",
+    "json-path" : "$.shortName",
+    "extract-regex" : "(?:\\b(?:[A-Za-z0-9]\\s+)+[A-Za-z0-9]\\b)|(?:[A-Za-z0-9]+(?:[~'][A-Za-z0-9]+)*)"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.generalInstructions"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.legalInstructions"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.complianceInstructions"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.blockingRecords[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.mailingInstructions[*].linkedPerson.name"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.mailingInstructions[*].crName.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.mailingInstructions[*].accountName.name"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.mailingInstructions[*].addressId.name"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "AccountName",
+    "json-path" : "$.pledgeAgreements[*].pledgedToId.name",
+    "extract-regex" : "(?:\\b(?:[A-Za-z0-9]\\s+)+[A-Za-z0-9]\\b)|(?:[A-Za-z0-9]+(?:[~'][A-Za-z0-9]+)*)"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Account/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "AccountName",
+    "json-path" : "$.longName",
+    "extract-regex" : "(?:\\b(?:[A-Za-z0-9]\\s+)+[A-Za-z0-9]\\b)|(?:[A-Za-z0-9]+(?:[~'][A-Za-z0-9]+)*)"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "AccountName",
+    "json-path" : "$.shortName",
+    "extract-regex" : "(?:\\b(?:[A-Za-z0-9]\\s+)+[A-Za-z0-9]\\b)|(?:[A-Za-z0-9]+(?:[~'][A-Za-z0-9]+)*)"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.generalInstructions"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.legalInstructions"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.complianceInstructions"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.blockingRecords[*].comment"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Account_Suitability",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.carpJustification"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Account_Suitability/[^/]+",
+  "endpoint-methods" : [ "GET" ],
+  "endpoint-transform-when" : "AFTER",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Unprotect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.carpJustification"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Account_Suitability/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.carpJustification"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Account_Tax",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.fatcaComments"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.qiComment"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Account_Tax/[^/]+",
+  "endpoint-methods" : [ "GET" ],
+  "endpoint-transform-when" : "AFTER",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Unprotect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.fatcaForcedComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.fatcaComments"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.qiforcedComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.qiComment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.crId.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.reportableCountry[*].name.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Account_Tax/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.fatcaComments"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.qiComment"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Contractual_Relationship",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.longName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.purposeOfTheCRAdditional"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.commercialBusinessActivity"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.otherActivities"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.businessStructure"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.existenceOfInvoicesETC"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.expectedIncomingTransactions[*].description"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.expectedOutgoingTransactions[*].description"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Contractual_Relationship/[^/]+",
+  "endpoint-methods" : [ "GET" ],
+  "endpoint-transform-when" : "AFTER",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Unprotect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.longName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.purposeOfTheCRAdditional"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.commercialBusinessActivity"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.otherActivities"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.businessStructure"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.existenceOfInvoicesETC"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "AccountName",
+    "json-path" : "$.accountLifecycleAUM[*].accountName",
+    "extract-regex" : "(?:\\b(?:[A-Za-z0-9]\\s+)+[A-Za-z0-9]\\b)|(?:[A-Za-z0-9]+(?:[~'][A-Za-z0-9]+)*)"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "AccountName",
+    "json-path" : "$.accountOpeningAUM[*].accountName",
+    "extract-regex" : "(?:\\b(?:[A-Za-z0-9]\\s+)+[A-Za-z0-9]\\b)|(?:[A-Za-z0-9]+(?:[~'][A-Za-z0-9]+)*)"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.expectedIncomingTransactions[*].description"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.expectedOutgoingTransactions[*].description"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.mailingInstructions[*].linkedPerson.name"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.mailingInstructions[*].crName.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.mailingInstructions[*].accountName.name"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.mailingInstructions[*].addressId.name"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Contractual_Relationship/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.longName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.purposeOfTheCRAdditional"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.commercialBusinessActivity"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.otherActivities"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.businessStructure"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.existenceOfInvoicesETC"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.expectedIncomingTransactions[*].description"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.expectedOutgoingTransactions[*].description"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/DocumentPreviewMetadata",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.furtherInformation"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/DocumentPreviewMetadata/[^/]+",
+  "endpoint-methods" : [ "GET" ],
+  "endpoint-transform-when" : "AFTER",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Unprotect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.personId.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.crId.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "AccountName",
+    "json-path" : "$.accountId.name",
+    "extract-regex" : "(?:\\b(?:[A-Za-z0-9]\\s+)+[A-Za-z0-9]\\b)|(?:[A-Za-z0-9]+(?:[~'][A-Za-z0-9]+)*)"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.furtherInformation"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.linkedAddress.name"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/DocumentPreviewMetadata/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.furtherInformation"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/KYC_ClassOfBeneficiaries",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/KYC_ClassOfBeneficiaries/[^/]+",
+  "endpoint-methods" : [ "GET" ],
+  "endpoint-transform-when" : "AFTER",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Unprotect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/KYC_ClassOfBeneficiaries/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/KYC_Individual_Person",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.firstName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.lastName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.middleName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.birthDate"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.placeOfBirth"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.maritalStatusExplanation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.additionalInfoFamilySituation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.businessActivityDetails"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.educationAndQualification"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.amlComments"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.clientResidentRightsOtherJurisdictionsDetails"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.clientSpentMoreDaysOtherJurisdictionsDetails"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.clientCentreOfLife"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.wealthCompositionDescription"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.additionalInformation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.contactComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.originOfContact"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.thirdParty"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.externalManagerCode"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.activeAccountNumbers"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.introductionComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.reasonForNotMeeting"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.reasonforChoosingEntity"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.pepAffiliateName"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.pepExplanation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.pepComplianceComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.insiderTraderDetails"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.insiderInvestorDetails"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].identifier"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].number"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postcode"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].poBox"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].city"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine3"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine4"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine5"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine6"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine7"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine8"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.addressCorroboratingEvidence[*].documentNumber"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.assets[*].amount"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.assets[*].bankName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Email",
+    "json-path" : "$.emailAddresses[*].emailAddress"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.emailAddresses[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.identification[*].documentNumber"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.income[*].amount"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.income[*].comment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.liabilities[*].amount"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.liabilities[*].bankName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.otherNames[*].name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "PhoneNumber",
+    "json-path" : "$.phoneNumbers[*].phoneNumber"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.phoneNumbers[*].comment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.screening[*].screeningDetails"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.taxIdentification[*].taxIdentificationNumber"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/KYC_Individual_Person/[^/]+",
+  "endpoint-methods" : [ "GET" ],
+  "endpoint-transform-when" : "AFTER",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Unprotect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.firstName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.lastName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.middleName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.birthDate"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.placeOfBirth"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.maritalStatusExplanation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.additionalInfoFamilySituation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.businessActivityDetails"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.educationAndQualification"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.amlComments"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.clientResidentRightsOtherJurisdictionsDetails"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.clientSpentMoreDaysOtherJurisdictionsDetails"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.clientCentreOfLife"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.wealthCompositionDescription"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.additionalInformation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.contactComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.originOfContact"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.thirdParty"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.externalManagerCode"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.activeAccountNumbers"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.introductionComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.reasonForNotMeeting"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.reasonforChoosingEntity"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.pepAffiliateName"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.pepExplanation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.pepComplianceComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.insiderTraderDetails"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.insiderInvestorDetails"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.contactId.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].identifier"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].number"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postcode"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].poBox"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].city"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine3"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine4"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine5"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine6"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine7"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine8"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.addressCorroboratingEvidence[*].documentNumber"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.assets[*].amount"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.assets[*].bankName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Email",
+    "json-path" : "$.emailAddresses[*].emailAddress"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.emailAddresses[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.identification[*].documentNumber"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.income[*].amount"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.income[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.insiderDetailsPartner[*].insiderName.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.liabilities[*].amount"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.liabilities[*].bankName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.otherNames[*].name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "PhoneNumber",
+    "json-path" : "$.phoneNumbers[*].phoneNumber"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.phoneNumbers[*].comment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.screening[*].screeningDetails"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.taxIdentification[*].taxIdentificationNumber"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/KYC_Individual_Person/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.firstName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.lastName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.middleName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.birthDate"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.placeOfBirth"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.maritalStatusExplanation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.additionalInfoFamilySituation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.businessActivityDetails"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.educationAndQualification"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.amlComments"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.clientResidentRightsOtherJurisdictionsDetails"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.clientSpentMoreDaysOtherJurisdictionsDetails"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.clientCentreOfLife"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.wealthCompositionDescription"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.additionalInformation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.contactComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.originOfContact"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.thirdParty"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.externalManagerCode"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.activeAccountNumbers"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.introductionComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.reasonForNotMeeting"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.reasonforChoosingEntity"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.pepAffiliateName"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.pepExplanation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.pepComplianceComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.insiderTraderDetails"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.insiderInvestorDetails"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].identifier"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].number"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postcode"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].poBox"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].city"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine3"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine4"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine5"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine6"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine7"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine8"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.addressCorroboratingEvidence[*].documentNumber"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.assets[*].amount"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.assets[*].bankName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Email",
+    "json-path" : "$.emailAddresses[*].emailAddress"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.emailAddresses[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.identification[*].documentNumber"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.income[*].amount"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.income[*].comment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.liabilities[*].amount"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.liabilities[*].bankName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.otherNames[*].name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "PhoneNumber",
+    "json-path" : "$.phoneNumbers[*].phoneNumber"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.phoneNumbers[*].comment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.screening[*].screeningDetails"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.taxIdentification[*].taxIdentificationNumber"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/KYC_Legal_Entity",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.companyName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.dateOfIncorporation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.purposeOfTheEntity"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.connectionBetweenAccountHolderPOA"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.amlCommitteeComments"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.groupStructureExplanation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.shareCapital"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.totalBalanceSheet"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.howPartyEstablishedWealth"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.contactComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.originOfContact"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.thirdParty"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.externalManagerCode"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.activeAccountNumbers"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.introductionComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.reasonForNotMeeting"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.reasonforChoosingEntity"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].identifier"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].number"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postcode"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].poBox"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].city"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine3"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine4"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine5"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine6"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine7"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine8"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.addressCorroboratingEvidence[*].documentNumber"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.assets[*].amount"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.assets[*].bankName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Email",
+    "json-path" : "$.emailAddresses[*].emailAddress"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.emailAddresses[*].comment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.liabilities[*].amount"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.liabilities[*].bankName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "PhoneNumber",
+    "json-path" : "$.phoneNumbers[*].phoneNumber"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.phoneNumbers[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.taxIdentification[*].taxIdentificationNumber"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/KYC_Legal_Entity/[^/]+",
+  "endpoint-methods" : [ "GET" ],
+  "endpoint-transform-when" : "AFTER",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Unprotect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.companyName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.dateOfIncorporation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.purposeOfTheEntity"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.connectionBetweenAccountHolderPOA"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.amlCommitteeComments"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.groupStructureExplanation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.shareCapital"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.totalBalanceSheet"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.howPartyEstablishedWealth"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.contactComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.originOfContact"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.thirdParty"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.externalManagerCode"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.activeAccountNumbers"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.introductionComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.reasonForNotMeeting"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.reasonforChoosingEntity"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.contactId.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].identifier"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].number"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postcode"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].poBox"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].city"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine3"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine4"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine5"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine6"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine7"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine8"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.addressCorroboratingEvidence[*].documentNumber"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.assets[*].amount"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.assets[*].bankName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Email",
+    "json-path" : "$.emailAddresses[*].emailAddress"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.emailAddresses[*].comment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.liabilities[*].amount"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.liabilities[*].bankName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "PhoneNumber",
+    "json-path" : "$.phoneNumbers[*].phoneNumber"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.phoneNumbers[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.taxIdentification[*].taxIdentificationNumber"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/KYC_Legal_Entity/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.companyName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.dateOfIncorporation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.purposeOfTheEntity"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.connectionBetweenAccountHolderPOA"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.amlCommitteeComments"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.groupStructureExplanation"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.shareCapital"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.totalBalanceSheet"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.howPartyEstablishedWealth"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.contactComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.originOfContact"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.thirdParty"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.externalManagerCode"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.activeAccountNumbers"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.introductionComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.reasonForNotMeeting"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.reasonforChoosingEntity"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].identifier"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].number"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postcode"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].poBox"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].city"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine3"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine4"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine5"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine6"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine7"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine8"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.addressCorroboratingEvidence[*].documentNumber"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.assets[*].amount"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.assets[*].bankName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Email",
+    "json-path" : "$.emailAddresses[*].emailAddress"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.emailAddresses[*].comment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "Number",
+    "json-path" : "$.liabilities[*].amount"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.liabilities[*].bankName"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "PhoneNumber",
+    "json-path" : "$.phoneNumbers[*].phoneNumber"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.phoneNumbers[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.taxIdentification[*].taxIdentificationNumber"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Person_Tax",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.explanation"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.giin"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.nameOfSponsoringEntity"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.fatcaComment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.crsForcedComment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.crsComment"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Person_Tax/[^/]+",
+  "endpoint-methods" : [ "GET" ],
+  "endpoint-transform-when" : "AFTER",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Unprotect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.explanation"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.giin"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.nameOfSponsoringEntity"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.fatcaForcedComment"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.fatcaComment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.crsForcedComment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.crsComment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.personGUID.name",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Person_Tax/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.explanation"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.giin"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.nameOfSponsoringEntity"
+  }, {
+    "rps-class-name" : "Other",
+    "rps-property-name" : "LongText",
+    "json-path" : "$.fatcaComment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.crsForcedComment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.crsComment"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Prospect",
+  "endpoint-methods" : [ "POST" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.firstName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.middleName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.lastName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.birthDate"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.companyName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.dateOfIncorporation"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].identifier"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].number"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postcode"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].poBox"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].city"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine3"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine4"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine5"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine6"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine7"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine8"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Email",
+    "json-path" : "$.emailAddresses[*].emailAddress"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.emailAddresses[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "PhoneNumber",
+    "json-path" : "$.phoneNumbers[*].phoneNumber"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.phoneNumbers[*].comment"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Prospect/[^/]+",
+  "endpoint-methods" : [ "GET" ],
+  "endpoint-transform-when" : "AFTER",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Unprotect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.firstName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.middleName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.lastName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.birthDate"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.companyName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.dateOfIncorporation"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].identifier"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].number"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postcode"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].poBox"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].city"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine3"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine4"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine5"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine6"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine7"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine8"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Email",
+    "json-path" : "$.emailAddresses[*].emailAddress"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.emailAddresses[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "PhoneNumber",
+    "json-path" : "$.phoneNumbers[*].phoneNumber"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.phoneNumbers[*].comment"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+}, {
+  "endpoint-path" : "/openapi/v1/forms/data/Prospect/[^/]+",
+  "endpoint-methods" : [ "PATCH" ],
+  "endpoint-transform-when" : "BEFORE",
+  "right-context" : {
+    "Right" : "Transform",
+    "Module" : "WDX1Proxy",
+    "Target" : "WDX1"
+  },
+  "processing-context" : {
+    "Module" : "WDX1Proxy",
+    "Action" : "Protect",
+    "Target" : "WDX1"
+  },
+  "header-transform-configs" : [ ],
+  "entity-transform-configs" : [ {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.firstName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.middleName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.lastName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.birthDate"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "ShortString",
+    "json-path" : "$.companyName",
+    "extract-regex" : "(?:\\w(?<!_)|~)+"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Date",
+    "json-path" : "$.dateOfIncorporation"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].identifier"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].number"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].addressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postcode"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].poBox"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].city"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine1"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine2"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine3"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine4"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine5"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine6"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine7"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.address[*].postalAddressLine8"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "Email",
+    "json-path" : "$.emailAddresses[*].emailAddress"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.emailAddresses[*].comment"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "PhoneNumber",
+    "json-path" : "$.phoneNumbers[*].phoneNumber"
+  }, {
+    "rps-class-name" : "Person",
+    "rps-property-name" : "LongString",
+    "json-path" : "$.phoneNumbers[*].comment"
+  } ],
+  "url-query-transform-configs" : [ ],
+  "url-path-transform-configs" : [ ]
+} ]
