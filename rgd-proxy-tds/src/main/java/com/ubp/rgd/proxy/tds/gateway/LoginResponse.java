@@ -18,6 +18,8 @@ final class LoginResponse {
     boolean routing;
     int packetSize;
     byte[] sspi;
+    /** The errors of the server, as "Msg number, Level class, State state: message". */
+    final java.util.List<String> errors = new java.util.ArrayList<>();
 
     static LoginResponse parse(byte[] payload) throws IOException {
         LoginResponse response = new LoginResponse();
@@ -44,6 +46,15 @@ final class LoginResponse {
                         value.readByte();
                         response.packetSize = Integer.parseInt(value.readBVarchar().trim());
                     }
+                }
+                case Tds.TOKEN_ERROR -> {
+                    byte[] body = reader.readBytes(reader.readUShort());
+                    TdsReader error = TdsReader.of(body);
+                    int number = error.readInt();
+                    int state = error.readByte();
+                    int severity = error.readByte();
+                    response.errors.add(String.format("Msg %d, Level %d, State %d: %s", number, severity, state,
+                            error.readUsVarchar()));
                 }
                 case Tds.TOKEN_LOGINACK -> {
                     response.loginAck = true;

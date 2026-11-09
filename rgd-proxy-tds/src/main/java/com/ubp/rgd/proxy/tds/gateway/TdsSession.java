@@ -222,6 +222,8 @@ public final class TdsSession implements Runnable {
 
     /** Connect and pre-login to the database server, opening TLS as configured. */
     private PreLogin connectBackend() throws IOException {
+        LOG.debug("TDS session {}: connecting to the database server {}:{} (encryption {})", id,
+                settings.backendHost(), settings.backendPort(), settings.backendEncryption());
         backendSocket = new Socket();
         backendSocket.connect(new InetSocketAddress(settings.backendHost(), settings.backendPort()),
                 (int) settings.connectTimeout().toMillis());
@@ -315,7 +317,9 @@ public final class TdsSession implements Runnable {
                     + " authentication.");
         }
         if (removed.stream().anyMatch(feature -> feature.id() == Tds.FEATURE_COLUMNENCRYPTION)) {
-            LOG.info("TDS session {}: Always Encrypted is not supported through the gateway, it is disabled", id);
+            // mssql-jdbc asks for it on every connection, even without columnEncryptionSetting=Enabled.
+            LOG.debug("TDS session {}: the Always Encrypted feature of the login is removed, the gateway does not"
+                    + " support it", id);
         }
         login.setText(Login7.Field.SERVER_NAME, settings.backendHost());
 
@@ -346,7 +350,7 @@ public final class TdsSession implements Runnable {
             if (backendLoginOnly) {
                 backend.setStreams(backendTlsLayer.rawInput(), backendTlsLayer.rawOutput());
             }
-            return relayLoginResponse(exchange, clientToken);
+            return relayLoginResponse(exchange, clientToken, login);
         } finally {
             if (exchange != null) {
                 exchange.close();
@@ -354,7 +358,7 @@ public final class TdsSession implements Runnable {
         }
     }
 
-    private boolean relayLoginResponse(KerberosAuthenticator.Exchange exchange, byte[] clientToken)
+    private boolean relayLoginResponse(KerberosAuthenticator.Exchange exchange, byte[] clientToken, Login7 login)
             throws IOException {
         while (true) {
             TdsPacket first = backend.readPacket();
@@ -391,7 +395,11 @@ public final class TdsSession implements Runnable {
             client.setSpid(first.spid());
             client.writeMessage(Tds.PKT_REPLY, relayed.toByteArray());
             if (!response.loginAck) {
-                LOG.info("TDS session {}: login refused by the database server", id);
+                LOG.info("TDS session {}: login of {} to database '{}' refused by the database server {}:{}: [{}]"
+                                + " (for error 18456, the reason is the state written in the SQL Server error log)",
+                        id, login.integratedSecurity() ? "a Windows user" : "'" + login.text(Login7.Field.USER_NAME) + "'",
+                        login.text(Login7.Field.DATABASE), settings.backendHost(), settings.backendPort(),
+                        response.errors.isEmpty() ? "no error message" : String.join(" / ", response.errors));
                 return false;
             }
             if (response.packetSize > 0) {

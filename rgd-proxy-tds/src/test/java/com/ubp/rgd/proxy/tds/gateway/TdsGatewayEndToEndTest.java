@@ -49,6 +49,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -287,6 +288,39 @@ class TdsGatewayEndToEndTest {
         assertEquals(List.of("SELECT 1"), server.statements);
         assertEquals(Tds.STATUS_RESETCONNECTION | Tds.STATUS_EOM, server.requestStatuses.get(0),
                 "the reset reaches the server with the next request");
+    }
+
+    @Test
+    void theLoginReachesTheServerAsTheClientSentIt() throws Exception {
+        int port = gateway(false, GatewaySettings.BackendEncryption.LOGIN_ONLY, false, GatewaySettings.ClientEncryption.OFF);
+        String url = ";databaseName=secure_datamart;user=bad;password=P@ss w0rd-é€;encrypt=false;loginTimeout=10;"
+                + "applicationName=probe";
+        // Directly to the scripted server, then through the gateway: the same login twice.
+        assertThrows(SQLException.class, () -> DriverManager.getConnection("jdbc:sqlserver://127.0.0.1:" + server.port() + url));
+        SQLException error = assertThrows(SQLException.class,
+                () -> DriverManager.getConnection("jdbc:sqlserver://127.0.0.1:" + port + url));
+        assertEquals(18456, error.getErrorCode());
+
+        Login7 direct = Login7.parse(server.loginPayloads.get(0));
+        Login7 relayed = Login7.parse(server.loginPayloads.get(1));
+        for (Login7.Field field : Login7.Field.values()) {
+            if (field != Login7.Field.EXTENSION && field != Login7.Field.SERVER_NAME) {
+                assertArrayEquals(direct.field(field), relayed.field(field), field.name());
+            }
+        }
+        assertEquals("secure_datamart", relayed.text(Login7.Field.DATABASE));
+        assertEquals("P@ss w0rd-é€", deobfuscate(relayed.field(Login7.Field.PASSWORD)));
+        assertEquals(direct.tdsVersion(), relayed.tdsVersion());
+        assertEquals(direct.packetSize(), relayed.packetSize());
+    }
+
+    private static String deobfuscate(byte[] password) {
+        byte[] bytes = password.clone();
+        for (int i = 0; i < bytes.length; i++) {
+            int value = (bytes[i] & 0xFF) ^ 0xA5;
+            bytes[i] = (byte) (((value & 0x0F) << 4) | (value >>> 4));
+        }
+        return new String(bytes, StandardCharsets.UTF_16LE);
     }
 
     @Test

@@ -35,6 +35,8 @@ final class FakeSqlServer implements AutoCloseable {
 
     final List<String> statements = new CopyOnWriteArrayList<>();
     final List<Login7> logins = new CopyOnWriteArrayList<>();
+    /** The LOGIN7 payloads, as received. */
+    final List<byte[]> loginPayloads = new CopyOnWriteArrayList<>();
     final List<Integer> encryptionRequests = new CopyOnWriteArrayList<>();
     final List<Integer> attentions = new CopyOnWriteArrayList<>();
     final List<String> sspiBlobs = new CopyOnWriteArrayList<>();
@@ -87,7 +89,9 @@ final class FakeSqlServer implements AutoCloseable {
                 layer = TlsLayer.accept(tls, socket, socket.getInputStream(), socket.getOutputStream(), false);
                 channel.setStreams(layer.input(), layer.output());
             }
-            Login7 login = Login7.parse(channel.readMessage().payload());
+            byte[] loginPayload = channel.readMessage().payload();
+            loginPayloads.add(loginPayload);
+            Login7 login = Login7.parse(loginPayload);
             if (answer == Tds.ENCRYPT_OFF) {
                 channel.setStreams(layer.rawInput(), layer.rawOutput());
             }

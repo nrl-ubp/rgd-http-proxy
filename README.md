@@ -1170,6 +1170,32 @@ SELECT FIRST_NAME, BIRTH_DATE FROM PERSON
 WHERE FIRST_NAME = transform('Person', 'FirstName', 'CH', N'Bernadette')
 ```
 
+### Troubleshooting a refused login
+
+The gateway relays the login as the client sent it: the user, the password, still obfuscated, and the
+database. Only the server name and the feature extensions change (see
+[Limits](#limits-of-the-tds-gateway)). So a `Login failed for user '...'` (error 18456) comes from SQL
+Server itself, and the gateway logs it at INFO, with the server it relays to:
+
+```text
+TDS session 3: login of 'alice' to database 'secure_datamart' refused by the database server
+aigle.example.com:1433: [Msg 18456, Level 14, State 1: Login failed for user 'alice'.]
+```
+
+SQL Server always sends state 1 to the client. The real reason is the state written in **its error log**
+(SSMS: *Management > SQL Server Logs*, or `EXEC xp_readerrorlog 0, 1, N'18456'`):
+
+| State | Reason |
+| --- | --- |
+| 2, 5 | The login does not exist on this server. Check `proxy.tds.backend.host` / `port`. |
+| 7 | The login is disabled. |
+| 8 | Wrong password. |
+| 38, 40 | The database asked by the client (`databaseName`, `Database=`) does not exist or the login cannot open it. |
+| 58 | The server only accepts Windows authentication. |
+
+The messages about TLS and Always Encrypted are unrelated. `mssql-jdbc` asks for Always Encrypted on every
+connection, and the gateway removes that request, which logs at DEBUG.
+
 ### Limits of the TDS gateway
 
 - **Not supported**: MARS, Always Encrypted (removed from the login: a driver requiring it reports that the
