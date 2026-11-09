@@ -1,0 +1,20 @@
+{
+  "before": {
+    "right-context": { "Target": "WDX1", "Module": "WDX1Proxy", "Right": "Transform" },
+    "processing-context": { "Action": "Protect", "Module": "WDX1Proxy" }
+  },
+  "after": {
+    "right-context": { "Target": "WDX1", "Module": "WDX1Proxy", "Right": "Transform" },
+    "processing-context": { "Action": "Unprotect", "Module": "WDX1Proxy" }
+  },
+  "data-mappings": [],
+  "column-mappings": [
+    { "table": "*", "column": "FIRST_NAME", "rps-class-name": "Person", "rps-property-name": "shortString" },
+    { "table": "*", "column": "LAST_NAME", "rps-class-name": "Person", "rps-property-name": "shortString" },
+    { "table": "*", "column": "BIRTH_DATE", "rps-class-name": "Person", "rps-property-name": "birthDate" },
+    { "table": "*", "column": "EMAIL", "rps-class-name": "Person", "rps-property-name": "email" },
+    { "table": "*", "column": "CITY", "rps-class-name": "Person", "rps-property-name": "city" },
+    { "table": "*", "column": "NOTES", "rps-class-name": "Person", "rps-property-name": "notes" },
+    { "table": "PERSON", "column": "NOTES", "rps-class-name": "Person", "rps-property-name": "personNotes" }
+  ]
+}

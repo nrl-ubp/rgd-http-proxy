@@ -259,6 +259,23 @@
     </build>
 
     <profiles>
+        <!-- The fuzzy search (rgd-proxy-fuzzysearch) is part of the JVM application only: EclipseLink and the
+             FastText JNI library are not native-image ready, so a build with -Dnative leaves the module out
+             (fuzzy-search.enabled is then simply ignored). -->
+        <profile>
+            <id>fuzzy-search</id>
+            <activation>
+                <property>
+                    <name>!native</name>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.ubp.rgd.proxy</groupId>
+                    <artifactId>rgd-proxy-fuzzysearch</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
         <!-- Native executable for Linux, to embed in a container image (src/main/docker/Dockerfile.native-micro):
                mvn package -Dnative [-DskipTests] [-Dnative.arch=amd64|arm64]
              -> target/rgd-proxy-hub-<version>-runner-linux-<arch>

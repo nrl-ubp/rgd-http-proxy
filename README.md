@@ -431,6 +431,7 @@ the application, which assembles them into a **single uber-jar**,
 | `rgd-proxy-flightsql` | `rgd-proxy-flightsql` | Flight SQL server (`com.ubp.rgd.proxy.flightsql`): the Arrow Flight SQL server, the `transform()` SQL extensions, the result set detokenization and its mapping configuration (`flightsql.config`). The only module depending on Apache Arrow. Also holds the ODBC client package and the `PersonFlightSqlLoader` tool. |
 | `rgd-proxy-queue` | `rgd-proxy-queue` | IBM MQ queue proxy (`com.ubp.rgd.proxy.queue`): the reactive pipelines of the routes, the IBM MQ connections (`IbmMqConnectionFactoryProvider`), the `/api/queue/routes` endpoints, the readiness check and the route configuration (`queue.config`). The only module depending on the IBM MQ client. See [IBM MQ queue proxy](#ibm-mq-queue-proxy). |
 | `rgd-proxy-hub` | `rgd-proxy-hub` | The application: proxy, `/transform`, WDX1, security. It depends on every feature module and builds the uber-jar. Its configuration is in `rgd-proxy-hub`; its tests include the Quarkus wiring tests of the features (`com.ubp.rgd.proxy.wiring`). |
+| `rgd-proxy-fuzzysearch` | `rgd-proxy-fuzzysearch` | Fuzzy search (`com.ubp.rgd.proxy.fuzzysearch`): fuzzy person search over the protected `PERSON` table, under `/api/fuzzy-search`. EclipseLink on its own `fuzzy-search` datasource, OpenSearch, FastText (JNI). JVM only: left out of the native builds. See [Fuzzy search](#fuzzy-search). |
 
 The feature modules are plain jars carrying a Jandex index (`jandex-maven-plugin`), which is all
 Quarkus needs to discover their beans, REST endpoints and OpenAPI annotations: there is no Quarkus
@@ -443,6 +444,7 @@ configuration:
 | File transformation | `proxy.file-transform.enabled` (default `false`) |
 | Flight SQL server | `proxy.flight-sql.enabled` (default `false`) |
 | IBM MQ queue proxy | `proxy.queue.enabled` (default `false`) |
+| Fuzzy search (JVM builds only) | `fuzzy-search.enabled` (default `false`) |
 
 The application talks to the transformers only through the SPI: it never uses a RegData or an FPE
 class. `proxy.transform.impl` selects, at runtime, one of the transformers present.
@@ -1011,6 +1013,88 @@ All token-bearing columns are `VARCHAR`, including `BIRTH_DATE`: a tokenized dat
 `PersonFlightSqlLoaderTest` runs this same program end to end against an in-memory H2 database
 fronted by a real Flight SQL server, which is the reproducible version of the above.
 
+## Fuzzy search
+
+The `rgd-proxy-fuzzysearch` module searches persons by name, fuzzily, in the `PERSON` table protected
+by this proxy, for instance the one loaded through Flight SQL with `PersonFlightSqlLoader`. It reads
+the data with the proxy's own transformer (`proxy.transform.impl`, same key or engine) and the column
+mappings of the Flight SQL mapping file. A value protected through `transform()` is therefore readable
+here, and a person created here is readable through Flight SQL.
+
+It is **disabled by default**. While `fuzzy-search.enabled=false`:
+- Nothing of it starts: no database connection, no OpenSearch call, no FastText model.
+- Its endpoints answer `503`.
+- Its readiness check reports UP.
+
+The module is **left out of the native builds** (`-Dnative`), because EclipseLink and the FastText JNI
+library are not native-image ready. It is part of the JVM uber-jar.
+
+### How it searches
+
+1. **Exact pass.** The query is protected (as typed, Capitalized, lowercase, UPPER) with the mappings of
+   `FIRST_NAME` and `LAST_NAME`, and looked up by equality. The whole query is tried first, then every
+   word. This works because FPE and RPS are deterministic per mapping.
+2. **Fuzzy pass.** If the exact pass finds nothing, OpenSearch is queried with SHA-256 hashes of the
+   3-grams and 4-grams of the clear names, boosted by prefix and suffix. The query words are expanded
+   with their nearest names in a **training vocabulary**, using FastText embeddings plus Jaro-Winkler.
+
+The training vocabulary is built in **memory only** from the decrypted names of the table. Nothing in
+clear is written to disk. It is rebuilt in the background at startup, and searches work meanwhile
+without neighbour expansion.
+
+### Endpoints
+
+All endpoints are under `/api/fuzzy-search` and authenticated by the pre-filter like any API: Basic for
+local callers, Kerberos otherwise.
+
+| Endpoint | What it does |
+| --- | --- |
+| `POST /persons/search` `{"query": "..."}` | Exact then fuzzy search. Returns the persons in clear. |
+| `GET /persons/{id}` | One person, in clear. |
+| `POST /persons` | Creates a person, every column protected like `transform()` does, then indexes it. The identifier is `MAX(ID) + 1`, so two concurrent creations may collide. |
+| `POST /admin/reindex?batchSize=500` | Clean reindex: deletes the OpenSearch documents of the tenant, indexes every row from its decrypted names, and rebuilds the vocabulary in the same pass. |
+| `POST /admin/training-data?batchSize=500` | Rebuilds the vocabulary only. |
+| `GET /phonetic/neighbours?term=...&topN=5` | The vocabulary neighbours of a term, in clear (debugging). |
+
+Only one reindex or vocabulary rebuild runs at a time; a second request gets `409`. The fuzzy results
+are partial while a reindex runs.
+
+### Configuration
+
+| Property | Meaning |
+| --- | --- |
+| `fuzzy-search.enabled` | Switches the module on (default `false`). |
+| `fuzzy-search.tenant-id` | The `PERSON` table has no tenant column: every person is scoped to this tenant (default `default`). |
+| `fuzzy-search.mapping-config-file` | Column mappings and contexts, by default `proxy.flight-sql.mapping-config-file`. Every `PERSON` column must be mapped, or the first use fails. |
+| `quarkus.datasource."fuzzy-search".jdbc.url` | The database of the `PERSON` table, by default `proxy.flight-sql.jdbc-url`. The kind (`mssql`) is fixed at build time. Credentials come from `QUARKUS_DATASOURCE__FUZZY_SEARCH__USERNAME` and `QUARKUS_DATASOURCE__FUZZY_SEARCH__PASSWORD`. The datasource is only active, so started and health checked, while the module is enabled. |
+| `fuzzy-search.jpa.default-schema` | Schema of the table (`dbo`), blank for the default schema of the connection. |
+| `quarkus.elasticsearch.hosts`, `quarkus.elasticsearch.protocol` | OpenSearch. Its own health check is replaced by the readiness check `Fuzzy search`. |
+| `fuzzy-search.phonetic.fasttext.model-path` | The FastText model `cc.en.300.bin` (~7 GB), not shipped with the proxy. It is loaded on first use and takes about as much memory: size the JVM accordingly. The JNI library is packaged for linux-x86_64, macOS and windows-x86_64, but not for Linux ARM64. |
+| `fuzzy-search.phonetic.signature.salt` | Salt of the hashes stored in OpenSearch. Changing it requires a reindex. Provide it through `FUZZY_SEARCH_PHONETIC_SIGNATURE_SALT`. |
+| `fuzzy-search.phonetic.search.*` | Number of neighbours (`top-k`) and weights of the hybrid neighbour search. |
+| `fuzzy-search.training.rebuild-on-startup`, `fuzzy-search.training.batch-size` | Vocabulary rebuild at startup (default `true`) and rows decrypted per transformer call (default `500`). |
+
+The SQL Server DDL of the table, for when it was not created by `PersonFlightSqlLoader`, is in
+`rgd-proxy-fuzzysearch/src/main/sql/mssql/create.sql`.
+
+### Tools
+
+`GenerateTrainingData` and `LoadFakePersons` are test tools of the module, run against a running proxy
+from the repository root:
+
+```
+# vocabulary only, or with --reindex the clean reindex
+mvn -Pfuzzy-search-tools -pl rgd-proxy-fuzzysearch test-compile exec:exec \
+    -Dtool.args="--source db --url http://localhost:8080 --user <user> --password <password> --reindex"
+# fake persons for an empty table: write a CSV, then load it through POST /persons
+mvn -Pfuzzy-search-tools -pl rgd-proxy-fuzzysearch test-compile exec:exec \
+    -Dtool.args="--source faker --rows 20000 --csv models/fake_persons.csv"
+mvn -Pfuzzy-search-tools -pl rgd-proxy-fuzzysearch test-compile exec:exec -Dtool=LoadFakePersons \
+    -Dtool.args="--csv models/fake_persons.csv --url http://localhost:8080 --user <user> --password <password>"
+```
+
+`--user` and `--password` are only needed when `proxy.prefilter.auth-enabled=true`.
+
 ## Using Flight SQL through ODBC on Windows
 
 Windows tools (64-bit Excel, Power BI, Access, any ODBC application) reach the Flight SQL server
@@ -1107,7 +1191,7 @@ in a container image for `linux/amd64` and `linux/arm64`. The JVM uber-jar is un
 
 | | JVM uber-jar | Native executable (arm64, all features enabled) |
 | --- | --- | --- |
-| Size | ~114 MB jar, plus a JVM | ~166 MB executable, ~184 MB image |
+| Size | ~114 MB jar, plus a JVM (more with the fuzzy search, which only the JVM build carries) | ~166 MB executable, ~184 MB image |
 | Startup | ~0.6 s | ~0.1 s |
 | Memory at rest (RSS) | ~320 MB | ~35 MB |
 

@@ -43,6 +43,9 @@ public class TestProfile implements QuarkusTestProfile {
         props.put("proxy.flight-sql.port", Integer.toString(freePort()));
         props.put("proxy.flight-sql.enabled", "false");
 
+        // The fuzzy search stays disabled unless a profile enables it: no database, OpenSearch nor model
+        props.put("fuzzy-search.enabled", "false");
+
         // RPS client connection is given by env variables or default values for shenzo
         String clientId = System.getProperty("proxy.transform.client-id", "3689c3d7-5f1e-4cda-967b-8b5b979c40e8");
         String clientSecret = System.getProperty("proxy.transform.client-secret","46094e476a0840d3abdfaf583c633dec0a49323c256247f98ebc0f06a966e060");

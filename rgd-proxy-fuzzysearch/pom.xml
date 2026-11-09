@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.ubp.rgd.proxy</groupId>
+        <artifactId>rgd-http-proxy-parent</artifactId>
+        <version>2.0.0</version>
+    </parent>
+
+    <artifactId>rgd-proxy-fuzzysearch</artifactId>
+    <name>RGD proxy - fuzzy search</name>
+    <description>Fuzzy person search over the PERSON table protected by the proxy: values unprotected with the
+        configured transformer, phonetic n-gram signatures in OpenSearch, FastText neighbour vocabulary.
+        Switched on with fuzzy-search.enabled. JVM only: left out of the native builds.</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-spi</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-arc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-rest-jackson</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-openapi</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-health</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- The PERSON table: named datasource "fuzzy-search" (SQL Server), mapped with EclipseLink -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-agroal</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jdbc-mssql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.persistence</groupId>
+            <artifactId>eclipselink</artifactId>
+        </dependency>
+
+        <!-- OpenSearch, through the Elasticsearch low-level REST client -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-elasticsearch-rest-client</artifactId>
+        </dependency>
+
+        <!-- FastText embeddings (JNI) and Jaro-Winkler similarity of the neighbour vocabulary -->
+        <dependency>
+            <groupId>com.github.vinhkhuc</groupId>
+            <artifactId>jfasttext</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- The tests protect and unprotect with the real FPE transformer -->
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-fpe</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Fake persons of the GenerateTrainingData tool -->
+        <dependency>
+            <groupId>net.datafaker</groupId>
+            <artifactId>datafaker</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Lets Quarkus discover the beans, REST resources and OpenAPI annotations of this plain jar -->
+            <plugin>
+                <groupId>io.smallrye</groupId>
+                <artifactId>jandex-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>make-index</id>
+                        <goals>
+                            <goal>jandex</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- Runs a tool of src/test/java/com/ubp/rgd/tools against a running proxy, from the repository root:
+               mvn -Pfuzzy-search-tools -pl rgd-proxy-fuzzysearch test-compile exec:exec \
+                   -Dtool=GenerateTrainingData -Dtool.args="[switches]"
+             tool is GenerateTrainingData (default) or LoadFakePersons; their switches are printed by the
+             help switch of each tool, see the README, "Fuzzy search". -->
+        <profile>
+            <id>fuzzy-search-tools</id>
+            <properties>
+                <tool>GenerateTrainingData</tool>
+                <tool.args></tool.args>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <configuration>
+                            <executable>java</executable>
+                            <classpathScope>test</classpathScope>
+                            <commandlineArgs>-classpath %classpath com.ubp.rgd.tools.${tool} ${tool.args}</commandlineArgs>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

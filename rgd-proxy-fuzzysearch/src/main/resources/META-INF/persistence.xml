@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence version="3.1"
+             xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence
+                 https://jakarta.ee/xml/ns/persistence/persistence_3_1.xsd">
+
+    <!--
+      RESOURCE_LOCAL: transactions are managed explicitly via EntityTransaction.
+      The datasource is injected programmatically by EntityManagerProducer using
+      the Agroal pool configured in application.properties.
+    -->
+    <persistence-unit name="fuzzy-search" transaction-type="RESOURCE_LOCAL">
+        <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+
+        <!-- Managed JPA entities -->
+        <class>com.ubp.rgd.proxy.fuzzysearch.entity.PersonEntity</class>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+
+        <properties>
+            <!--
+              ============================================================
+              Database dialect
+              ============================================================
+              NOTE: eclipselink.target-database is NOT set here.
+              It is injected at runtime by EntityManagerProducer, which
+              reads quarkus.datasource.db-kind from application.properties
+              and maps it to the appropriate EclipseLink dialect:
+                  postgresql / postgres  →  PostgreSQL
+                  oracle                 →  Oracle
+              ============================================================
+            -->
+
+            <!--
+              Disable dynamic bytecode weaving.
+              Static weaving can be enabled later via the EclipseLink Maven plugin.
+            -->
+            <property name="eclipselink.weaving" value="false"/>
+
+            <!-- ============================================================
+                 DDL schema generation – DISABLED
+                 Tables, sequences and indexes are managed manually (e.g. via
+                 the SQL scripts in src/main/sql/).
+                 EclipseLink will NOT attempt to create or modify any
+                 database objects at startup.
+                 ============================================================ -->
+
+            <!-- Standard JPA 3.1: do nothing -->
+            <property name="jakarta.persistence.schema-generation.database.action"
+                      value="none"/>
+
+            <!-- EclipseLink-specific: do nothing -->
+            <property name="eclipselink.ddl-generation"
+                      value="none"/>
+
+            <!-- ============================================================
+                 Logging
+                 Set eclipselink.logging.level.sql to FINE to trace every
+                 generated SQL statement (useful for debugging DDL issues).
+                 ============================================================ -->
+            <property name="eclipselink.logging.level"     value="INFO"/>
+            <property name="eclipselink.logging.level.sql" value="INFO"/>
+            <property name="eclipselink.logging.parameters" value="false"/>
+        </properties>
+    </persistence-unit>
+
+</persistence>

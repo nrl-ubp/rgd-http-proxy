@@ -15,8 +15,8 @@
          assembles them into a single uber-jar. The feature modules are plain jars with a Jandex
          index, so that Quarkus discovers their beans and endpoints.
          proxy.transform.impl selects the transformer at runtime; proxy.file-transform.enabled,
-         proxy.flight-sql.enabled and proxy.queue.enabled switch the file transformation, the Flight SQL
-         server and the queue proxy on. -->
+         proxy.flight-sql.enabled, proxy.queue.enabled and fuzzy-search.enabled switch the file
+         transformation, the Flight SQL server, the queue proxy and the fuzzy search on. -->
     <modules>
         <module>./lib/rps-engine-client-java</module>
         <module>rgd-proxy-spi</module>
@@ -25,6 +25,7 @@
         <module>rgd-proxy-filetransform</module>
         <module>rgd-proxy-flightsql</module>
         <module>rgd-proxy-queue</module>
+        <module>rgd-proxy-fuzzysearch</module>
         <module>rgd-proxy-hub</module>
     </modules>
 
@@ -51,6 +52,11 @@
         <!-- Embedded broker standing in for IBM MQ in the queue proxy tests: 2.42.x uses the netty
              version of Quarkus 3.25 (4.1.121.Final) -->
         <artemis.version>2.42.0</artemis.version>
+        <!-- Fuzzy search (rgd-proxy-fuzzysearch) -->
+        <eclipselink.version>4.0.9</eclipselink.version>
+        <jfasttext.version>0.5</jfasttext.version>
+        <commons-text.version>1.12.0</commons-text.version>
+        <datafaker.version>2.4.2</datafaker.version>
         <compiler-plugin.version>3.11.0</compiler-plugin.version>
         <surefire-plugin.version>3.0.0</surefire-plugin.version>
     </properties>
@@ -114,6 +120,11 @@
             <dependency>
                 <groupId>com.ubp.rgd.proxy</groupId>
                 <artifactId>rgd-proxy-queue</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ubp.rgd.proxy</groupId>
+                <artifactId>rgd-proxy-fuzzysearch</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -199,6 +210,26 @@
                 <groupId>org.apache.activemq</groupId>
                 <artifactId>artemis-jakarta-client</artifactId>
                 <version>${artemis.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.persistence</groupId>
+                <artifactId>eclipselink</artifactId>
+                <version>${eclipselink.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.vinhkhuc</groupId>
+                <artifactId>jfasttext</artifactId>
+                <version>${jfasttext.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-text</artifactId>
+                <version>${commons-text.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.datafaker</groupId>
+                <artifactId>datafaker</artifactId>
+                <version>${datafaker.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
