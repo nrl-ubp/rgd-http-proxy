@@ -76,14 +76,14 @@ stages:
         inputs:
           targetType: inline
           script: |
-            cp ./rgd-http-proxy/config/sample.application.properties ./rgd-http-proxy/config/application.properties
+            cp ./rgd-proxy-hub/config/sample.application.properties ./rgd-proxy-hub/config/application.properties
       - task: Bash@3
         displayName: Generate temporary server SSL keystore and certs
         inputs:
           targetType: inline
           script: |
             # run from the application module: the certificates are written to ./config/certs
-            cd rgd-http-proxy && mvn exec:java
+            cd rgd-proxy-hub && mvn exec:java
       - task: Bash@3
         displayName: Build and test
         inputs:
@@ -95,7 +95,7 @@ stages:
             export proxy_transform_engine_url="$(proxy.transform.engine-url)"
             mvn install
       - script: |
-          cp ./rgd-http-proxy/target/rgd-http-proxy-*-runner.jar $(Build.StagingDirectory)
+          cp ./rgd-proxy-hub/target/rgd-proxy-hub-*-runner.jar $(Build.StagingDirectory)
         displayName: 'Copy artifact to Build.StagingDirectory'
       - task: PublishBuildArtifacts@1
         inputs:
