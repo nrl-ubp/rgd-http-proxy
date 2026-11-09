@@ -428,7 +428,9 @@ the application, which assembles them into a **single uber-jar**,
 | `rgd-proxy-rps` | `rgd-proxy-rps` | RPS transformer (`com.ubp.rgd.proxy.rps`): `RPSEndPointTransformer`, the RegData engine client and the resolution of the secrets manager of a token (MongoDB, SQL Server, cache). The only module depending on `rps-engine-api-client`. Its defaults (datasource kind, cache sizing) are in `META-INF/microprofile-config.properties`. |
 | `rgd-proxy-fpe` | `rgd-proxy-fpe` | FPE transformer (`com.ubp.rgd.proxy.fpe`): `FPEEndPointTransformer` (BouncyCastle). |
 | `rgd-proxy-filetransform` | `rgd-proxy-filetransform` | File transformation (`com.ubp.rgd.proxy.filetransform`): `FileTransformService`, the `/api/file-transform` endpoints, the configuration (`filetransform.config`) and the `FileTransformTriggerApp` batch tool (`filetransform.tools`). See [File transformation](#file-transformation). |
-| `rgd-proxy-flightsql` | `rgd-proxy-flightsql` | Flight SQL server (`com.ubp.rgd.proxy.flightsql`): the Arrow Flight SQL server, the `transform()` SQL extensions, the result set detokenization and its mapping configuration (`flightsql.config`). The only module depending on Apache Arrow. Also holds the ODBC client package and the `PersonFlightSqlLoader` tool. |
+| `rgd-proxy-sqlgateway` | `rgd-proxy-sqlgateway` | The protocol-neutral logic of the SQL gateways (`com.ubp.rgd.proxy.sqlgateway`), shared by Flight SQL and TDS: the mapping configuration (`sqlgateway.config`), the `transform()` / `transform_search()` rewriting (`SqlTransformRewriter`), the value detokenizer (`ValueDetokenizer`), the token mapping index (`TokenIndexResolver`) and the TLS material loader. |
+| `rgd-proxy-flightsql` | `rgd-proxy-flightsql` | Flight SQL server (`com.ubp.rgd.proxy.flightsql`): the Arrow Flight SQL server and the detokenization of its Arrow record batches. The only module depending on Apache Arrow. Also holds the ODBC client package and the `PersonFlightSqlLoader` tool. |
+| `rgd-proxy-tds` | `rgd-proxy-tds` | TDS gateway (`com.ubp.rgd.proxy.tds`): a SQL Server endpoint, implementing the TDS protocol, for regular SQL Server clients. Pure Java. See [TDS gateway](#tds-gateway). |
 | `rgd-proxy-queue` | `rgd-proxy-queue` | IBM MQ queue proxy (`com.ubp.rgd.proxy.queue`): the reactive pipelines of the routes, the IBM MQ connections (`IbmMqConnectionFactoryProvider`), the `/api/queue/routes` endpoints, the readiness check and the route configuration (`queue.config`). The only module depending on the IBM MQ client. See [IBM MQ queue proxy](#ibm-mq-queue-proxy). |
 | `rgd-proxy-hub` | `rgd-proxy-hub` | The application: proxy, `/transform`, WDX1, security. It depends on every feature module and builds the uber-jar. Its configuration is in `rgd-proxy-hub`; its tests include the Quarkus wiring tests of the features (`com.ubp.rgd.proxy.wiring`). |
 | `rgd-proxy-fuzzysearch` | `rgd-proxy-fuzzysearch` | Fuzzy search (`com.ubp.rgd.proxy.fuzzysearch`): fuzzy person search over the protected `PERSON` table, under `/api/fuzzy-search`. EclipseLink on its own `fuzzy-search` datasource, OpenSearch, FastText (JNI). JVM only: left out of the native builds. See [Fuzzy search](#fuzzy-search). |
@@ -443,6 +445,7 @@ configuration:
 | Transformer | `proxy.transform.impl` (`RPS` or `FPE`) |
 | File transformation | `proxy.file-transform.enabled` (default `false`) |
 | Flight SQL server | `proxy.flight-sql.enabled` (default `false`) |
+| TDS gateway | `proxy.tds.enabled` (default `false`) |
 | IBM MQ queue proxy | `proxy.queue.enabled` (default `false`) |
 | Fuzzy search (JVM builds only) | `fuzzy-search.enabled` (default `false`) |
 
@@ -451,7 +454,7 @@ class. `proxy.transform.impl` selects, at runtime, one of the transformers prese
 
 - **Removing a transformer**: drop its dependency (`rgd-proxy-rps` or `rgd-proxy-fpe`) from
   `rgd-proxy-hub`. No code change is needed; `proxy.transform.impl` must then name the
-  remaining one. Note that `FlightSqlDetokenizeService` still reads `proxy.transform.client-id`.
+  remaining one. Note that `FlightSqlDetokenizeService` and `TdsServerService` still read `proxy.transform.client-id`.
 - **Adding a transformer**: create a `rgd-proxy-<name>` module on the model of `rgd-proxy-fpe`: a
   jar with a Jandex index holding an `AbstractEndPointTransformer` subclass annotated
   `@TransformerImpl("<NAME>")`, then add it to the root `pom.xml` and to the application's
@@ -1012,6 +1015,176 @@ All token-bearing columns are `VARCHAR`, including `BIRTH_DATE`: a tokenized dat
 
 `PersonFlightSqlLoaderTest` runs this same program end to end against an in-memory H2 database
 fronted by a real Flight SQL server, which is the reproducible version of the above.
+
+## TDS gateway
+
+The TDS gateway lets **any SQL Server client** query the protected database **without special driver**:
+SSMS, `sqlcmd`, the Microsoft JDBC driver, ODBC Driver 17/18, `Microsoft.Data.SqlClient`... It implements
+TDS, the protocol of SQL Server ([MS-TDS], revisions 7.4 and 8.0), so to a client it is a SQL Server. It
+offers the same features as the [Flight SQL server](#flight-sql-server):
+
+- the [`transform()` / `transform_search()` extensions](#the-transform-sql-extensions) are rewritten in the
+  queries;
+- the result rows are detokenized, with the same mapping file, the same
+  [resolution order](#resolution-order) and the same [phases](#phases);
+- with the FPE transformer, dates and numbers keep their SQL type;
+- the queries run under the caller's own SQL Server identity.
+
+It is part of the `rgd-proxy-tds` module (pure Java, also in the native builds), and disabled by default:
+`proxy.tds.enabled=true` starts it.
+
+Reference: [MS-TDS] Tabular Data Stream Protocol, revision 42.0, published under the Microsoft Open
+Specifications Promise: <https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-tds/>.
+
+### How it works
+
+The gateway is a **TDS-aware relay**: each client session is paired with a session to the real SQL Server
+(`proxy.tds.backend.*`), and the messages are relayed. The gateway changes only:
+
+- **the pre-login and the login**, which it terminates on both sides. It pre-logins to SQL Server first, then
+  answers the client with the version of SQL Server and its own encryption decision. The LOGIN7 of the
+  client is re-encoded for SQL Server: the SQL Server login and its password are relayed (SQL Server checks
+  them; the password is never decoded), and the feature extensions the gateway cannot relay are removed (see
+  [Limits](#limits-of-the-tds-gateway)).
+- **the SQL text of the requests**: the text of a SQL batch, and the statement parameter of the RPC calls
+  `sp_executesql`, `sp_prepare`, `sp_prepexec`, `sp_cursoropen`, `sp_cursorprepare` and
+  `sp_cursorprepexec` (what prepared statements become). The other parameters are relayed byte for byte.
+- **the values of the result rows**, which are detokenized. The rows are buffered by
+  `proxy.tds.batch-size`, for one transformer call per batch.
+
+Everything else (metadata queries, transactions, cursors, messages, errors, cancellations) is SQL Server's
+own, relayed untouched.
+
+A few details of the detokenization:
+
+- **Text columns** (`char`, `varchar`, `nchar`, `nvarchar`, `text`, `ntext`, `max`) are detokenized
+  through their column mapping, else implicitly through the data mappings and the token mapping index
+  (RPS). The `varchar` values are decoded with the code page of their collation (or UTF-8 for a `_UTF8`
+  collation).
+- A text column that may be detokenized is **announced widened** to the client: `char` / `nchar` become
+  `varchar` / `nvarchar`, of the largest non-`max` size (8000 bytes, i.e. `nvarchar(4000)`), so that a
+  clear value longer than its token always fits. A value that still would not fit, or that the code page of
+  its column cannot hold, is left protected with a warning in the log.
+- **With FPE**, the `date`, `datetime2`, `datetime`, `smalldatetime`, integer, `decimal` / `numeric`,
+  `money` and `float` / `real` columns are detokenized too, through their column mapping or a data mapping
+  matching the whole value, and keep their type. Only the date part of a date and time is transformed; its
+  time is kept. A value that does not fit its type once detokenized is left as it is.
+- Column mappings are matched on the **column name** (its alias when the query gives one) as `*.COLUMN`.
+  A `TABLE.COLUMN` mapping only applies when SQL Server names the table of the column, i.e. for `text` /
+  `ntext` columns and in browse mode (`FOR BROWSE`, keyset cursors).
+- Output parameters are not detokenized, as with Flight SQL.
+
+The gateway answers some errors itself, with message numbers from 50000 and severity 16, and nothing is
+sent to SQL Server: a query using `transform()` while the `before` phase is not active (50000), a malformed
+`transform()` call (50000), a transformation failure (50001). A failure in the middle of a result (the
+detokenization fails, an unexpected token) ends the response with a severity 20 error (50002) and closes
+the connection, rather than handing back a corrupted or partly protected result.
+
+### Configuration
+
+| Property | Description |
+| --- | --- |
+| `proxy.tds.enabled` | Starts the gateway (default `false`). |
+| `proxy.tds.host` / `proxy.tds.port` | Where it listens (default `0.0.0.0:11433`; 1433 is often taken by a local SQL Server). |
+| `proxy.tds.backend.host` / `proxy.tds.backend.port` | The real SQL Server (default `localhost:1433`). |
+| `proxy.tds.backend.encrypt` | Encryption towards SQL Server: `true` (default, all the traffic), `false` (the login only, unless the server forces encryption) or `strict` (TDS 8.0). |
+| `proxy.tds.backend.trust-server-certificate` | Accept any certificate of SQL Server (default `false`: it must be trusted and name `proxy.tds.backend.host`). |
+| `proxy.tds.backend.trust-store-file` / `-password` | PKCS12 trust store of the certificate of SQL Server; the JVM's trust store when absent. |
+| `proxy.tds.backend.connect-timeout` | Default `15s`. |
+| `proxy.tds.encryption` | What is asked of the clients (TDS 7.4): `required` (default), `optional` or `off`. See below. |
+| `proxy.tds.tls.*` | The certificate presented to the clients: `key-store-file` / `key-store-password` / `key-store-alias`, or `cert-chain-file` / `private-key-file` (PKCS#8 PEM), as for [Flight SQL](#tls). |
+| `proxy.tds.batch-size` | Rows per transformer call (default `1024`). |
+| `proxy.tds.mapping-config-file` | The mapping file; the Flight SQL one by default (`proxy.flight-sql.mapping-config-file`). |
+| `proxy.tds.max-connections` | Connections beyond are refused (default `200`). |
+| `proxy.tds.idle-timeout` | Sessions without any request for that long are closed (default `30m`, `0` to never close them). A running query is never interrupted. |
+| `proxy.tds.kerberos.*` | Windows authentication, see below. |
+
+The readiness check `TDS gateway` (`/health/ready`) is up when the gateway listens, or when it is disabled.
+
+### Encryption
+
+Towards the clients, with a certificate configured (`proxy.tds.tls.*`):
+
+| Client asks | `required` | `optional` | `off` |
+| --- | --- | --- | --- |
+| `Encrypt=strict` (TDS 8.0, TLS first) | TLS | TLS | TLS |
+| `Encrypt=true` / `mandatory` | TLS | TLS | refused by the client |
+| `Encrypt=false` / `optional` | TLS | the login only | nothing |
+| no encryption support | refused | nothing | nothing |
+
+Without a certificate, nothing is encrypted and the `Encrypt=true` / `strict` clients cannot connect. The
+clients must trust the certificate (or use `TrustServerCertificate=true`), and it must name the host they
+connect to. TDS 7.4 encryption uses TLS 1.2; TDS 8.0 strict also TLS 1.3, with the ALPN protocol `tds/8.0`.
+Strict and non-strict clients are told apart on the same port.
+
+> **The gateway sees everything in clear**: the SQL text, the values, and the SQL Server login passwords,
+> in memory, during the login. Treat it like the database itself: TLS on both legs, the host secured, and
+> nothing sensitive in the logs (it never logs passwords, tickets nor values).
+
+### Windows authentication (Kerberos)
+
+Integrated security works with **Kerberos constrained delegation**: the client asks a ticket for the SPN of
+the gateway; the gateway accepts it with its keytab, then obtains for the user, through S4U2Proxy, a ticket
+for SQL Server, and logs in to SQL Server as the user. NTLM is refused, with error 18452 and an explanation.
+
+```properties
+proxy.tds.kerberos.enabled=true
+proxy.tds.kerberos.service-principal=MSSQLSvc/gateway.example.com:11433
+proxy.tds.kerberos.keytab-path=./config/certs/rgd-tds.keytab
+proxy.tds.kerberos.backend-service-principal=MSSQLSvc/sqlserver.example.com:1433
+```
+
+In Active Directory, for the service account of the gateway (`svc-rgd-gateway` below):
+
+```bat
+:: the SPN of the gateway
+setspn -S MSSQLSvc/gateway.example.com:11433 EXAMPLE\svc-rgd-gateway
+:: its keytab
+ktpass -princ MSSQLSvc/gateway.example.com:11433@EXAMPLE.COM -mapuser EXAMPLE\svc-rgd-gateway ^
+       -crypto AES256-SHA1 -ptype KRB5_NT_PRINCIPAL -pass * -out rgd-tds.keytab
+```
+
+Then, on the Delegation tab of the account: *Trust this user for delegation to specified services only*,
+*Use Kerberos only* (or *Use any authentication protocol* when the clients' tickets are not forwardable),
+with the service `MSSQLSvc/sqlserver.example.com:1433`. The Kerberos configuration of the JVM is
+`./config/krb5.ini`, as for the rest of the proxy. The clients must connect with the gateway's host name
+(not an IP address), so that they ask a ticket for its SPN.
+
+The Kerberos exchange is unit tested with a mocked GSS layer; the real test needs the domain.
+
+### Connecting
+
+```text
+SSMS            Server name: gateway.example.com,11433 ; Encryption: Mandatory (or Strict)
+sqlcmd          sqlcmd -S tcp:gateway.example.com,11433 -d WDX1 -U alice -N
+JDBC            jdbc:sqlserver://gateway.example.com:11433;databaseName=WDX1;encrypt=true
+JDBC Kerberos   jdbc:sqlserver://gateway.example.com:11433;databaseName=WDX1;encrypt=true;integratedSecurity=true;authenticationScheme=JavaKerberos
+ODBC 18         Driver={ODBC Driver 18 for SQL Server};Server=tcp:gateway.example.com,11433;Database=WDX1;Encrypt=yes;UID=alice;PWD=...
+.NET            Server=tcp:gateway.example.com,11433;Database=WDX1;Encrypt=True;User Id=alice;Password=...
+```
+
+Then, as with Flight SQL:
+
+```sql
+SELECT FIRST_NAME, BIRTH_DATE FROM PERSON
+WHERE FIRST_NAME = transform('Person', 'FirstName', 'CH', N'Bernadette')
+```
+
+### Limits of the TDS gateway
+
+- **Not supported**: MARS, Always Encrypted (removed from the login: a driver requiring it reports that the
+  server does not support it), Azure AD / federated authentication (refused), NTLM (refused), routing / read-only
+  redirection (refused: point `proxy.tds.backend.host` at the server itself), `COMPUTE BY` results, and
+  table-valued parameters in a statement to rewrite (the rest of their request is relayed untouched).
+- **Not tokenized**: bulk loads (BCP, `SqlBulkCopy`) and output parameters, which are relayed as they are.
+- The feature extensions of the login other than UTF-8 support and global transactions are removed, so the
+  session recovery (connection resiliency), data classification, the `json` and `vector` types are not
+  available through the gateway (SQL Server then sends `nvarchar(max)` and `varbinary`).
+- The rows of a result that may be detokenized are buffered by batches, each value in memory: very large
+  `max` values cost their size.
+- An integration test against a real SQL Server needs Docker (`mcr.microsoft.com/mssql/server`), which the
+  build does not require: the module is tested end to end with the real Microsoft JDBC driver against a
+  scripted SQL Server, in all the encryption modes.
 
 ## Fuzzy search
 

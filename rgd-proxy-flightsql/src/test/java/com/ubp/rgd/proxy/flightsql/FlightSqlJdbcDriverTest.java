@@ -3,9 +3,9 @@ package com.ubp.rgd.proxy.flightsql;
 import com.ubp.rgd.proxy.rps.RPSEndPointTransformer;
 import com.ubp.rgd.proxy.transform.model.ValueMapping;
 import com.ubp.rgd.proxy.transform.model.MappedValue;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlColumnMapping;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlDataMapping;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlMappingConfig;
+import com.ubp.rgd.proxy.sqlgateway.config.ColumnMapping;
+import com.ubp.rgd.proxy.sqlgateway.config.DataMapping;
+import com.ubp.rgd.proxy.sqlgateway.config.MappingConfig;
 import org.apache.arrow.flight.FlightServer;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.flight.auth2.BasicCallHeaderAuthenticator;
@@ -64,11 +64,11 @@ class FlightSqlJdbcDriverTest {
     static void startServer() throws Exception {
         keepAlive = DriverManager.getConnection(JDBC_URL, USER, PASSWORD);
 
-        FlightSqlMappingConfig config = new FlightSqlMappingConfig();
+        MappingConfig config = new MappingConfig();
         config.setColumnMappings(List.of(
-                new FlightSqlColumnMapping("PERSON", "FIRST_NAME", "Person", "shortString")));
+                new ColumnMapping("PERSON", "FIRST_NAME", "Person", "shortString")));
         config.setDataMappings(List.of(
-                new FlightSqlDataMapping("RG\\{EF[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+\\}", "Person", "city")));
+                new DataMapping("RG\\{EF[a-zA-Z0-9\\-]{8}[a-zA-Z0-9]+\\}", "Person", "city")));
 
         detokenizeService = new LocalDetokenizeService();
         detokenizeService.setTransformer(new RPSEndPointTransformer());

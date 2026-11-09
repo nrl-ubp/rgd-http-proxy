@@ -1,6 +1,7 @@
 package com.ubp.rgd.proxy.flightsql;
 
-import com.ubp.rgd.proxy.flightsql.FlightSqlTlsSupport.TlsMaterial;
+import com.ubp.rgd.proxy.sqlgateway.TlsMaterialLoader;
+import com.ubp.rgd.proxy.sqlgateway.TlsMaterialLoader.TlsMaterial;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -116,7 +117,7 @@ public class FlightSqlServerService {
                     + " credentials and data travel in clear text.");
             return Optional.empty();
         }
-        TlsMaterial material = FlightSqlTlsSupport.load(new FlightSqlTlsSupport.Settings(
+        TlsMaterial material = FlightSqlTlsSupport.load(new TlsMaterialLoader.Settings(
                 tlsKeyStoreFile, tlsKeyStorePassword, tlsKeyStoreAlias, tlsCertChainFile, tlsPrivateKeyFile));
         LOG.info("Flight SQL TLS certificate loaded from {}: {} (valid until {})",
                 material.description(), material.leaf().getSubjectX500Principal().getName(),

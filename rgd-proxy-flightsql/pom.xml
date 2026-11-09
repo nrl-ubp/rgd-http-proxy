@@ -20,6 +20,11 @@
             <groupId>com.ubp.rgd.proxy</groupId>
             <artifactId>rgd-proxy-spi</artifactId>
         </dependency>
+        <!-- Mapping configuration, transform() rewriting and token location shared with the TDS gateway -->
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-sqlgateway</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-arc</artifactId>

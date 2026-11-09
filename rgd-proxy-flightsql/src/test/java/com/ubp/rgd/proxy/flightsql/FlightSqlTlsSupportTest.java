@@ -1,10 +1,10 @@
 package com.ubp.rgd.proxy.flightsql;
 
-import com.ubp.rgd.proxy.flightsql.FlightSqlTlsSupport.FlightSqlTlsException;
-import com.ubp.rgd.proxy.flightsql.FlightSqlTlsSupport.Settings;
-import com.ubp.rgd.proxy.flightsql.FlightSqlTlsSupport.TlsMaterial;
+import com.ubp.rgd.proxy.sqlgateway.TlsMaterialLoader.TlsConfigurationException;
+import com.ubp.rgd.proxy.sqlgateway.TlsMaterialLoader.Settings;
+import com.ubp.rgd.proxy.sqlgateway.TlsMaterialLoader.TlsMaterial;
 import com.ubp.rgd.proxy.rps.RPSEndPointTransformer;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlMappingConfig;
+import com.ubp.rgd.proxy.sqlgateway.config.MappingConfig;
 import org.apache.arrow.flight.FlightClient;
 import org.apache.arrow.flight.FlightRuntimeException;
 import org.apache.arrow.flight.FlightServer;
@@ -125,7 +125,7 @@ class FlightSqlTlsSupportTest {
         TestCertificates other = TestCertificates.generate("other");
         Path keyStore = certificates.writeKeyStore(directory.resolve("server.p12"), "server", other);
 
-        FlightSqlTlsException error = assertThrows(FlightSqlTlsException.class,
+        TlsConfigurationException error = assertThrows(TlsConfigurationException.class,
                 () -> FlightSqlTlsSupport.load(keyStoreSettings(keyStore, null)));
 
         assertTrue(error.getMessage().contains("key-store-alias"), error.getMessage());
@@ -135,7 +135,7 @@ class FlightSqlTlsSupportTest {
     void shouldRefuseAnUnknownAlias() throws Exception {
         Path keyStore = certificates.writeKeyStore(directory.resolve("server.p12"), "server");
 
-        FlightSqlTlsException error = assertThrows(FlightSqlTlsException.class,
+        TlsConfigurationException error = assertThrows(TlsConfigurationException.class,
                 () -> FlightSqlTlsSupport.load(keyStoreSettings(keyStore, "missing")));
 
         assertTrue(error.getMessage().contains("'missing'"), error.getMessage());
@@ -145,7 +145,7 @@ class FlightSqlTlsSupportTest {
     void shouldRefuseAKeyStoreWithoutAnyPrivateKey() throws Exception {
         Path trustStore = certificates.writeTrustStore(directory.resolve("trust.p12"));
 
-        FlightSqlTlsException error = assertThrows(FlightSqlTlsException.class,
+        TlsConfigurationException error = assertThrows(TlsConfigurationException.class,
                 () -> FlightSqlTlsSupport.load(keyStoreSettings(trustStore, null)));
 
         assertTrue(error.getMessage().contains("no private key"), error.getMessage());
@@ -157,7 +157,7 @@ class FlightSqlTlsSupportTest {
         Settings settings = new Settings(Optional.of(keyStore.toString()), Optional.of("wrong"),
                 Optional.empty(), Optional.empty(), Optional.empty());
 
-        FlightSqlTlsException error = assertThrows(FlightSqlTlsException.class,
+        TlsConfigurationException error = assertThrows(TlsConfigurationException.class,
                 () -> FlightSqlTlsSupport.load(settings));
 
         assertTrue(error.getMessage().contains("key-store-password"), error.getMessage());
@@ -165,7 +165,7 @@ class FlightSqlTlsSupportTest {
 
     @Test
     void shouldRefuseAMissingKeyStore() {
-        FlightSqlTlsException error = assertThrows(FlightSqlTlsException.class,
+        TlsConfigurationException error = assertThrows(TlsConfigurationException.class,
                 () -> FlightSqlTlsSupport.load(keyStoreSettings(directory.resolve("absent.p12"), null)));
 
         assertTrue(error.getMessage().contains("does not exist"), error.getMessage());
@@ -192,7 +192,7 @@ class FlightSqlTlsSupportTest {
         Path chain = certificates.writeCertificatePem(directory.resolve("server.crt"));
         Path key = certificates.writePkcs1KeyPem(directory.resolve("server.key"));
 
-        FlightSqlTlsException error = assertThrows(FlightSqlTlsException.class,
+        TlsConfigurationException error = assertThrows(TlsConfigurationException.class,
                 () -> FlightSqlTlsSupport.load(pemSettings(chain, key)));
 
         assertTrue(error.getMessage().contains("PKCS#8"), error.getMessage());
@@ -205,7 +205,7 @@ class FlightSqlTlsSupportTest {
         Path key = Files.writeString(directory.resolve("server.key"),
                 "-----BEGIN ENCRYPTED PRIVATE KEY-----\nAAAA\n-----END ENCRYPTED PRIVATE KEY-----\n");
 
-        FlightSqlTlsException error = assertThrows(FlightSqlTlsException.class,
+        TlsConfigurationException error = assertThrows(TlsConfigurationException.class,
                 () -> FlightSqlTlsSupport.load(pemSettings(chain, key)));
 
         assertTrue(error.getMessage().contains("encrypted"), error.getMessage());
@@ -216,7 +216,7 @@ class FlightSqlTlsSupportTest {
         Path chain = Files.writeString(directory.resolve("server.crt"), "not a certificate");
         Path key = certificates.writePkcs8KeyPem(directory.resolve("server.key"));
 
-        FlightSqlTlsException error = assertThrows(FlightSqlTlsException.class,
+        TlsConfigurationException error = assertThrows(TlsConfigurationException.class,
                 () -> FlightSqlTlsSupport.load(pemSettings(chain, key)));
 
         assertTrue(error.getMessage().contains("no PEM certificate"), error.getMessage());
@@ -228,7 +228,7 @@ class FlightSqlTlsSupportTest {
         Settings settings = new Settings(Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.of(chain.toString()), Optional.empty());
 
-        FlightSqlTlsException error = assertThrows(FlightSqlTlsException.class,
+        TlsConfigurationException error = assertThrows(TlsConfigurationException.class,
                 () -> FlightSqlTlsSupport.load(settings));
 
         assertTrue(error.getMessage().contains("needs both"), error.getMessage());
@@ -243,7 +243,7 @@ class FlightSqlTlsSupportTest {
         Settings settings = new Settings(Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.empty(), Optional.empty());
 
-        FlightSqlTlsException error = assertThrows(FlightSqlTlsException.class,
+        TlsConfigurationException error = assertThrows(TlsConfigurationException.class,
                 () -> FlightSqlTlsSupport.load(settings));
 
         assertTrue(error.getMessage().contains("no certificate is configured"), error.getMessage());
@@ -256,7 +256,7 @@ class FlightSqlTlsSupportTest {
         Settings settings = new Settings(Optional.of(keyStore.toString()), Optional.of(TestCertificates.PASSWORD),
                 Optional.empty(), Optional.of(chain.toString()), Optional.empty());
 
-        FlightSqlTlsException error = assertThrows(FlightSqlTlsException.class,
+        TlsConfigurationException error = assertThrows(TlsConfigurationException.class,
                 () -> FlightSqlTlsSupport.load(settings));
 
         assertTrue(error.getMessage().contains("configured twice"), error.getMessage());
@@ -354,7 +354,7 @@ class FlightSqlTlsSupportTest {
         FlightSqlConnectionManager connectionManager = new FlightSqlConnectionManager();
         connectionManager.jdbcUrl = JDBC_URL;
 
-        FlightSqlMappingConfig config = new FlightSqlMappingConfig();
+        MappingConfig config = new MappingConfig();
         // Nothing to detokenize here, and no engine: the transport is what is under test.
         config.getAfter().setActive(false);
         FlightSqlDetokenizeService detokenizeService = new FlightSqlDetokenizeService();

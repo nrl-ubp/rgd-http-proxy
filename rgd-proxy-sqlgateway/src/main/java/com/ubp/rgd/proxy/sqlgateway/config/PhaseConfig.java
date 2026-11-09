@@ -1,4 +1,4 @@
-package com.ubp.rgd.proxy.flightsql.config;
+package com.ubp.rgd.proxy.sqlgateway.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.quarkus.runtime.annotations.RegisterForReflection;
@@ -18,10 +18,10 @@ import java.util.Map;
  *   <li>{@code after} — applied to the result set, which is the detokenization</li>
  * </ul>
  *
- * @see FlightSqlMappingConfig
+ * @see MappingConfig
  */
 @RegisterForReflection
-public class FlightSqlPhaseConfig {
+public class PhaseConfig {
 
     /**
      * Whether the phase is performed at all. Defaults to {@code true}, so a phase that is present but
@@ -37,7 +37,7 @@ public class FlightSqlPhaseConfig {
     @JsonProperty(value = "processing-context")
     private Map<String, String> processingContextEvidences = new HashMap<>();
 
-    public FlightSqlPhaseConfig() {
+    public PhaseConfig() {
         // for Jackson and for the default phases
     }
 

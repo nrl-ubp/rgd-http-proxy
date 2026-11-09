@@ -1,4 +1,4 @@
-package com.ubp.rgd.proxy.flightsql;
+package com.ubp.rgd.proxy.sqlgateway;
 
 import com.ubp.rgd.proxy.transform.model.ValueMapping;
 import org.slf4j.Logger;
@@ -30,24 +30,24 @@ import java.util.concurrent.ConcurrentHashMap;
  * ({@code BA}, {@code A3}, {@code 2x}, …) resolves to nothing: the resolution is lenient and never
  * fails a query, it only logs a warning.
  */
-public final class FlightSqlTokenIndexResolver {
+public final class TokenIndexResolver {
 
-    private static final Logger LOG = LoggerFactory.getLogger(FlightSqlTokenIndexResolver.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TokenIndexResolver.class);
 
     /** Prefix introducing the mapping index inside a token. */
     private static final String TOKEN_PREFIX = "RG{";
 
     /** Fixed width of the mapping index. */
-    static final int INDEX_LENGTH = 2;
+    public static final int INDEX_LENGTH = 2;
 
     /** Filler padding a one-letter index to {@link #INDEX_LENGTH}. */
-    static final char FILLER = 'x';
+    public static final char FILLER = 'x';
 
     /** Letter escaping the second range of the encoding. */
     private static final char ESCAPE = 'Z';
 
     /** Number of indexes the encoding can represent, {@code Ax} to {@code ZZ}. */
-    static final int MAX_INDEX = 51;
+    public static final int MAX_INDEX = 51;
 
     /** Index above which the escaped form is used. */
     private static final int ESCAPE_THRESHOLD = 26;
@@ -67,7 +67,7 @@ public final class FlightSqlTokenIndexResolver {
     /** Symbols already reported as unresolvable, so that each one is only warned about once. */
     private static final Set<String> WARNED_SYMBOLS = ConcurrentHashMap.newKeySet();
 
-    private FlightSqlTokenIndexResolver() {
+    private TokenIndexResolver() {
     }
 
     /**
@@ -76,12 +76,12 @@ public final class FlightSqlTokenIndexResolver {
      * @param symbol the index symbol, padded ({@code "Bx"}) or not ({@code "B"})
      * @param mappingName the {@code "ClassName.PropertyName"} it resolves to
      */
-    static void register(String symbol, String mappingName) {
+    public static void register(String symbol, String mappingName) {
         INDEX_MAPPINGS.put(normalize(symbol), mappingName);
     }
 
     /** Withdraw a declared mapping index. Used by the tests. */
-    static void unregister(String symbol) {
+    public static void unregister(String symbol) {
         INDEX_MAPPINGS.remove(normalize(symbol));
     }
 
@@ -90,13 +90,13 @@ public final class FlightSqlTokenIndexResolver {
      * symbols already warned about are forgotten too: after a reload an unknown symbol is worth
      * reporting again.
      */
-    static void clear() {
+    public static void clear() {
         INDEX_MAPPINGS.clear();
         resetWarnings();
     }
 
     /** @return the number of declared mapping indexes */
-    static int size() {
+    public static int size() {
         return INDEX_MAPPINGS.size();
     }
 
@@ -106,7 +106,7 @@ public final class FlightSqlTokenIndexResolver {
      * @param symbol the symbol to normalize
      * @return the symbol at its fixed width, or the input when it cannot be padded
      */
-    static String normalize(String symbol) {
+    public static String normalize(String symbol) {
         if (symbol != null && symbol.length() == INDEX_LENGTH - 1) {
             return symbol + FILLER;
         }
@@ -120,7 +120,7 @@ public final class FlightSqlTokenIndexResolver {
      * @return the two characters following the prefix, or {@code null} when the value is too short or
      *         is not a token
      */
-    static String mappingIndexOf(String token) {
+    public static String mappingIndexOf(String token) {
         if (token == null || !token.startsWith(TOKEN_PREFIX)
                 || token.length() < TOKEN_PREFIX.length() + INDEX_LENGTH) {
             return null;
@@ -134,7 +134,7 @@ public final class FlightSqlTokenIndexResolver {
      * @param symbol the two-character symbol
      * @return the index in {@code [0, 51]}, or {@code -1} when the symbol does not follow the encoding
      */
-    static int decodeMappingIndex(String symbol) {
+    public static int decodeMappingIndex(String symbol) {
         if (symbol == null || symbol.length() != INDEX_LENGTH) {
             return -1;
         }
@@ -161,7 +161,7 @@ public final class FlightSqlTokenIndexResolver {
      * @return the two-character symbol
      * @throws IllegalArgumentException when the index cannot be represented
      */
-    static String encodeMappingIndex(int index) {
+    public static String encodeMappingIndex(int index) {
         if (index < 0 || index > MAX_INDEX) {
             throw new IllegalArgumentException(
                     "Mapping index out of the [0, " + MAX_INDEX + "] range: " + index);
@@ -226,5 +226,64 @@ public final class FlightSqlTokenIndexResolver {
     /** Forget the symbols already warned about, so that they are reported again. */
     private static void resetWarnings() {
         WARNED_SYMBOLS.clear();
+    }
+
+    /**
+     * (Re)build the table for the RPS client the proxy is configured for. The table is cleared first,
+     * and stays empty for a transformer whose tokens carry no mapping index. A failure leaves it
+     * empty rather than preventing the proxy from starting: the mapping index is only the last
+     * detokenization tier.
+     *
+     * @param supportsMappingIndex whether the selected transformer writes a mapping index
+     * @param clientId the value of {@code proxy.transform.client-id}, may be {@code null}
+     * @param loader registers the indexes of the client, typically {@link #registerClientMappings}
+     */
+    public static void load(boolean supportsMappingIndex, String clientId, java.util.function.Consumer<String> loader) {
+        clear();
+        if (!supportsMappingIndex) {
+            LOG.info("The selected transformer produces tokens without a mapping index."
+                    + " The token mapping index tier is disabled.");
+            return;
+        }
+        try {
+            loader.accept(clientId);
+            LOG.info("Loaded {} token mapping index(es) for the RPS client {}", size(), clientId);
+        } catch (Exception e) {
+            LOG.error("Failed to load the token mapping indexes for the RPS client {}."
+                    + " The tokens resolved by their mapping index will be returned untouched.", clientId, e);
+            clear();
+        }
+    }
+
+    /**
+     * Declare the mapping indexes of an RPS client.
+     * <p>
+     * A symbol may be declared padded ({@code "Bx"}) or not ({@code "B"}), both being the same index.
+     *
+     * @param clientId the value of {@code proxy.transform.client-id}, may be {@code null}
+     */
+    public static void registerClientMappings(String clientId) {
+        // TODO build the table for the given client id, for example by querying the RPS catalogue.
+        TokenIndexResolver.register("B", "Person.ShortString");
+        TokenIndexResolver.register("C", "Person.Date");
+        TokenIndexResolver.register("D", "Person.Email");
+        TokenIndexResolver.register("E", "Person.PhoneNumber");
+        TokenIndexResolver.register("G", "Person.LongString");
+        TokenIndexResolver.register("J", "Other.Number");
+        TokenIndexResolver.register("K", "Other.LongText");
+        TokenIndexResolver.register("L", "Other.ShortText");
+        TokenIndexResolver.register("M", "Other.UID");
+        TokenIndexResolver.register("N", "Person.TIN");
+        TokenIndexResolver.register("O", "Person.VAT");
+        TokenIndexResolver.register("P", "Person.SocialSecurityNumber");
+        TokenIndexResolver.register("Q", "Address.AddPart");
+        TokenIndexResolver.register("R", "Address.PostalCode");
+        TokenIndexResolver.register("S", "Address.RegionOrState");
+        TokenIndexResolver.register("T", "Address.City");
+        TokenIndexResolver.register("U", "Address.GeoCoding");
+        TokenIndexResolver.register("V", "Financial.SwiftPart");
+        TokenIndexResolver.register("W", "Financial.IBAN");
+        TokenIndexResolver.register("X", "Financial.CreditCard");
+        TokenIndexResolver.register("Y", "Person.AccountName");
     }
 }

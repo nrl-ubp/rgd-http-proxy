@@ -4,8 +4,8 @@ import com.ubp.rgd.proxy.rps.RPSEndPointTransformer;
 import com.ubp.rgd.proxy.transform.model.ValueMapping;
 import com.ubp.rgd.proxy.transform.model.MappedValue;
 import com.ubp.rgd.tools.PersonFlightSqlLoader;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlColumnMapping;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlMappingConfig;
+import com.ubp.rgd.proxy.sqlgateway.config.ColumnMapping;
+import com.ubp.rgd.proxy.sqlgateway.config.MappingConfig;
 import org.apache.arrow.flight.FlightServer;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.flight.auth2.BasicCallHeaderAuthenticator;
@@ -46,10 +46,10 @@ class PersonFlightSqlLoaderTest {
     static void startServer() throws Exception {
         keepAlive = DriverManager.getConnection(JDBC_URL, "sa", "");
 
-        FlightSqlMappingConfig config = new FlightSqlMappingConfig();
+        MappingConfig config = new MappingConfig();
         config.setColumnMappings(List.of(
-                new FlightSqlColumnMapping("PERSON", "FIRST_NAME", "Person", "shortString"),
-                new FlightSqlColumnMapping("*", "EMAIL", "Person", "email")));
+                new ColumnMapping("PERSON", "FIRST_NAME", "Person", "shortString"),
+                new ColumnMapping("*", "EMAIL", "Person", "email")));
         config.setDataMappings(List.of());
 
         FlightSqlDetokenizeService detokenizeService = new LocalDetokenizeService();

@@ -2,7 +2,7 @@ package com.ubp.rgd.proxy.flightsql;
 
 import com.ubp.rgd.proxy.transform.model.ValueMapping;
 import com.ubp.rgd.proxy.transform.model.MappedValue;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlMappingConfig;
+import com.ubp.rgd.proxy.sqlgateway.config.MappingConfig;
 
 /**
  * A {@link FlightSqlTokenizeService} for the Flight SQL tests, producing a readable fake token
@@ -12,13 +12,13 @@ import com.ubp.rgd.proxy.flightsql.config.FlightSqlMappingConfig;
 class LocalTokenizeService extends FlightSqlTokenizeService {
 
     LocalTokenizeService() {
-        this(new FlightSqlMappingConfig());
+        this(new MappingConfig());
     }
 
-    LocalTokenizeService(FlightSqlMappingConfig config) {
+    LocalTokenizeService(MappingConfig config) {
         setMappingConfigProvider(new FlightSqlMappingConfigProvider() {
             @Override
-            public FlightSqlMappingConfig get() {
+            public MappingConfig get() {
                 return config;
             }
         });

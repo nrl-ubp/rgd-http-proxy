@@ -15,15 +15,18 @@
          assembles them into a single uber-jar. The feature modules are plain jars with a Jandex
          index, so that Quarkus discovers their beans and endpoints.
          proxy.transform.impl selects the transformer at runtime; proxy.file-transform.enabled,
-         proxy.flight-sql.enabled, proxy.queue.enabled and fuzzy-search.enabled switch the file
-         transformation, the Flight SQL server, the queue proxy and the fuzzy search on. -->
+         proxy.flight-sql.enabled, proxy.tds.enabled, proxy.queue.enabled and fuzzy-search.enabled switch
+         the file transformation, the Flight SQL server, the TDS gateway, the queue proxy and the fuzzy
+         search on. -->
     <modules>
         <module>./lib/rps-engine-client-java</module>
         <module>rgd-proxy-spi</module>
         <module>rgd-proxy-rps</module>
         <module>rgd-proxy-fpe</module>
         <module>rgd-proxy-filetransform</module>
+        <module>rgd-proxy-sqlgateway</module>
         <module>rgd-proxy-flightsql</module>
+        <module>rgd-proxy-tds</module>
         <module>rgd-proxy-queue</module>
         <module>rgd-proxy-fuzzysearch</module>
         <module>rgd-proxy-hub</module>
@@ -114,7 +117,17 @@
             </dependency>
             <dependency>
                 <groupId>com.ubp.rgd.proxy</groupId>
+                <artifactId>rgd-proxy-sqlgateway</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ubp.rgd.proxy</groupId>
                 <artifactId>rgd-proxy-flightsql</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ubp.rgd.proxy</groupId>
+                <artifactId>rgd-proxy-tds</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

@@ -1,6 +1,6 @@
 package com.ubp.rgd.proxy.flightsql;
 
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlMappingConfig;
+import com.ubp.rgd.proxy.sqlgateway.config.MappingConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -49,7 +49,7 @@ class FlightSqlMappingConfigProviderTest {
                 """, true);
 
         provider.load();
-        FlightSqlMappingConfig config = provider.get();
+        MappingConfig config = provider.get();
 
         assertEquals("Unprotect", config.getAfter().getAction());
         assertEquals("WDX1", config.getAfter().getRightContextEvidences().get("Target"));

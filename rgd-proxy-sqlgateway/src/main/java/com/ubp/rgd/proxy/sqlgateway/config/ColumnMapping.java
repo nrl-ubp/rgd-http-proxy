@@ -1,4 +1,4 @@
-package com.ubp.rgd.proxy.flightsql.config;
+package com.ubp.rgd.proxy.sqlgateway.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.quarkus.runtime.annotations.RegisterForReflection;
@@ -11,7 +11,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
  * table exposing a column with that name.
  */
 @RegisterForReflection
-public class FlightSqlColumnMapping {
+public class ColumnMapping {
 
     /** Wildcard accepted for the {@code table} entry. */
     public static final String ANY_TABLE = "*";
@@ -28,11 +28,11 @@ public class FlightSqlColumnMapping {
     @JsonProperty(value = "rps-property-name")
     private String rpsPropertyName;
 
-    public FlightSqlColumnMapping() {
+    public ColumnMapping() {
         // Jackson
     }
 
-    public FlightSqlColumnMapping(String table, String column, String rpsClassName, String rpsPropertyName) {
+    public ColumnMapping(String table, String column, String rpsClassName, String rpsPropertyName) {
         this.table = table;
         this.column = column;
         this.rpsClassName = rpsClassName;

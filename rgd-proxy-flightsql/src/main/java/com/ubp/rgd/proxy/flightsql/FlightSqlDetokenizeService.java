@@ -1,5 +1,15 @@
 package com.ubp.rgd.proxy.flightsql;
 
+import com.ubp.rgd.proxy.sqlgateway.PhaseContexts;
+import com.ubp.rgd.proxy.sqlgateway.ValueDetokenizer.Segment;
+
+import static com.ubp.rgd.proxy.sqlgateway.ValueDetokenizer.extractImplicitSegments;
+import static com.ubp.rgd.proxy.sqlgateway.ValueDetokenizer.extractTokens;
+import static com.ubp.rgd.proxy.sqlgateway.ValueDetokenizer.rebuild;
+import static com.ubp.rgd.proxy.sqlgateway.ValueDetokenizer.resolveTypedMapping;
+
+import com.ubp.rgd.proxy.sqlgateway.TokenIndexResolver;
+
 import com.ubp.rgd.proxy.transform.model.EvidenceContext;
 import com.ubp.rgd.proxy.transform.model.RightContext;
 import com.ubp.rgd.proxy.transform.model.Evidence;
@@ -8,10 +18,10 @@ import com.ubp.rgd.proxy.transform.model.ValueMapping;
 import com.ubp.rgd.proxy.transform.model.MappedValue;
 import com.ubp.rgd.proxy.transform.EndPointTransformer;
 import com.ubp.rgd.proxy.transform.TransformException;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlColumnMapping;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlDataMapping;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlMappingConfig;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlPhaseConfig;
+import com.ubp.rgd.proxy.sqlgateway.config.ColumnMapping;
+import com.ubp.rgd.proxy.sqlgateway.config.DataMapping;
+import com.ubp.rgd.proxy.sqlgateway.config.MappingConfig;
+import com.ubp.rgd.proxy.sqlgateway.config.PhaseConfig;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -48,7 +58,7 @@ import java.util.regex.Pattern;
  *     regex locates its own segments in the values and supplies their class / property names.</li>
  *     <li><b>Token mapping index</b> â€” the tokens no data mapping claimed are finally resolved from
  *     the mapping index they carry in their first two characters, see
- *     {@link FlightSqlTokenIndexResolver}. This tier is <b>RPS only</b>: it is skipped when the
+ *     {@link TokenIndexResolver}. This tier is <b>RPS only</b>: it is skipped when the
  *     selected transformer produces tokens without a mapping index.</li>
  * </ol>
  * What a token looks like is asked to the transformer rather than hardcoded, because it differs from
@@ -75,7 +85,7 @@ public class FlightSqlDetokenizeService {
     @ConfigProperty(name = "proxy.transform.client-id")
     String transformClientId;
 
-    private FlightSqlMappingConfig mappingConfig = new FlightSqlMappingConfig();
+    private MappingConfig mappingConfig = new MappingConfig();
 
     @PostConstruct
     void init() {
@@ -84,7 +94,7 @@ public class FlightSqlDetokenizeService {
     }
 
     /**
-     * (Re)build the token mapping index table of {@link FlightSqlTokenIndexResolver} for the RPS client
+     * (Re)build the token mapping index table of {@link TokenIndexResolver} for the RPS client
      * the proxy is configured for.
      * <p>
      * The table is cleared first, so a reload can never leave a stale index behind. A failure is logged
@@ -94,33 +104,16 @@ public class FlightSqlDetokenizeService {
      * Public and re-runnable so that the table can be refreshed at any time.
      */
     public void loadTokenIndexMappings() {
-        FlightSqlTokenIndexResolver.clear();
-        if (!transformer.supportsTokenMappingIndex()) {
-            // The tokens of the selected transformer carry no mapping index, so the table could never
-            // be consulted. Building it would only be misleading.
-            LOG.info("The selected transformer produces tokens without a mapping index."
-                    + " The token mapping index tier is disabled.");
-            return;
-        }
-        try {
-            initTokenIndexMappings(transformClientId);
-            LOG.info("Loaded {} token mapping index(es) for the RPS client {}",
-                    FlightSqlTokenIndexResolver.size(), transformClientId);
-        } catch (Exception e) {
-            LOG.error("Failed to load the token mapping indexes for the RPS client {}."
-                    + " The tokens resolved by their mapping index will be returned untouched.",
-                    transformClientId, e);
-            FlightSqlTokenIndexResolver.clear();
-        }
+        TokenIndexResolver.load(transformer.supportsTokenMappingIndex(), transformClientId, this::initTokenIndexMappings);
     }
 
     /**
      * Declare the mapping indexes of an RPS client, by calling
-     * {@link FlightSqlTokenIndexResolver#register(String, String)} for each of them with the index
+     * {@link TokenIndexResolver#register(String, String)} for each of them with the index
      * symbol and its {@code "ClassName.PropertyName"}.
      * <p>
      * A symbol may be declared padded ({@code "Bx"}) or not ({@code "B"}), both being the same index â€”
-     * see {@link FlightSqlTokenIndexResolver} for the encoding.
+     * see {@link TokenIndexResolver} for the encoding.
      * <p>
      * The implementation may query the RPS catalogue of the client. It must tolerate a {@code null} client id, which happens when the
      * service is built outside of CDI. Any exception it raises is caught by
@@ -129,42 +122,14 @@ public class FlightSqlDetokenizeService {
      * @param clientId the value of {@code proxy.transform.client-id}, may be {@code null}
      */
     void initTokenIndexMappings(String clientId) {
-        // -------------------------------------------------------------------------------------------
-        // TODO build the table for the given client id, for example by querying the RPS catalogue.
-        //
-        //      FlightSqlTokenIndexResolver.register("A", "Person.LongString");
-        //      FlightSqlTokenIndexResolver.register("C", "Person.BirthDate");
-        //      FlightSqlTokenIndexResolver.register("ZA", "Account.Number");  // index 26, escaped form
-        // -------------------------------------------------------------------------------------------
-
-        FlightSqlTokenIndexResolver.register("B", "Person.ShortString");
-        FlightSqlTokenIndexResolver.register("C", "Person.Date");
-        FlightSqlTokenIndexResolver.register("D", "Person.Email");
-        FlightSqlTokenIndexResolver.register("E", "Person.PhoneNumber");
-        FlightSqlTokenIndexResolver.register("G", "Person.LongString");
-        FlightSqlTokenIndexResolver.register("J", "Other.Number");
-        FlightSqlTokenIndexResolver.register("K", "Other.LongText");
-        FlightSqlTokenIndexResolver.register("L", "Other.ShortText");
-        FlightSqlTokenIndexResolver.register("M", "Other.UID");
-        FlightSqlTokenIndexResolver.register("N", "Person.TIN");
-        FlightSqlTokenIndexResolver.register("O", "Person.VAT");
-        FlightSqlTokenIndexResolver.register("P", "Person.SocialSecurityNumber");
-        FlightSqlTokenIndexResolver.register("Q", "Address.AddPart");
-        FlightSqlTokenIndexResolver.register("R", "Address.PostalCode");
-        FlightSqlTokenIndexResolver.register("S", "Address.RegionOrState");
-        FlightSqlTokenIndexResolver.register("T", "Address.City");
-        FlightSqlTokenIndexResolver.register("U", "Address.GeoCoding");
-        FlightSqlTokenIndexResolver.register("V", "Financial.SwiftPart");
-        FlightSqlTokenIndexResolver.register("W", "Financial.IBAN");
-        FlightSqlTokenIndexResolver.register("X", "Financial.CreditCard");
-        FlightSqlTokenIndexResolver.register("Y", "Person.AccountName");
+        TokenIndexResolver.registerClientMappings(clientId);
     }
 
-    FlightSqlMappingConfig getMappingConfig() {
+    MappingConfig getMappingConfig() {
         return mappingConfig;
     }
 
-    public void setMappingConfig(FlightSqlMappingConfig mappingConfig) {
+    public void setMappingConfig(MappingConfig mappingConfig) {
         this.mappingConfig = mappingConfig;
     }
 
@@ -190,12 +155,12 @@ public class FlightSqlDetokenizeService {
      *         configured data mappings, then through the mapping index carried by its tokens
      * @throws SQLException when the metadata cannot be read
      */
-    public List<FlightSqlColumnMapping> resolveMappings(ResultSetMetaData metaData) throws SQLException {
-        List<FlightSqlColumnMapping> mappings = new ArrayList<>();
+    public List<ColumnMapping> resolveMappings(ResultSetMetaData metaData) throws SQLException {
+        List<ColumnMapping> mappings = new ArrayList<>();
         for (int i = 1; i <= metaData.getColumnCount(); i++) {
             String table = metaData.getTableName(i);
             // Prefer the label (alias) then fall back to the physical column name.
-            FlightSqlColumnMapping mapping = mappingConfig.findMapping(table, metaData.getColumnLabel(i));
+            ColumnMapping mapping = mappingConfig.findMapping(table, metaData.getColumnLabel(i));
             if (mapping == null) {
                 mapping = mappingConfig.findMapping(table, metaData.getColumnName(i));
             }
@@ -213,7 +178,7 @@ public class FlightSqlDetokenizeService {
 
     /**
      * Detokenize, in place, the string columns of the given record batch. A column having an explicit
-     * {@link FlightSqlColumnMapping} has its {@code RG{...}} tokens detokenized with that mapping; any
+     * {@link ColumnMapping} has its {@code RG{...}} tokens detokenized with that mapping; any
      * other column falls back to the implicit mode driven by the configured data mappings, then by the
      * mapping index carried by the remaining tokens. Values
      * without any recognized segment are left untouched, and the vectors of the batch are replaced
@@ -225,7 +190,7 @@ public class FlightSqlDetokenizeService {
      * @param allocator the allocator used for the temporary vectors
      * @throws TransformException when the RPS engine fails to detokenize a value
      */
-    public void detokenize(VectorSchemaRoot root, List<FlightSqlColumnMapping> mappings,
+    public void detokenize(VectorSchemaRoot root, List<ColumnMapping> mappings,
                            BufferAllocator allocator) throws TransformException {
         if (root == null || mappings == null || root.getRowCount() == 0) {
             return;
@@ -243,7 +208,7 @@ public class FlightSqlDetokenizeService {
         List<MappedValue> flatValues = new ArrayList<>();
 
         for (int col = 0; col < root.getFieldVectors().size() && col < mappings.size(); col++) {
-            FlightSqlColumnMapping mapping = mappings.get(col);
+            ColumnMapping mapping = mappings.get(col);
             FieldVector vector = root.getVector(col);
             if (!(vector instanceof VariableWidthFieldVector textVector)) {
                 TypedColumnPlan typedPlan = buildTypedColumnPlan(vector, mapping, root.getRowCount());
@@ -290,7 +255,7 @@ public class FlightSqlDetokenizeService {
      * @param rowCount      the number of rows of the batch
      * @return the plan, or {@code null} when the column holds nothing to detokenize
      */
-    private TypedColumnPlan buildTypedColumnPlan(FieldVector vector, FlightSqlColumnMapping columnMapping,
+    private TypedColumnPlan buildTypedColumnPlan(FieldVector vector, ColumnMapping columnMapping,
                                                  int rowCount) {
         if (!transformer.preservesValueTypes()) {
             return null;
@@ -301,7 +266,7 @@ public class FlightSqlDetokenizeService {
         }
         ValueMapping columnRpsMapping = columnMapping == null ? null
                 : new ValueMapping(columnMapping.getRpsClassName(), columnMapping.getRpsPropertyName());
-        List<FlightSqlDataMapping> dataMappings = mappingConfig.getUsableDataMappings();
+        List<DataMapping> dataMappings = mappingConfig.getUsableDataMappings();
         if (columnRpsMapping == null && dataMappings.isEmpty()) {
             return null;
         }
@@ -321,23 +286,6 @@ public class FlightSqlDetokenizeService {
     }
 
     /**
-     * Resolve the mapping of a typed value in implicit mode.
-     *
-     * @param text         the value in its text form
-     * @param dataMappings the usable data mappings, in declaration order
-     * @return the mapping of the first data mapping whose regex matches the whole value, or
-     *         {@code null} when none does
-     */
-    static ValueMapping resolveTypedMapping(String text, List<FlightSqlDataMapping> dataMappings) {
-        for (FlightSqlDataMapping dataMapping : dataMappings) {
-            if (dataMapping.getPattern().matcher(text).matches()) {
-                return new ValueMapping(dataMapping.getRpsClassName(), dataMapping.getRpsPropertyName());
-            }
-        }
-        return null;
-    }
-
-    /**
      * Hand the located segments over to the RPS engine, which replaces their transformed value in
      * place. Extracted so that it can be substituted in the tests.
      *
@@ -346,8 +294,8 @@ public class FlightSqlDetokenizeService {
     protected void transformValues(List<MappedValue> values) throws TransformException {
         try {
             transformer.transformData(values.toArray(new MappedValue[0]),
-                    buildRightContext(),
-                    buildProcessingContext());
+                    PhaseContexts.rightContext(afterPhase()),
+                    PhaseContexts.processingContext(afterPhase(), "Unprotect", "Flight SQL 'after'"));
         } catch (Exception e) {
             LOG.error("Flight SQL detokenization failed", e);
             throw new TransformException(e);
@@ -361,10 +309,10 @@ public class FlightSqlDetokenizeService {
      * @return the plan, or {@code null} when nothing has to be detokenized in that column
      */
     private ColumnPlan buildColumnPlan(int columnIndex, VariableWidthFieldVector vector,
-                                       FlightSqlColumnMapping columnMapping, int rowCount) {
+                                       ColumnMapping columnMapping, int rowCount) {
         ValueMapping rpsMapping = columnMapping == null ? null
                 : new ValueMapping(columnMapping.getRpsClassName(), columnMapping.getRpsPropertyName());
-        List<FlightSqlDataMapping> dataMappings = mappingConfig.getUsableDataMappings();
+        List<DataMapping> dataMappings = mappingConfig.getUsableDataMappings();
         List<CellPlan> cells = new ArrayList<>();
 
         for (int row = 0; row < rowCount; row++) {
@@ -381,129 +329,6 @@ public class FlightSqlDetokenizeService {
             }
         }
         return cells.isEmpty() ? null : new ColumnPlan(columnIndex, cells);
-    }
-
-    /**
-     * Locate the {@code RG{...}} tokens of a value, all mapped to the same RPS class / property. Used
-     * for the columns having an explicit {@link FlightSqlColumnMapping}.
-     *
-     * @param tokenPattern what a token looks like for the selected transformer
-     * @return the segments to detokenize, in order of appearance (empty when the value holds no token)
-     */
-    static List<Segment> extractTokens(String value, ValueMapping mapping, Pattern tokenPattern) {
-        List<Segment> segments = new ArrayList<>();
-        Matcher matcher = tokenPattern.matcher(value);
-        while (matcher.find()) {
-            segments.add(new Segment(matcher.start(), matcher.end(),
-                    new MappedValue(mapping, matcher.group())));
-        }
-        return segments;
-    }
-
-    /**
-     * Locate the segments of a value in implicit mode, i.e. for the columns without an explicit
-     * {@link FlightSqlColumnMapping}. The data mappings are applied first, then the tokens they left
-     * unclaimed are resolved from the mapping index they carry.
-     *
-     * @param value the value to scan
-     * @param dataMappings the usable data mappings, in declaration order
-     * @param tokenPattern what a token looks like for the selected transformer
-     * @param useMappingIndex whether the tokens carry a mapping index that can be read
-     * @return the segments to detokenize, ordered by position (empty when nothing was resolved)
-     */
-    static List<Segment> extractImplicitSegments(String value, List<FlightSqlDataMapping> dataMappings,
-                                                 Pattern tokenPattern, boolean useMappingIndex) {
-        List<Segment> segments = new ArrayList<>(extractDataMappedSegments(value, dataMappings));
-        if (useMappingIndex) {
-            segments.addAll(extractIndexMappedSegments(value, segments, tokenPattern));
-        }
-        segments.sort(Comparator.comparingInt(Segment::start));
-        return segments;
-    }
-
-    /**
-     * Locate the {@code RG{...}} tokens of a value whose RPS class / property is resolved from the
-     * mapping index they carry â€” the last resort, applied to the tokens that neither a column mapping
-     * nor a data mapping could resolve.
-     *
-     * @param value the value to scan
-     * @param claimed the segments already located by the data mappings; an overlapping token is skipped
-     * @param tokenPattern what a token looks like for the selected transformer
-     * @return the resolved segments (empty when no token carries a declared mapping index)
-     * @see FlightSqlTokenIndexResolver
-     */
-    static List<Segment> extractIndexMappedSegments(String value, List<Segment> claimed,
-                                                    Pattern tokenPattern) {
-        List<Segment> segments = new ArrayList<>();
-        Matcher matcher = tokenPattern.matcher(value);
-        while (matcher.find()) {
-            Segment candidate = new Segment(matcher.start(), matcher.end(), null);
-            if (claimed.stream().anyMatch(candidate::overlaps)) {
-                continue;
-            }
-            String token = matcher.group();
-            ValueMapping mapping = FlightSqlTokenIndexResolver.resolveMapping(token);
-            if (mapping == null) {
-                continue;
-            }
-            segments.add(new Segment(matcher.start(), matcher.end(), new MappedValue(mapping, token)));
-        }
-        return segments;
-    }
-
-    /**
-     * Locate the segments of a value using the data mappings â€” the implicit detokenization applied to
-     * the columns without an explicit {@link FlightSqlColumnMapping}.
-     * <p>
-     * Every mapping is applied in declaration order, which is therefore its priority: a match
-     * overlapping a segment already kept by an earlier mapping is discarded. The segment handed to the
-     * engine is the whole match, not a capturing group.
-     *
-     * @param value the value to scan
-     * @param dataMappings the usable data mappings, in declaration order
-     * @return the kept segments ordered by position (empty when nothing matched)
-     */
-    static List<Segment> extractDataMappedSegments(String value,
-                                                   List<FlightSqlDataMapping> dataMappings) {
-        List<Segment> segments = new ArrayList<>();
-        for (FlightSqlDataMapping dataMapping : dataMappings) {
-            ValueMapping rpsMapping =
-                    new ValueMapping(dataMapping.getRpsClassName(), dataMapping.getRpsPropertyName());
-            Matcher matcher = dataMapping.getPattern().matcher(value);
-            while (matcher.find()) {
-                if (matcher.end() == matcher.start()) {
-                    // Guard against a regex able to match an empty string, which would never advance.
-                    continue;
-                }
-                Segment candidate = new Segment(matcher.start(), matcher.end(),
-                        new MappedValue(rpsMapping, matcher.group()));
-                if (segments.stream().noneMatch(candidate::overlaps)) {
-                    segments.add(candidate);
-                }
-            }
-        }
-        segments.sort(Comparator.comparingInt(Segment::start));
-        return segments;
-    }
-
-    /**
-     * Rebuild a value by replacing each of its segments with the corresponding clear value, preserving
-     * everything surrounding them.
-     *
-     * @param original the original value
-     * @param segments the segments located in that value, ordered by position and non-overlapping
-     * @param clearValues the clear value of each segment, in the same order
-     */
-    static String rebuild(String original, List<Segment> segments, List<String> clearValues) {
-        StringBuilder rebuilt = new StringBuilder();
-        int cursor = 0;
-        for (int i = 0; i < segments.size() && i < clearValues.size(); i++) {
-            Segment segment = segments.get(i);
-            rebuilt.append(original, cursor, segment.start()).append(clearValues.get(i));
-            cursor = segment.end();
-        }
-        rebuilt.append(original, cursor, original.length());
-        return rebuilt.toString();
     }
 
     /**
@@ -560,48 +385,15 @@ public class FlightSqlDetokenizeService {
         root.setRowCount(rowCount);
     }
 
-    private RightContext buildRightContext() {
-        RightContext context = new RightContext();
-        addEvidences(context, afterPhase().getRightContextEvidences());
-        return context;
-    }
-
-    private ProcessingContext buildProcessingContext() {
-        ProcessingContext context = new ProcessingContext();
-        addEvidences(context, afterPhase().getProcessingContextEvidences());
-
-        boolean hasAction = context.getEvidences().stream()
-                .anyMatch(evidence -> "Action".equalsIgnoreCase(evidence.getName()));
-        if (!hasAction) {
-            // This service only ever reads data back, and a transformer takes its direction from the
-            // action: without it nothing would be detokenized.
-            LOG.warn("The Flight SQL 'after' phase declares no Action evidence. Using Unprotect.");
-            context.addEvidence(new Evidence("Action", "Unprotect"));
-        }
-        return context;
-    }
-
     /**
      * The phase that applies to a result set coming back from the database server.
      *
      * @return the configured {@code after} phase, never null
      */
-    private FlightSqlPhaseConfig afterPhase() {
-        FlightSqlPhaseConfig phase = mappingConfig.getAfter();
-        return phase == null ? new FlightSqlPhaseConfig() : phase;
+    private PhaseConfig afterPhase() {
+        PhaseConfig phase = mappingConfig.getAfter();
+        return phase == null ? new PhaseConfig() : phase;
     }
-
-    private void addEvidences(EvidenceContext context, Map<String, String> evidences) {
-        if (evidences == null) {
-            return;
-        }
-        evidences.forEach((name, value) -> {
-            if (name != null && !name.isBlank() && value != null && !value.isEmpty()) {
-                context.addEvidence(new Evidence(name, value));
-            }
-        });
-    }
-
 
     /** All the non null values of a date or numeric column, keyed by row. */
     private record TypedColumnPlan(TypedColumn column, Map<Integer, MappedValue> values) {
@@ -625,17 +417,6 @@ public class FlightSqlDetokenizeService {
 
     /** All the cells of a single column that hold at least one segment to detokenize. */
     private record ColumnPlan(int columnIndex, List<CellPlan> cells) {
-    }
-
-    /**
-     * A part of a value to detokenize, located by its half-open {@code [start, end)} range in the
-     * original value and carrying its own RPS mapping.
-     */
-    record Segment(int start, int end, MappedValue rpsValue) {
-
-        boolean overlaps(Segment other) {
-            return start < other.end && other.start < end;
-        }
     }
 
     /** A single cell (row of a column) and the segments extracted from its value. */

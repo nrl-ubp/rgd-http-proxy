@@ -53,6 +53,10 @@
         </dependency>
         <dependency>
             <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-tds</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
             <artifactId>rgd-proxy-queue</artifactId>
         </dependency>
 

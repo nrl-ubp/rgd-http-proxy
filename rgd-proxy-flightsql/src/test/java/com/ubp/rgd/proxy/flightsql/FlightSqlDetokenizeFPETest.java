@@ -1,5 +1,7 @@
 package com.ubp.rgd.proxy.flightsql;
 
+import com.ubp.rgd.proxy.sqlgateway.TokenIndexResolver;
+
 import com.ubp.rgd.proxy.transform.model.RightContext;
 import com.ubp.rgd.proxy.transform.model.Evidence;
 import com.ubp.rgd.proxy.transform.model.ProcessingContext;
@@ -7,9 +9,9 @@ import com.ubp.rgd.proxy.transform.model.ValueMapping;
 import com.ubp.rgd.proxy.transform.model.MappedValue;
 import com.ubp.rgd.proxy.transform.model.ValueKind;
 import com.ubp.rgd.proxy.fpe.FPEEndPointTransformer;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlColumnMapping;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlDataMapping;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlMappingConfig;
+import com.ubp.rgd.proxy.sqlgateway.config.ColumnMapping;
+import com.ubp.rgd.proxy.sqlgateway.config.DataMapping;
+import com.ubp.rgd.proxy.sqlgateway.config.MappingConfig;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
@@ -66,13 +68,13 @@ class FlightSqlDetokenizeFPETest {
         transformer = FPEEndPointTransformer.withKey(KEY);
         service = new FlightSqlDetokenizeService();
         service.setTransformer(transformer);
-        service.setMappingConfig(new FlightSqlMappingConfig());
+        service.setMappingConfig(new MappingConfig());
         service.loadTokenIndexMappings();
     }
 
     @AfterEach
     void tearDown() {
-        FlightSqlTokenIndexResolver.clear();
+        TokenIndexResolver.clear();
         allocator.close();
     }
 
@@ -112,8 +114,8 @@ class FlightSqlDetokenizeFPETest {
         return vector.isNull(row) ? null : new String(vector.get(row), StandardCharsets.UTF_8);
     }
 
-    private static FlightSqlMappingConfig configWith(List<FlightSqlDataMapping> dataMappings) {
-        FlightSqlMappingConfig config = new FlightSqlMappingConfig();
+    private static MappingConfig configWith(List<DataMapping> dataMappings) {
+        MappingConfig config = new MappingConfig();
         config.setDataMappings(dataMappings);
         config.getAfter().setProcessingContextEvidences(new HashMap<>(Map.of("Action", "Unprotect")));
         return config;
@@ -127,7 +129,7 @@ class FlightSqlDetokenizeFPETest {
 
         try (VectorSchemaRoot root = newRoot("FIRST_NAME", token)) {
             service.detokenize(root,
-                    List.of(new FlightSqlColumnMapping("PERSON", "FIRST_NAME", "Person", "FirstName")),
+                    List.of(new ColumnMapping("PERSON", "FIRST_NAME", "Person", "FirstName")),
                     allocator);
 
             assertEquals("Bernadette", readString(root, 0));
@@ -153,7 +155,7 @@ class FlightSqlDetokenizeFPETest {
 
         try (VectorSchemaRoot root = newRoot("FIRST_NAME", bernadette, null, "already clear", jean)) {
             service.detokenize(root,
-                    List.of(new FlightSqlColumnMapping("PERSON", "FIRST_NAME", "Person", "FirstName")),
+                    List.of(new ColumnMapping("PERSON", "FIRST_NAME", "Person", "FirstName")),
                     allocator);
 
             assertEquals("Bernadette", readString(root, 0));
@@ -170,7 +172,7 @@ class FlightSqlDetokenizeFPETest {
 
         try (VectorSchemaRoot root = newRoot("COMMENT", "Hello " + token + " !")) {
             service.detokenize(root,
-                    List.of(new FlightSqlColumnMapping("PERSON", "COMMENT", "Person", "FirstName")),
+                    List.of(new ColumnMapping("PERSON", "COMMENT", "Person", "FirstName")),
                     allocator);
 
             assertEquals("Hello Bernadette !", readString(root, 0));
@@ -183,7 +185,7 @@ class FlightSqlDetokenizeFPETest {
         String token = protect("Bernadette", "Person", "FirstName");
         // The regex claims any token, and supplies the class and property the column mapping would have.
         service.setMappingConfig(configWith(
-                List.of(new FlightSqlDataMapping("RG\\{[^}]+\\}", "Person", "FirstName"))));
+                List.of(new DataMapping("RG\\{[^}]+\\}", "Person", "FirstName"))));
 
         try (VectorSchemaRoot root = newRoot("ANYTHING", token)) {
             service.detokenize(root, Collections.singletonList(null), allocator);
@@ -196,11 +198,11 @@ class FlightSqlDetokenizeFPETest {
     @DisplayName("The token mapping index tier is disabled for a transformer without one")
     void skipsTheMappingIndexTier() throws Exception {
         // The resolver is left empty on purpose: loadTokenIndexMappings must not even try to fill it.
-        assertEquals(0, FlightSqlTokenIndexResolver.size());
+        assertEquals(0, TokenIndexResolver.size());
 
         // Registering an index by hand proves the tier is skipped rather than merely unfed: "Bx" is
         // declared, yet an unmapped column with no data mapping must still come back untouched.
-        FlightSqlTokenIndexResolver.register("B", "Person.FirstName");
+        TokenIndexResolver.register("B", "Person.FirstName");
         String token = protect("Bernadette", "Person", "FirstName");
 
         try (VectorSchemaRoot root = newRoot("ANYTHING", token)) {
@@ -219,7 +221,7 @@ class FlightSqlDetokenizeFPETest {
 
         try (VectorSchemaRoot root = newRoot("ACCOUNT", token)) {
             service.detokenize(root,
-                    List.of(new FlightSqlColumnMapping("PERSON", "ACCOUNT", "Person", "Account")),
+                    List.of(new ColumnMapping("PERSON", "ACCOUNT", "Person", "Account")),
                     allocator);
 
             assertEquals("123456789", readString(root, 0));
@@ -234,7 +236,7 @@ class FlightSqlDetokenizeFPETest {
 
         try (VectorSchemaRoot root = newRoot("BIRTH", protectedDate, "01.01.1990")) {
             service.detokenize(root,
-                    List.of(new FlightSqlColumnMapping("PERSON", "BIRTH", "Person", "Birth")),
+                    List.of(new ColumnMapping("PERSON", "BIRTH", "Person", "Birth")),
                     allocator);
 
             assertEquals("12.05.1980", readString(root, 0));
@@ -264,9 +266,9 @@ class FlightSqlDetokenizeFPETest {
             root.setRowCount(2);
 
             service.detokenize(root, List.of(
-                    new FlightSqlColumnMapping("PERSON", "BIRTH", "Person", "Birth"),
-                    new FlightSqlColumnMapping("PERSON", "AGE", "Person", "Age"),
-                    new FlightSqlColumnMapping("PERSON", "BALANCE", "Person", "Balance")), allocator);
+                    new ColumnMapping("PERSON", "BIRTH", "Person", "Birth"),
+                    new ColumnMapping("PERSON", "AGE", "Person", "Age"),
+                    new ColumnMapping("PERSON", "BALANCE", "Person", "Balance")), allocator);
 
             assertEquals(LocalDate.parse("1980-05-12"),
                     LocalDate.ofEpochDay(((DateDayVector) root.getVector(0)).get(0)));
@@ -281,7 +283,7 @@ class FlightSqlDetokenizeFPETest {
     void detokenizesAnUnmappedDateColumnImplicitly() throws Exception {
         String birth = protectTyped("1980-05-12", ValueKind.DATE, "Date");
         service.setMappingConfig(configWith(List.of(
-                new FlightSqlDataMapping("[3-9]\\d{3}-\\d{2}-\\d{2}", "Person", "Date"))));
+                new DataMapping("[3-9]\\d{3}-\\d{2}-\\d{2}", "Person", "Date"))));
 
         Schema schema = new Schema(List.of(
                 new Field("BIRTH", FieldType.nullable(new ArrowType.Date(DateUnit.DAY)), null)));
@@ -308,8 +310,8 @@ class FlightSqlDetokenizeFPETest {
         String balance = protectTyped("-1234.56", ValueKind.NUMBER, "Balance");
         service.setMappingConfig(configWith(List.of(
                 // Matches part of any decimal value: a typed value cannot be partly replaced.
-                new FlightSqlDataMapping("\\d{2}", "Person", "Wrong"),
-                new FlightSqlDataMapping("-?\\d{4}\\.\\d{2}", "Person", "Balance"))));
+                new DataMapping("\\d{2}", "Person", "Wrong"),
+                new DataMapping("-?\\d{4}\\.\\d{2}", "Person", "Balance"))));
 
         Schema schema = new Schema(List.of(
                 new Field("BALANCE", FieldType.nullable(new ArrowType.Decimal(10, 2, 128)), null),
@@ -359,7 +361,7 @@ class FlightSqlDetokenizeFPETest {
 
         try (VectorSchemaRoot root = newRoot("FIRST_NAME", before.toArray(new String[0]))) {
             service.detokenize(root,
-                    List.of(new FlightSqlColumnMapping("PERSON", "FIRST_NAME", "Person", "FirstName")),
+                    List.of(new ColumnMapping("PERSON", "FIRST_NAME", "Person", "FirstName")),
                     allocator);
 
             for (int row = 0; row < before.size(); row++) {

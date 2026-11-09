@@ -1,12 +1,13 @@
 package com.ubp.rgd.proxy.flightsql;
 
+import com.ubp.rgd.proxy.sqlgateway.SqlTransformRewriter.SqlTransformSyntaxException;
+
 import com.ubp.rgd.proxy.transform.model.Evidence;
 import com.ubp.rgd.proxy.transform.model.ValueMapping;
 import com.ubp.rgd.proxy.transform.model.MappedValue;
-import com.ubp.rgd.proxy.flightsql.FlightSqlTokenizeService.FlightSqlTransformSyntaxException;
 import com.ubp.rgd.proxy.transform.TransformException;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlMappingConfig;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlPhaseConfig;
+import com.ubp.rgd.proxy.sqlgateway.config.MappingConfig;
+import com.ubp.rgd.proxy.sqlgateway.config.PhaseConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -29,21 +30,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class FlightSqlTokenizeServiceTest {
 
     private RecordingTokenizeService service;
-    private FlightSqlMappingConfig config;
+    private MappingConfig config;
 
     @BeforeEach
     void setUp() {
-        config = new FlightSqlMappingConfig();
+        config = new MappingConfig();
         config.getBefore().setRightContextEvidences(new HashMap<>(Map.of("Target", "WDX1")));
         config.getBefore().setProcessingContextEvidences(new HashMap<>(Map.of("Action", "Protect")));
         service = new RecordingTokenizeService();
         service.setMappingConfigProvider(providerOf(config));
     }
 
-    private static FlightSqlMappingConfigProvider providerOf(FlightSqlMappingConfig config) {
+    private static FlightSqlMappingConfigProvider providerOf(MappingConfig config) {
         return new FlightSqlMappingConfigProvider() {
             @Override
-            public FlightSqlMappingConfig get() {
+            public MappingConfig get() {
                 return config;
             }
         };
@@ -379,7 +380,7 @@ class FlightSqlTokenizeServiceTest {
 
     @Test
     void shouldNameTheSearchFunctionInTheErrorOfAMalformedCall() {
-        FlightSqlTransformSyntaxException error = assertThrows(FlightSqlTransformSyntaxException.class,
+        SqlTransformSyntaxException error = assertThrows(SqlTransformSyntaxException.class,
                 () -> service.rewrite("SELECT transform_search('Person','p','Jean')"));
 
         // Reporting the error against transform() would send the user looking at the wrong call.
@@ -390,7 +391,7 @@ class FlightSqlTokenizeServiceTest {
     void shouldRejectTheSearchVariantWhenTheBeforePhaseIsInactive() {
         config.getBefore().setActive(false);
 
-        assertThrows(FlightSqlTransformSyntaxException.class,
+        assertThrows(SqlTransformSyntaxException.class,
                 () -> service.rewrite("SELECT transform_search('Person','p','CH','Jean')"));
         assertEquals(0, service.callCount);
     }
@@ -401,7 +402,7 @@ class FlightSqlTokenizeServiceTest {
 
     @Test
     void shouldRejectACallWithTooFewArguments() {
-        FlightSqlTransformSyntaxException error = assertThrows(FlightSqlTransformSyntaxException.class,
+        SqlTransformSyntaxException error = assertThrows(SqlTransformSyntaxException.class,
                 () -> service.rewrite("SELECT transform('Person','p','Jean')"));
 
         assertTrue(error.getMessage().contains("takes 4 arguments"), error.getMessage());
@@ -409,18 +410,18 @@ class FlightSqlTokenizeServiceTest {
 
     @Test
     void shouldRejectACallWithTooManyArguments() {
-        assertThrows(FlightSqlTransformSyntaxException.class,
+        assertThrows(SqlTransformSyntaxException.class,
                 () -> service.rewrite("SELECT transform('Person','p','CH','Jean','extra')"));
     }
 
     @Test
     void shouldRejectACallWithNoArgumentAtAll() {
-        assertThrows(FlightSqlTransformSyntaxException.class, () -> service.rewrite("SELECT transform()"));
+        assertThrows(SqlTransformSyntaxException.class, () -> service.rewrite("SELECT transform()"));
     }
 
     @Test
     void shouldRejectAParameterPlaceholderAsAnArgument() {
-        FlightSqlTransformSyntaxException error = assertThrows(FlightSqlTransformSyntaxException.class,
+        SqlTransformSyntaxException error = assertThrows(SqlTransformSyntaxException.class,
                 () -> service.rewrite("SELECT transform('Person','p','CH',?)"));
 
         // A prepared statement parameter has no value yet when the query is rewritten.
@@ -429,39 +430,39 @@ class FlightSqlTokenizeServiceTest {
 
     @Test
     void shouldRejectAnUnquotedArgument() {
-        assertThrows(FlightSqlTransformSyntaxException.class,
+        assertThrows(SqlTransformSyntaxException.class,
                 () -> service.rewrite("SELECT transform(Person,'p','CH','Jean')"));
     }
 
     @Test
     void shouldRejectAnUnterminatedCall() {
-        assertThrows(FlightSqlTransformSyntaxException.class,
+        assertThrows(SqlTransformSyntaxException.class,
                 () -> service.rewrite("SELECT transform('Person','p','CH','Jean'"));
     }
 
     @Test
     void shouldRejectAnUnterminatedLiteral() {
-        assertThrows(FlightSqlTransformSyntaxException.class,
+        assertThrows(SqlTransformSyntaxException.class,
                 () -> service.rewrite("SELECT transform('Person','p','CH','Jean)"));
     }
 
     @Test
     void shouldRejectAnEmptyClassNameOrPropertyName() {
-        assertThrows(FlightSqlTransformSyntaxException.class,
+        assertThrows(SqlTransformSyntaxException.class,
                 () -> service.rewrite("SELECT transform('','p','CH','Jean')"));
-        assertThrows(FlightSqlTransformSyntaxException.class,
+        assertThrows(SqlTransformSyntaxException.class,
                 () -> service.rewrite("SELECT transform('Person','  ','CH','Jean')"));
     }
 
     @Test
     void shouldRejectAMissingSeparator() {
-        assertThrows(FlightSqlTransformSyntaxException.class,
+        assertThrows(SqlTransformSyntaxException.class,
                 () -> service.rewrite("SELECT transform('Person' 'p','CH','Jean')"));
     }
 
     @Test
     void shouldNotCallTheEngineWhenACallIsMalformed() {
-        assertThrows(FlightSqlTransformSyntaxException.class,
+        assertThrows(SqlTransformSyntaxException.class,
                 () -> service.rewrite("SELECT transform('Person','p','CH','Jean'),"
                         + " transform('bad')"));
 
@@ -477,7 +478,7 @@ class FlightSqlTokenizeServiceTest {
     void shouldRejectTheExtensionWhenTheBeforePhaseIsInactive() {
         config.getBefore().setActive(false);
 
-        FlightSqlTransformSyntaxException error = assertThrows(FlightSqlTransformSyntaxException.class,
+        SqlTransformSyntaxException error = assertThrows(SqlTransformSyntaxException.class,
                 () -> service.rewrite("SELECT transform('Person','p','CH','Jean')"));
 
         assertTrue(error.getMessage().contains("'before' phase"), error.getMessage());

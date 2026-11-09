@@ -1,10 +1,12 @@
 package com.ubp.rgd.proxy.flightsql;
 
+import com.ubp.rgd.proxy.sqlgateway.SqlTransformRewriter.SqlTransformSyntaxException;
+
 import com.google.protobuf.Any;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Message;
 import com.ubp.rgd.proxy.transform.TransformException;
-import com.ubp.rgd.proxy.flightsql.config.FlightSqlColumnMapping;
+import com.ubp.rgd.proxy.sqlgateway.config.ColumnMapping;
 import org.apache.arrow.adapter.jdbc.JdbcParameterBinder;
 import org.apache.arrow.adapter.jdbc.JdbcToArrow;
 import org.apache.arrow.adapter.jdbc.JdbcToArrowConfig;
@@ -514,7 +516,7 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
     private String rewrite(String query) {
         try {
             return tokenizeService.rewrite(query);
-        } catch (FlightSqlTokenizeService.FlightSqlTransformSyntaxException e) {
+        } catch (SqlTransformSyntaxException e) {
             // The client wrote something the proxy cannot make sense of: say so, rather than letting
             // the database complain about a function it has never heard of.
             LOG.warn("Rejecting a query using the transform() extension: {}", e.getMessage());
@@ -547,7 +549,7 @@ public class ProxyFlightSqlProducer extends BasicFlightSqlProducer {
              ResultSet resultSet = statement.executeQuery()) {
 
             ResultSetMetaData metaData = resultSet.getMetaData();
-            List<FlightSqlColumnMapping> mappings = detokenizeService.resolveMappings(metaData);
+            List<ColumnMapping> mappings = detokenizeService.resolveMappings(metaData);
 
             JdbcToArrowConfig config = new JdbcToArrowConfigBuilder()
                     .setAllocator(allocator)

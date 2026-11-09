@@ -1,4 +1,4 @@
-package com.ubp.rgd.proxy.flightsql.config;
+package com.ubp.rgd.proxy.sqlgateway.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.quarkus.runtime.annotations.RegisterForReflection;
@@ -20,10 +20,10 @@ import java.util.Map;
  * <p>
  * Loaded from the JSON file pointed to by {@code proxy.flight-sql.mapping-config-file}.
  *
- * @see FlightSqlPhaseConfig
+ * @see PhaseConfig
  */
 @RegisterForReflection
-public class FlightSqlMappingConfig {
+public class MappingConfig {
 
     /**
      * Phase applied to the query on its way to the database server, that is the {@code transform()}
@@ -32,7 +32,7 @@ public class FlightSqlMappingConfig {
      * @see com.ubp.rgd.proxy.flightsql.FlightSqlTokenizeService
      */
     @JsonProperty(value = "before")
-    private FlightSqlPhaseConfig before = new FlightSqlPhaseConfig();
+    private PhaseConfig before = new PhaseConfig();
 
     /**
      * Phase applied to the result set on its way back, that is the detokenization.
@@ -41,33 +41,33 @@ public class FlightSqlMappingConfig {
      * no file behind it, transforms as it always did.
      */
     @JsonProperty(value = "after")
-    private FlightSqlPhaseConfig after = new FlightSqlPhaseConfig();
+    private PhaseConfig after = new PhaseConfig();
 
     @JsonProperty(value = "column-mappings")
-    private List<FlightSqlColumnMapping> columnMappings = new ArrayList<>();
+    private List<ColumnMapping> columnMappings = new ArrayList<>();
 
     @JsonProperty(value = "data-mappings")
-    private List<FlightSqlDataMapping> dataMappings = new ArrayList<>();
+    private List<DataMapping> dataMappings = new ArrayList<>();
 
     /** Lazily built lookup index: {@code table|column} (lower-case) -> mapping. */
-    private transient Map<String, FlightSqlColumnMapping> index;
+    private transient Map<String, ColumnMapping> index;
 
     /** Lazily filtered list of the data mappings that can actually be used. */
-    private transient List<FlightSqlDataMapping> usableDataMappings;
+    private transient List<DataMapping> usableDataMappings;
 
-    public FlightSqlPhaseConfig getBefore() {
+    public PhaseConfig getBefore() {
         return before;
     }
 
-    public void setBefore(FlightSqlPhaseConfig before) {
+    public void setBefore(PhaseConfig before) {
         this.before = before;
     }
 
-    public FlightSqlPhaseConfig getAfter() {
+    public PhaseConfig getAfter() {
         return after;
     }
 
-    public void setAfter(FlightSqlPhaseConfig after) {
+    public void setAfter(PhaseConfig after) {
         this.after = after;
     }
 
@@ -80,20 +80,20 @@ public class FlightSqlMappingConfig {
         return after != null && after.isActive();
     }
 
-    public List<FlightSqlColumnMapping> getColumnMappings() {
+    public List<ColumnMapping> getColumnMappings() {
         return columnMappings;
     }
 
-    public void setColumnMappings(List<FlightSqlColumnMapping> columnMappings) {
+    public void setColumnMappings(List<ColumnMapping> columnMappings) {
         this.columnMappings = columnMappings;
         this.index = null;
     }
 
-    public List<FlightSqlDataMapping> getDataMappings() {
+    public List<DataMapping> getDataMappings() {
         return dataMappings;
     }
 
-    public void setDataMappings(List<FlightSqlDataMapping> dataMappings) {
+    public void setDataMappings(List<DataMapping> dataMappings) {
         this.dataMappings = dataMappings;
         this.usableDataMappings = null;
     }
@@ -105,7 +105,7 @@ public class FlightSqlMappingConfig {
      *
      * @return the usable data mappings, never null
      */
-    public synchronized List<FlightSqlDataMapping> getUsableDataMappings() {
+    public synchronized List<DataMapping> getUsableDataMappings() {
         if (usableDataMappings == null) {
             usableDataMappings = dataMappings == null
                     ? List.of()
@@ -122,30 +122,30 @@ public class FlightSqlMappingConfig {
      * @param column the column name / label
      * @return the matching mapping, or {@code null} when the column must not be detokenized
      */
-    public FlightSqlColumnMapping findMapping(String table, String column) {
+    public ColumnMapping findMapping(String table, String column) {
         if (column == null || column.isBlank()) {
             return null;
         }
-        Map<String, FlightSqlColumnMapping> lookup = index();
+        Map<String, ColumnMapping> lookup = index();
         if (table != null && !table.isBlank()) {
-            FlightSqlColumnMapping exact = lookup.get(key(table, column));
+            ColumnMapping exact = lookup.get(key(table, column));
             if (exact != null) {
                 return exact;
             }
         }
-        return lookup.get(key(FlightSqlColumnMapping.ANY_TABLE, column));
+        return lookup.get(key(ColumnMapping.ANY_TABLE, column));
     }
 
-    private synchronized Map<String, FlightSqlColumnMapping> index() {
+    private synchronized Map<String, ColumnMapping> index() {
         if (index == null) {
-            Map<String, FlightSqlColumnMapping> built = new HashMap<>();
+            Map<String, ColumnMapping> built = new HashMap<>();
             if (columnMappings != null) {
-                for (FlightSqlColumnMapping mapping : columnMappings) {
+                for (ColumnMapping mapping : columnMappings) {
                     if (mapping == null || mapping.getColumn() == null || mapping.getColumn().isBlank()) {
                         continue;
                     }
                     String table = mapping.isWildcardTable()
-                            ? FlightSqlColumnMapping.ANY_TABLE
+                            ? ColumnMapping.ANY_TABLE
                             : mapping.getTable().trim();
                     built.put(key(table, mapping.getColumn()), mapping);
                 }

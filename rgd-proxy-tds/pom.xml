@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.ubp.rgd.proxy</groupId>
+        <artifactId>rgd-http-proxy-parent</artifactId>
+        <version>2.0.0</version>
+    </parent>
+
+    <artifactId>rgd-proxy-tds</artifactId>
+    <name>RGD proxy - TDS gateway</name>
+    <description>SQL Server (TDS, [MS-TDS] 7.4 and 8.0) gateway relaying to the real SQL Server: transform() /
+        transform_search() rewriting of the statements and detokenization of the result rows, for any regular
+        SQL Server client (SSMS, sqlcmd, JDBC, ODBC, .NET) without special driver. Pure Java.</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-spi</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-sqlgateway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-arc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-health</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.ubp.rgd.proxy</groupId>
+            <artifactId>rgd-proxy-fpe</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- The real Microsoft JDBC driver is the client of the gateway in the end to end tests -->
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Self-signed certificates of the TLS tests -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>io.smallrye</groupId>
+                <artifactId>jandex-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>make-index</id>
+                        <goals>
+                            <goal>jandex</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

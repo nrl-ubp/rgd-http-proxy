@@ -1,4 +1,4 @@
-package com.ubp.rgd.proxy.flightsql.config;
+package com.ubp.rgd.proxy.sqlgateway.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.quarkus.runtime.annotations.RegisterForReflection;
@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
  * Maps a data <em>format</em> to the RPS class and property names used to detokenize it.
  * <p>
  * Data mappings drive the implicit detokenization: when a result-set column has no
- * {@link FlightSqlColumnMapping}, every data mapping's {@code regex} is used to locate its own
+ * {@link ColumnMapping}, every data mapping's {@code regex} is used to locate its own
  * segments inside the returned values, and supplies the RPS class / property names of the segments it
  * matched. The segment sent to the engine is the whole match, so the regex must match the token
  * itself and not only a part of it.
@@ -21,9 +21,9 @@ import java.util.regex.Pattern;
  * first data mapping whose regex matches it <b>entirely</b>.
  */
 @RegisterForReflection
-public class FlightSqlDataMapping {
+public class DataMapping {
 
-    private static final Logger LOG = LoggerFactory.getLogger(FlightSqlDataMapping.class);
+    private static final Logger LOG = LoggerFactory.getLogger(DataMapping.class);
 
     @JsonProperty(value = "regex")
     private String regex;
@@ -37,11 +37,11 @@ public class FlightSqlDataMapping {
     private transient Pattern pattern;
     private transient boolean compiled;
 
-    public FlightSqlDataMapping() {
+    public DataMapping() {
         // Jackson
     }
 
-    public FlightSqlDataMapping(String regex, String rpsClassName, String rpsPropertyName) {
+    public DataMapping(String regex, String rpsClassName, String rpsPropertyName) {
         this.regex = regex;
         this.rpsClassName = rpsClassName;
         this.rpsPropertyName = rpsPropertyName;

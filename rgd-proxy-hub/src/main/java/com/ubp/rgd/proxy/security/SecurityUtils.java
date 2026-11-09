@@ -1,6 +1,6 @@
 package com.ubp.rgd.proxy.security;
 
-import com.sun.security.auth.module.Krb5LoginModule;
+import com.ubp.rgd.proxy.kerberos.KerberosLogin;
 import com.sun.security.jgss.ExtendedGSSContext;
 import org.ietf.jgss.*;
 import org.slf4j.Logger;
@@ -10,8 +10,6 @@ import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosTicket;
 import java.io.File;
 import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
@@ -47,41 +45,11 @@ public class SecurityUtils {
     }
 
     public static Subject loginService(String keyTabFile, String servicePrincipal) throws Exception {
-        Subject subject = new Subject();
-        Krb5LoginModule krb5LoginModule = new Krb5LoginModule();
-        Map<String, String> optionMap = getLoginOptionsMap(keyTabFile, servicePrincipal);
-
-        krb5LoginModule.initialize(subject, null, new HashMap<String, String>(), optionMap);
-
-        if (!krb5LoginModule.login()) {
+        Subject subject = KerberosLogin.loginService(keyTabFile, servicePrincipal);
+        if (subject == null) {
             LOG.error("Service login failed !");
-            return null;
         }
-
-        if (!krb5LoginModule.commit()) {
-            LOG.error("Service login commit failed !");
-            return null;
-        }
-
         return subject;
-    }
-
-    private static Map<String, String> getLoginOptionsMap(String keyTabFile, String servicePrincipal) {
-        Map<String, String> optionMap = new HashMap<>();
-
-        optionMap.put("keyTab", keyTabFile);
-        optionMap.put("principal", servicePrincipal); // SPN you mapped to the service user while creating the keytab file
-        optionMap.put("doNotPrompt", "true");
-        optionMap.put("refreshKrb5Config", "true");
-        optionMap.put("useTicketCache", "false");
-        optionMap.put("forwardable", "true");
-        optionMap.put("renewable", "false");
-        optionMap.put("useKeyTab", "true");
-        optionMap.put("storeKey", "true");
-        optionMap.put("isInitiator", "true"); // needed for delegation
-        optionMap.put("debug", "false"); // trace will be printed on console
-
-        return optionMap;
     }
 
     public static GSSCredential validateTicket(byte[] token, Subject serviceSubject) throws Exception {

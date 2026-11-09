@@ -1,4 +1,4 @@
-package com.ubp.rgd.proxy.flightsql.config;
+package com.ubp.rgd.proxy.sqlgateway.config;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class FlightSqlMappingConfigTest {
+class MappingConfigTest {
 
     private static final String JSON = """
             {
@@ -35,13 +35,13 @@ class FlightSqlMappingConfigTest {
             }
             """;
 
-    private FlightSqlMappingConfig load() throws Exception {
-        return new ObjectMapper().readValue(JSON, FlightSqlMappingConfig.class);
+    private MappingConfig load() throws Exception {
+        return new ObjectMapper().readValue(JSON, MappingConfig.class);
     }
 
     @Test
     void shouldDeserializeTheWholeConfiguration() throws Exception {
-        FlightSqlMappingConfig config = load();
+        MappingConfig config = load();
 
         assertEquals("WDX1", config.getAfter().getRightContextEvidences().get("Target"));
         assertEquals("RoseGarden", config.getAfter().getRightContextEvidences().get("Module"));
@@ -55,7 +55,7 @@ class FlightSqlMappingConfigTest {
 
     @Test
     void shouldFindAnExactTableAndColumnMappingIgnoringCase() throws Exception {
-        FlightSqlColumnMapping mapping = load().findMapping("person", "first_name");
+        ColumnMapping mapping = load().findMapping("person", "first_name");
 
         assertNotNull(mapping);
         assertEquals("shortString", mapping.getRpsPropertyName());
@@ -63,7 +63,7 @@ class FlightSqlMappingConfigTest {
 
     @Test
     void shouldFallBackToTheWildcardTableMapping() throws Exception {
-        FlightSqlMappingConfig config = load();
+        MappingConfig config = load();
 
         assertEquals("email", config.findMapping("CUSTOMER", "EMAIL").getRpsPropertyName());
         assertEquals("email", config.findMapping(null, "EMAIL").getRpsPropertyName());
@@ -71,8 +71,8 @@ class FlightSqlMappingConfigTest {
 
     @Test
     void shouldTreatAMissingTableAsAWildcard() throws Exception {
-        FlightSqlMappingConfig config = load();
-        FlightSqlColumnMapping mapping = config.findMapping("ANY_TABLE", "IBAN");
+        MappingConfig config = load();
+        ColumnMapping mapping = config.findMapping("ANY_TABLE", "IBAN");
 
         assertNotNull(mapping);
         assertEquals("Account", mapping.getRpsClassName());
@@ -81,7 +81,7 @@ class FlightSqlMappingConfigTest {
 
     @Test
     void shouldReturnNullWhenTheColumnIsNotMapped() throws Exception {
-        FlightSqlMappingConfig config = load();
+        MappingConfig config = load();
 
         assertNull(config.findMapping("PERSON", "AGE"));
         assertNull(config.findMapping("PERSON", null));
@@ -91,7 +91,7 @@ class FlightSqlMappingConfigTest {
 
     @Test
     void shouldConsiderAPhaseActiveByDefault() throws Exception {
-        FlightSqlMappingConfig config = load();
+        MappingConfig config = load();
 
         // The file declares no "active" flag: a configured phase is on unless it says otherwise.
         assertTrue(config.getAfter().isActive());
@@ -101,7 +101,7 @@ class FlightSqlMappingConfigTest {
 
     @Test
     void shouldExposeAnActiveEmptyAfterPhaseByDefault() {
-        FlightSqlMappingConfig config = new FlightSqlMappingConfig();
+        MappingConfig config = new MappingConfig();
 
         assertNotNull(config.getAfter());
         assertTrue(config.isAfterActive());
@@ -118,7 +118,7 @@ class FlightSqlMappingConfigTest {
                   "column-mappings": []
                 }
                 """;
-        FlightSqlMappingConfig config = new ObjectMapper().readValue(json, FlightSqlMappingConfig.class);
+        MappingConfig config = new ObjectMapper().readValue(json, MappingConfig.class);
 
         assertFalse(config.getAfter().isActive());
         assertFalse(config.isAfterActive());
@@ -132,9 +132,9 @@ class FlightSqlMappingConfigTest {
                     "processing-context": { "Action": "Unprotect" } }
                 }
                 """;
-        FlightSqlMappingConfig config = new ObjectMapper()
+        MappingConfig config = new ObjectMapper()
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                .readValue(json, FlightSqlMappingConfig.class);
+                .readValue(json, MappingConfig.class);
 
         assertEquals("Unprotect", config.getAfter().getProcessingContextEvidences().get("Action"));
     }
@@ -146,7 +146,7 @@ class FlightSqlMappingConfigTest {
 
     @Test
     void shouldReturnNullWhenNoMappingIsConfigured() {
-        FlightSqlMappingConfig config = new FlightSqlMappingConfig();
+        MappingConfig config = new MappingConfig();
         config.setColumnMappings(List.of());
 
         assertNull(config.findMapping("PERSON", "FIRST_NAME"));
